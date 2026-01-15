@@ -702,7 +702,7 @@ class AWSLambdaAPI:
 
         path = self.build_api.init_temporary_source_code_directory()
 
-        self.build_api.git_api.update_local_source_code("main")
+        self.build_api.git_api.update_local_source_code(None)
 
         PipAPI.copy_horey_package_required_packages("h_logger", path,
                                                     self.build_api.git_api.configuration.directory_path)
