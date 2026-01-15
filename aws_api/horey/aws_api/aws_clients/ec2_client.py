@@ -2641,10 +2641,11 @@ class EC2Client(Boto3Client):
             return response
         raise RuntimeError(f"Failed to terminate instance: {request_dict}")
 
-    def stop_instance(self, ec2_instance):
+    def stop_instance(self, ec2_instance, asynchronous=False):
         """
         Stop the instance. Wait for stopped state.
 
+        :param asynchronous:
         :param ec2_instance:
         :return:
         """
@@ -2655,7 +2656,8 @@ class EC2Client(Boto3Client):
         list(self.execute(self.get_session_client(region=ec2_instance.region).stop_instances, "StoppingInstances",
                           filters_req={"InstanceIds": [ec2_instance.id], "Force": True}))
 
-        self.wait_for_status(
+        if not asynchronous:
+            self.wait_for_status(
             ec2_instance,
             self.update_instance_information,
             [ec2_instance.State.STOPPED],

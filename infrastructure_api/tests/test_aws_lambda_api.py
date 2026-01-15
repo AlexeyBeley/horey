@@ -2,7 +2,6 @@
 Init and cache AWS objects.
 
 """
-import json
 import shutil
 import sys
 from pathlib import Path
@@ -82,13 +81,17 @@ def fixture_aws_lambda_api(env_api_integration):
     yield infrastructure_api.get_aws_lambda_api(aws_lambda_api_configuration, env_api_integration)
 
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_provision_instance_stopper_lambda(aws_lambda_api):
     aws_lambda_api.configuration.lambda_name = f"instance_stopper_{aws_lambda_api.environment_api.configuration.region}"
-    aws_lambda_api.configuration.lambda_timeout = 120
+    aws_lambda_api.configuration.lambda_timeout = 30
     aws_lambda_api.configuration.lambda_memory_size = 1024
+    aws_lambda_api.configuration.schedule_expression = "rate(1 minute)"
+    aws_lambda_api.build_api.horey_git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
+    aws_lambda_api.build_api.horey_git_api.configuration.remote = "git@github.com:AlexeyBeley/horey.git"
 
-    aws_lambda_api.environment_variables_callback = lambda: {"Variables": ""}
+    aws_lambda_api.environment_variables_callback = lambda: {"Variables": {"INSTANCE_IDS": Configuration.TEST_CONFIG.stop_instance_ids,
+                                                                           "REGION": aws_lambda_api.environment_api.configuration.region}}
 
     def prepare_lambda_source_code_directory(branch_name):
         """
@@ -107,6 +110,3 @@ def test_provision_instance_stopper_lambda(aws_lambda_api):
     aws_lambda_api.build_api.prepare_source_code_directory = prepare_lambda_source_code_directory
 
     assert aws_lambda_api.provision_docker_lambda()
-
-
-

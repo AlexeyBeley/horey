@@ -29,8 +29,8 @@ def handler(event, context):
         if not aws_api.ec2_client.update_instance_information(ec2_instance):
             raise RuntimeError(f"Can not find instance {instance_id}")
 
-        if ec2_instance.get_state() not in [ec2_instance.State.STOPPED.value, ec2_instance.State.STOPPING.value,]:
-            aws_api.ec2_client.stop_instance(ec2_instance)
+        if ec2_instance.get_state() not in [ec2_instance.State.STOPPED.value, ec2_instance.State.STOPPING.value]:
+            aws_api.ec2_client.stop_instance(ec2_instance, asynchronous=True)
             continue
 
     return 200
