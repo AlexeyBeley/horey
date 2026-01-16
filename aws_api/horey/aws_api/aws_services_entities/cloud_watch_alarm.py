@@ -104,6 +104,7 @@ class CloudWatchAlarm(AwsObject):
         :param dict_src:
         :return:
         """
+
         options = {}
         self._init_from_cache(dict_src, options)
 

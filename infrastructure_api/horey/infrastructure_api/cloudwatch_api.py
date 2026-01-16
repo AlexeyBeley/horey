@@ -5,6 +5,7 @@ Standard Cloudwatch maintainer.
 
 from horey.h_logger import get_logger
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
+from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 logger = get_logger()
 
@@ -68,3 +69,22 @@ class CloudwatchAPI:
         log_group = self.get_cloudwatch_log_group(log_group_name)
 
         return self.environment_api.aws_api.cloud_watch_logs_client.put_log_lines(log_group, lines)
+
+    def provision_alarm(self, **kwargs):
+        """
+        Provision cloudwatch metric Lambda errors.
+        Lambda service metric shows the count of failed Lambda executions.
+
+        :param kwargs:
+        :return:
+        """
+
+        alarm = CloudWatchAlarm(kwargs,from_cache=True)
+        base_alarm = CloudWatchAlarm({})
+        for key in alarm.__dict__:
+            if key not in base_alarm.__dict__:
+                raise ValueError(f"Unknown key '{key}' in kwargs '{kwargs}'")
+        alarm.region = self.environment_api.region
+        self.environment_api.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
+
+        return alarm

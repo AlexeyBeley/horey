@@ -90,17 +90,11 @@ def fixture_aws_lambda_api(env_api_integration):
     yield infrastructure_api.get_aws_lambda_api(aws_lambda_api_configuration, env_api_integration)
 
 
-@pytest.fixture(name="alerts_api")
-def fixture_alerts_api(env_api_integration):
+@pytest.fixture(name="aws_lambda_api_stopper")
+def fixture_aws_lambda_api_stopper(env_api_integration):
     infrastructure_api = InfrastructureAPI()
-    alerts_api_configuration = init_from_secrets_api(AlertsAPIConfigurationPolicy, Configuration.TEST_CONFIG.alerts_api_configuration_file_secret_name)
-    breakpoint()
-
-    yield infrastructure_api.get_alerts_api(alerts_api_configuration, env_api_integration)
-
-
-@pytest.mark.wip
-def test_provision_instance_stopper_lambda(aws_lambda_api, alerts_api):
+    aws_lambda_api_configuration = AWSLambdaAPIConfigurationPolicy()
+    aws_lambda_api = infrastructure_api.get_aws_lambda_api(aws_lambda_api_configuration, env_api_integration)
     aws_lambda_api.configuration.lambda_name = f"instance_stopper_{aws_lambda_api.environment_api.configuration.region}"
     aws_lambda_api.configuration.lambda_timeout = 30
     aws_lambda_api.configuration.lambda_memory_size = 1024
@@ -141,6 +135,27 @@ def test_provision_instance_stopper_lambda(aws_lambda_api, alerts_api):
         return path
 
     aws_lambda_api.build_api.prepare_source_code_directory = prepare_lambda_source_code_directory
+    yield aws_lambda_api
 
-    assert aws_lambda_api.provision_docker_lambda(alerts_api=alerts_api)
+
+@pytest.fixture(name="alerts_api")
+def fixture_alerts_api(env_api_integration):
+    infrastructure_api = InfrastructureAPI()
+    alerts_api_configuration = init_from_secrets_api(AlertsAPIConfigurationPolicy, Configuration.TEST_CONFIG.alerts_api_configuration_file_secret_name)
+
+    yield infrastructure_api.get_alerts_api(alerts_api_configuration, env_api_integration)
+
+
+@pytest.mark.unit
+def test_provision_instance_stopper_lambda(aws_lambda_api):
+    assert aws_lambda_api
+
+@pytest.mark.unit
+def test_provision_instance_stopper_lambda(aws_lambda_api_stopper, alerts_api):
+    assert aws_lambda_api_stopper.provision_docker_lambda(alerts_api=alerts_api)
     # assert aws_lambda_api.update_docker_lambda()
+
+@pytest.mark.wip
+def test_provision_instance_stopper_monitoring(aws_lambda_api_stopper, alerts_api):
+    aws_lambda = aws_lambda_api_stopper.get_lambda(aws_lambda_api_stopper.configuration.lambda_name)
+    assert aws_lambda_api_stopper.provision_monitoring(alerts_api, aws_lambda)

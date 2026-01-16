@@ -54,8 +54,7 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def routing_tags(self):
-        if self._routing_tags is None:
-            raise self.UndefinedValueError("routing_tags")
+        self.check_defined()
         return self._routing_tags
 
     @routing_tags.setter

@@ -327,7 +327,7 @@ class AWSLambdaAPI:
 
             """)
 
-        self.provision_monitoring(alerts_api)
+        self.provision_monitoring(alerts_api, aws_lambda)
         return aws_lambda
 
     def lambda_resource_policies_callback(self):
@@ -381,7 +381,7 @@ class AWSLambdaAPI:
         self.aws_iam_api.provision_role(assume_role_policy=json.dumps(assume_role_policy),
                                         managed_policies_arns=managed_policies_arns, policies=inline_policies)
 
-    def provision_monitoring(self, alerts_api):
+    def provision_monitoring(self, alerts_api, aws_lambda):
         """
         Provision alert system and alerts.
 
@@ -406,7 +406,24 @@ class AWSLambdaAPI:
                                                    "timeout",
                                                    None
                                                    )
+        if self.configuration.schedule_expression:
+            period, threshold = self.get_alarm_period_and_threshold()
+            alerts_api.provision_scheduled_lambda_cloudwatch_log_alarm(aws_lambda, period, threshold)
         return True
+
+    def get_alarm_period_and_threshold(self):
+        """
+        Calculate period and threshold for scheduled lambda cloudwatch log alarm.
+
+        :return:
+        """
+        breakpoint()
+        if "rate" in self.configuration.schedule_expression:
+            period = 1
+        period = self.configuration.schedule_expression
+        period = int(period[:-1])
+        threshold = period * 0.6 * 1000
+        return period, threshold
 
     def provision_event_source_mapping_dynamodb(self, aws_lambda):
         """
@@ -615,7 +632,7 @@ class AWSLambdaAPI:
         self.environment_api.aws_api.provision_events_rule(events_rule)
 
 
-    def get_lambda(self):
+    def get_lambda(self, name=None):
         """
         Get lambda object.
 
@@ -623,8 +640,8 @@ class AWSLambdaAPI:
         """
 
         aws_lambda = AWSLambda({})
-        aws_lambda.region = self.environment_api.region
-        aws_lambda.name = self.configuration.lambda_name
+        aws_lambda.region =  self.environment_api.region
+        aws_lambda.name = name or self.configuration.lambda_name
         if not self.environment_api.aws_api.lambda_client.update_lambda_information(aws_lambda):
             raise RuntimeError(f"Lambda '{aws_lambda.name}' not found in {self.environment_api.configuration.region}")
         return aws_lambda

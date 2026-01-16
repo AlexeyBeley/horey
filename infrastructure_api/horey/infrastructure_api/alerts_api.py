@@ -383,7 +383,8 @@ class AlertsAPI:
         return self.environment_api.put_cloudwatch_log_lines(cloudwatch_log_group_name, [log_line])
 
     # pylint: disable = too-many-arguments
-    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_slug, routing_tags, metric_name=None,
+    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_slug, routing_tags,
+                                        metric_name=None,
                                         dimensions=None,
                                         alarm_description=None
                                         ):
@@ -391,41 +392,23 @@ class AlertsAPI:
         Provision Cloud watch logs based alarm.
 
         @return:
+        :param alarm_description:
+        :param dimensions:
+        :param metric_name:
         :param routing_tags:
         :param metric_slug:
         :param filter_text:
-        :param message_dict: extensive data to be stored in alert description
         :param log_group_name:
         """
-
-        if routing_tags is None:
-            routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
 
         if metric_name is None:
             metric_name = f"has3-metric-filter-{log_group_name}-{metric_slug}"
 
-        if not alarm_description:
-            alarm_description = {}
-        alarm_description["log_group_name"] = log_group_name
-        alarm_description["log_group_filter_pattern"] = filter_text
-        alarm_description["routing_tags"] = routing_tags
-        if not log_group_name or not isinstance(log_group_name, str):
-            raise ValueError(f"{log_group_name=}")
-        if not isinstance(routing_tags, list):
-            raise ValueError(
-                f"Routing tags must be a list, received: '{alarm_description}'"
-            )
-        if len(routing_tags) == 0:
-            raise ValueError(f"No routing tags: received: '{alarm_description}'")
+        metric_filter = self.provision_cloudwatch_log_group_metric(log_group_name, metric_name, filter_text)
 
-        metric_filter = self.environment_api.provision_log_group_metric_filter(
-            name=metric_name,
-            log_group_name=log_group_name, filter_text=filter_text)
-        if len(metric_filter.metric_transformations) != 1:
-            raise NotImplementedError(
-                f"Unhandled situation when more then one metric transformation {metric_filter.metric_transformations}")
+        alarm_description = self.alert_system.generate_alarm_description(log_group_name, filter_text, routing_tags, alarm_description=alarm_description)
 
-        alarm = self.provision_cloudwatch_alarm(name=f"has3-alarm-{log_group_name}-{metric_slug}",
+        alarm = self.cloudwatch_api.provision_alarm(name=f"has3-alarm-{log_group_name}-{metric_slug}",
                                                 alarm_description=json.dumps(alarm_description),
                                                 metric_name=metric_filter.metric_transformations[0]["metricName"],
                                                 namespace=log_group_name,
@@ -440,6 +423,65 @@ class AlertsAPI:
                                                 )
         self.environment_api.aws_api.cloud_watch_client.set_alarm_ok(alarm)
         return alarm
+
+    def provision_cloudwatch_log_group_metric(self, log_group_name, metric_name, filter_text):
+        """
+        Provision metric filter for log group.
+
+        :param log_group_name:
+        :param metric_name:
+        :param filter_text:
+        :return:
+        """
+
+        metric_filter = self.environment_api.provision_log_group_metric_filter(
+            name=metric_name,
+            log_group_name=log_group_name, filter_text=filter_text)
+        if len(metric_filter.metric_transformations) != 1:
+            raise NotImplementedError(
+                f"Unhandled situation when more then one metric transformation {metric_filter.metric_transformations}")
+        return metric_filter
+
+    def provision_scheduled_lambda_cloudwatch_log_alarm(self, aws_lambda, period, threshold):
+        """
+        Schedule alarm - makes sure the lambda is triggered correctly
+
+        :param threshold:
+        :param period:
+        :param aws_lambda:
+        :return:
+        """
+        breakpoint()
+        try:
+            assert self.configuration.routing_tags
+        except self.configuration.UndefinedValueError:
+            self.configuration.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
+
+        filter_text = '"REPORT RequestId"'
+
+        metric_name = f"has3-metric-filter-{log_group_name}-REPORT_RequestId"
+
+        metric_filter = self.provision_cloudwatch_log_group_metric(log_group_name, metric_name, filter_text)
+
+        alarm_description = self.alert_system.generate_alarm_description(log_group_name, filter_text, self.configuration.routing_tags)
+
+        alarm = self.cloudwatch_api.provision_alarm(name=f"has3-alarm-{log_group_name}-REPORT_RequestId",
+                                                    alarm_description=json.dumps(alarm_description),
+                                                    metric_name=metric_filter.metric_transformations[0]["metricName"],
+                                                    namespace=log_group_name,
+                                                    statistic="Sum",
+                                                    period=period,
+                                                    evaluation_periods=1,
+                                                    datapoints_to_alarm=1,
+                                                    threshold=threshold,
+                                                    alarm_actions=[aws_lambda.arn],
+                                                    ok_actions=[aws_lambda.arn],
+                                                    comparison_operator="LessThanThreshold",
+                                                    treat_missing_data="notBreaching"
+                                                    )
+        self.environment_api.aws_api.cloud_watch_client.set_alarm_ok(alarm)
+        return alarm
+
 
     # pylint: disable = too-many-arguments
     def provision_cloudwatch_alarm(self, name=None,

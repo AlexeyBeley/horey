@@ -18,7 +18,6 @@ import email.utils
 from horey.h_logger import get_logger
 from horey.common_utils.bash_executor import BashExecutor
 from horey.common_utils.common_utils import CommonUtils
-from horey.serverless.packer.packer import Packer
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
@@ -54,7 +53,6 @@ class AlertSystem:
 
     def __init__(self, configuration: AlertSystemConfigurationPolicy, aws_api=None):
         self.configuration = configuration
-        self.packer = Packer()
         self.aws_api = aws_api or AWSAPI()
         try:
             self.region = Region.get_region(self.configuration.region)
@@ -1387,4 +1385,36 @@ class AlertSystem:
         bins = [min(max_values) + (i * values_range) / 10000 for i in range(10000)]
         ret, bins, patches = plt.hist(max_values, bins=bins)
         plt.show()
+
+    @staticmethod
+    def generate_alarm_description(log_group_name, filter_text, routing_tags, alarm_description=None):
+        """
+        Generate alarm description for the cloudwatch alarm
+
+        :param filter_text:
+        :param log_group_name:
+        :param routing_tags:
+        :param alarm_description:
+        :return:
+        """
+
+        if routing_tags is None:
+            routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
+
+        if not alarm_description:
+            alarm_description = {}
+        alarm_description["log_group_name"] = log_group_name
+        alarm_description["log_group_filter_pattern"] = filter_text
+        alarm_description["routing_tags"] = routing_tags
+        if not log_group_name or not isinstance(log_group_name, str):
+            raise ValueError(f"{log_group_name=}")
+        if not isinstance(routing_tags, list):
+            raise ValueError(
+                f"Routing tags must be a list, received: '{alarm_description}'"
+            )
+        if len(routing_tags) == 0:
+            raise ValueError(f"No routing tags: received: '{alarm_description}'")
+        return alarm_description
+
+
 
