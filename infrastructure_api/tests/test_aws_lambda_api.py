@@ -99,7 +99,7 @@ def fixture_aws_lambda_api_stopper(env_api_integration):
     aws_lambda_api.configuration.lambda_timeout = 30
     aws_lambda_api.configuration.lambda_memory_size = 1024
     aws_lambda_api.configuration.schedule_expression = "rate(1 minute)"
-    "cron(0 22 * * ? *)"
+    # todo: "cron(0 22 * * ? *)"
     aws_lambda_api.build_api.horey_git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
     aws_lambda_api.build_api.horey_git_api.configuration.remote = "git@github.com:AlexeyBeley/horey.git"
 
@@ -147,15 +147,18 @@ def fixture_alerts_api(env_api_integration):
 
 
 @pytest.mark.unit
-def test_provision_instance_stopper_lambda(aws_lambda_api):
-    assert aws_lambda_api
-
-@pytest.mark.unit
 def test_provision_instance_stopper_lambda(aws_lambda_api_stopper, alerts_api):
     assert aws_lambda_api_stopper.provision_docker_lambda(alerts_api=alerts_api)
-    # assert aws_lambda_api.update_docker_lambda()
 
-@pytest.mark.wip
+@pytest.mark.unit
+def test_update_instance_stopper_lambda(aws_lambda_api_stopper):
+    assert aws_lambda_api_stopper.update_docker_lambda()
+
+@pytest.mark.unit
+def test_get_alarm_period_and_threshold(aws_lambda_api_stopper):
+    assert aws_lambda_api_stopper.get_alarm_period()
+
+@pytest.mark.unit
 def test_provision_instance_stopper_monitoring(aws_lambda_api_stopper, alerts_api):
     aws_lambda = aws_lambda_api_stopper.get_lambda(aws_lambda_api_stopper.configuration.lambda_name)
     assert aws_lambda_api_stopper.provision_monitoring(alerts_api, aws_lambda)

@@ -352,6 +352,7 @@ class DBAPI:
         table.description = table_name
         table.retention = 0
         table.storage_descriptor = storage_descriptor
+        table.table_type = "EXTERNAL_TABLE"
         table.parameters = {
             "EXTERNAL": "TRUE",
             "has_encrypted_data": "true",

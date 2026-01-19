@@ -390,40 +390,42 @@ class AWSLambdaAPI:
 
         if alerts_api is None:
             return False
-
-        alerts_api.provision_cloudwatch_logs_alarm(self.log_group_name,
+        log_group_name = aws_lambda.logging_config["LogGroup"]
+        alerts_api.provision_cloudwatch_logs_alarm(log_group_name,
                                                    '"[ERROR]"',
                                                    "error",
                                                    None
                                                    )
-        alerts_api.provision_cloudwatch_logs_alarm(self.log_group_name,
+        alerts_api.provision_cloudwatch_logs_alarm(log_group_name,
                                                    '"Runtime exited with error"',
                                                    "runtime_exited",
                                                    None
                                                    )
-        alerts_api.provision_cloudwatch_logs_alarm(self.log_group_name,
+        alerts_api.provision_cloudwatch_logs_alarm(log_group_name,
                                                    f'"{alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"',
                                                    "timeout",
                                                    None
                                                    )
         if self.configuration.schedule_expression:
-            period, threshold = self.get_alarm_period_and_threshold()
-            alerts_api.provision_scheduled_lambda_cloudwatch_log_alarm(aws_lambda, period, threshold)
+            period = self.get_alarm_period()
+            alerts_api.provision_scheduled_lambda_cloudwatch_log_alarm(log_group_name, period)
         return True
 
-    def get_alarm_period_and_threshold(self):
+    def get_alarm_period(self) -> int:
         """
         Calculate period and threshold for scheduled lambda cloudwatch log alarm.
 
         :return:
         """
-        breakpoint()
+
         if "rate" in self.configuration.schedule_expression:
-            period = 1
-        period = self.configuration.schedule_expression
-        period = int(period[:-1])
-        threshold = period * 0.6 * 1000
-        return period, threshold
+            period_str = self.configuration.schedule_expression.replace("rate(", "").replace(")", "")
+            if "minu" in period_str:
+                return int(period_str.split(" ")[0]) * 60
+            if "hou" in period_str:
+                return int(period_str.split(" ")[0]) * 60 * 60
+
+        raise NotImplementedError("self.configuration.schedule_expression")
 
     def provision_event_source_mapping_dynamodb(self, aws_lambda):
         """
@@ -767,9 +769,9 @@ class AWSLambdaAPI:
 
         entrypoint_file = entrypoint.split(".")[0] + ".py"
 
-        install_horey_packages_block = ""
-        for horey_package_raw_name in horey_package_raw_names:
-            install_horey_packages_block += f"RUN python ${{LAMBDA_TASK_ROOT}}/horey/pip_api/horey/pip_api/pip_api_make.py --install horey.{horey_package_raw_name} --pip_api_configuration ${{LAMBDA_TASK_ROOT}}/horey/pip_api_docker_configuration.py\n"
+        install_horey_packages_block = "\n".join(["RUN python ${LAMBDA_TASK_ROOT}/horey/pip_api/horey/pip_api/pip_api_make.py"
+                                                  f" --install horey.{horey_package_raw_name} --pip_api_configuration ${{LAMBDA_TASK_ROOT}}/horey/pip_api_docker_configuration.py"
+                                                  for horey_package_raw_name in horey_package_raw_names])
 
         dockerfile_path = dir_path / "Dockerfile"
         with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
@@ -783,7 +785,7 @@ class AWSLambdaAPI:
                 f"CMD [ \"{entrypoint}\" ]\n"
                 f"COPY {entrypoint_file} ${{LAMBDA_TASK_ROOT}}/\n"
                 "COPY ${HOREY_FOLDER_NAME} ${LAMBDA_TASK_ROOT}/horey\n" +
-                install_horey_packages_block
+                install_horey_packages_block + "\n"
             )
         return dockerfile_path
 

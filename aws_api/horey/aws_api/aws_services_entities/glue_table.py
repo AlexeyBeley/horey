@@ -20,12 +20,13 @@ class GlueTable(AwsObject):
         self.description = None
         self.retention = None
         self.storage_descriptor = None
+        self.table_type = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
 
-        self.update_attributes(dict_src)
+        self.update_from_raw_response(dict_src)
 
     @property
     def arn(self):
@@ -76,12 +77,14 @@ class GlueTable(AwsObject):
 
         self.init_attrs(dict_src, init_options)
 
-    def generate_create_request(self):
+    def generate_create_request(self, validate=True):
         """
         Standard
         :return:
         """
+
         request = {"DatabaseName": self.database_name,
+                   "Name": self.name,
                    "TableInput": {}}
         request["TableInput"]["Name"] = self.name
         request["TableInput"]["Description"] = self.description
@@ -92,6 +95,30 @@ class GlueTable(AwsObject):
             request["TableInput"]["Parameters"] = self.parameters
         if self.partition_keys is not None:
             request["TableInput"]["PartitionKeys"] = self.partition_keys
+
+
+
+        if self.table_type is None:
+            table_type_external = None
+        elif self.table_type == "EXTERNAL_TABLE":
+            request["TableInput"]["TableType"] = self.table_type
+            table_type_external = True
+        else:
+            raise NotImplementedError(self.table_type)
+
+
+        if validate:
+            params_external = self.parameters.get("EXTERNAL")
+            params_external_type = None
+            if params_external is not None:
+                if params_external.lower() == "true":
+                    params_external_type = True
+                elif params_external.lower() == "false":
+                    params_external_type = False
+                else:
+                    raise ValueError(params_external)
+            if table_type_external != params_external_type:
+                raise ValueError(f"table_type: {self.table_type} and parameters EXTERNAL: {params_external_type} are inconsistent")
 
         return request
 
@@ -138,10 +165,10 @@ class GlueTable(AwsObject):
         :return:
         """
 
-        self_create_request = self.generate_create_request()
+        self_create_request = self.generate_create_request(validate=False)
         desired_create_request = desired_state.generate_create_request()
-        for key, value in self_create_request["TableInput"].items():
-            if desired_create_request["TableInput"].get(key) != value:
+        for key, value in self_create_request.items():
+            if desired_create_request.get(key) != value:
                 return desired_create_request
 
         return None

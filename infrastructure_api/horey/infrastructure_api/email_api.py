@@ -186,4 +186,7 @@ class EmailAPI:
             if str_to_find.lower() in destination["EmailAddress"]:
                 logger.info(f"Found suppressed email '{destination['EmailAddress']}'")
                 ret.append(destination["EmailAddress"])
+            else:
+                logger.info(f"Not Found suppressed email {str_to_find.lower()} in '{destination['EmailAddress']}'")
+
         return ret

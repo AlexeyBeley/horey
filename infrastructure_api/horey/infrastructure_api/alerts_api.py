@@ -401,6 +401,7 @@ class AlertsAPI:
         :param log_group_name:
         """
 
+        alerts_lamda = self.aws_lambda_api.get_lambda(name=self.configuration.lambda_name)
         if metric_name is None:
             metric_name = f"has3-metric-filter-{log_group_name}-{metric_slug}"
 
@@ -419,7 +420,9 @@ class AlertsAPI:
                                                 datapoints_to_alarm=1,
                                                 threshold=0.0,
                                                 comparison_operator="GreaterThanThreshold",
-                                                treat_missing_data="notBreaching"
+                                                treat_missing_data="notBreaching",
+                                                alarm_actions = [alerts_lamda.arn],
+                                                ok_actions=[alerts_lamda.arn]
                                                 )
         self.environment_api.aws_api.cloud_watch_client.set_alarm_ok(alarm)
         return alarm
@@ -442,16 +445,15 @@ class AlertsAPI:
                 f"Unhandled situation when more then one metric transformation {metric_filter.metric_transformations}")
         return metric_filter
 
-    def provision_scheduled_lambda_cloudwatch_log_alarm(self, aws_lambda, period, threshold):
+    def provision_scheduled_lambda_cloudwatch_log_alarm(self, log_group_name, period):
         """
         Schedule alarm - makes sure the lambda is triggered correctly
 
-        :param threshold:
+        :param log_group_name:
         :param period:
-        :param aws_lambda:
         :return:
         """
-        breakpoint()
+
         try:
             assert self.configuration.routing_tags
         except self.configuration.UndefinedValueError:
@@ -464,6 +466,8 @@ class AlertsAPI:
         metric_filter = self.provision_cloudwatch_log_group_metric(log_group_name, metric_name, filter_text)
 
         alarm_description = self.alert_system.generate_alarm_description(log_group_name, filter_text, self.configuration.routing_tags)
+        aws_lambda = self.aws_lambda_api.get_lambda(name = self.configuration.lambda_name)
+        breakpoint()
 
         alarm = self.cloudwatch_api.provision_alarm(name=f"has3-alarm-{log_group_name}-REPORT_RequestId",
                                                     alarm_description=json.dumps(alarm_description),
@@ -473,7 +477,7 @@ class AlertsAPI:
                                                     period=period,
                                                     evaluation_periods=1,
                                                     datapoints_to_alarm=1,
-                                                    threshold=threshold,
+                                                    threshold=1,
                                                     alarm_actions=[aws_lambda.arn],
                                                     ok_actions=[aws_lambda.arn],
                                                     comparison_operator="LessThanThreshold",

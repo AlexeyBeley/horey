@@ -114,6 +114,7 @@ class CloudWatchAlarm(AwsObject):
         AlarmName (string) --
         EvaluationPeriods (string) --
         """
+
         request_dict = {
             "AlarmName": self.name,
             "ActionsEnabled": self.actions_enabled,
@@ -143,5 +144,8 @@ class CloudWatchAlarm(AwsObject):
 
         if self.unit is not None:
             request_dict["Unit"] = self.unit
+
+        if self.actions_enabled is None:
+            request_dict["ActionsEnabled"] = True
 
         return request_dict
