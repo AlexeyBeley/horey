@@ -273,3 +273,18 @@ def test_run_remote_provision_constructor_crowdstrike_install_(cicd_api_integrat
                                                                      action="install_falcon_sensor",
                                                                      s3_deployment_uri=Configuration.TEST_CONFIG.crowdstrike_falcon_sensor_s3_directory_uri,
                                                                      falcon_sensor_cid=Configuration.TEST_CONFIG.crowdstrike_falcon_sensor_cid)
+
+
+@pytest.mark.wip
+def test_run_remote_deployer_deploy_targets(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
+    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+
+    entrypoint = lambda: cicd_api_integration.run_remote_provision_constructor(target,
+                                                          "copy_generic",
+                                                          src=Path(__file__), dst=f"/tmp/{__file__}" , sudo=True)
+    breakpoint()
+
+    for target in targets:
+        target.append_remote_step(entrypoint)
+    assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)

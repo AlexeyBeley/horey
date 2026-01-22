@@ -665,6 +665,17 @@ class CICDAPI:
         provision_constructor.deployment_dir = target.local_deployment_dir_path
         return provision_constructor.provision_system_function_remote(remoter, function_name, storage_service=storage_service, **kwargs)
 
+    def run_remote_deployer_deploy_targets(self, targets, asynchronous=True):
+        """
+        Run the deployment
+
+        :param asynchronous:
+        :param targets:
+        :return:
+        """
+
+        remote_deployer = RemoteDeployer()
+        remote_deployer.deploy_targets(targets, asynchronous=asynchronous)
 
 class S3StorageService(StorageService):
     """

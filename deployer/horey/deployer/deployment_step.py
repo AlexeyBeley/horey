@@ -23,6 +23,9 @@ class DeploymentStep:
         if configuration.name is None:
             raise RuntimeError("Step configuration name was not set")
 
+        self.name = configuration.name
+        self.sleep_time = configuration.sleep_time
+        self.retry_attempts = configuration.retry_attempts
         self.configuration = configuration
         self.status = None
         self.status_code = None  # "success"/"failure"/"error"

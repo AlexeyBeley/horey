@@ -23,8 +23,7 @@ class Provisioner(SystemFunctionCommon):
 
     # pylint: disable= too-many-arguments
     def __init__(self, deployment_dir, force, upgrade, src=None, dst=None, sudo=False, **kwargs):
-        super().__init__(force, upgrade, **kwargs)
-        self.deployment_dir = deployment_dir
+        super().__init__(deployment_dir, force, upgrade, **kwargs)
         if os.path.isfile(src):
             if os.path.isdir(dst):
                 dst = os.path.join(dst, os.path.basename(src))

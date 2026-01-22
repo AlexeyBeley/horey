@@ -8,6 +8,7 @@ from enum import Enum
 from pathlib import Path
 
 from horey.deployer.deployment_step import DeploymentStep
+from horey.deployer.remote_deployment_step import RemoteDeploymentStep
 from horey.deployer.deployment_step_configuration_policy import DeploymentStepConfigurationPolicy
 
 
@@ -99,6 +100,18 @@ class DeploymentTarget:
         step_configuration.generate_configuration_file(os.path.join(self.local_deployment_data_dir_path,
                                                                     step_configuration.script_configuration_file_name))
         step = DeploymentStep(step_configuration)
+        self.add_step(step)
+
+    def append_remote_step(self, name, entrypoint):
+        """
+        Add remote step
+
+        :param name:
+        :param entrypoint:
+        :return:
+        """
+
+        step = RemoteDeploymentStep(name, entrypoint)
         self.add_step(step)
 
     class StatusCode(Enum):

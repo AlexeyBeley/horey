@@ -20,6 +20,8 @@ import paramiko
 from sshtunnel import open_tunnel
 
 from horey.deployer.deployment_target import DeploymentTarget
+
+from deployer.horey.deployer.remote_deployment_step import RemoteDeploymentStep
 from horey.deployer.deployment_step import DeploymentStep
 from horey.deployer.replacement_engine import ReplacementEngine
 from horey.common_utils.zip_utils import ZipUtils
@@ -628,25 +630,7 @@ class RemoteDeployer:
         if stderr_string:
             raise RemoteDeployer.DeployerError(stderr_string)
 
-    def deploy_target_step(self, deployment_target, step, asynchronous=False):
-        """
-        Deploy single step.
-
-        :param deployment_target:
-        :param step:
-        :param asynchronous:
-        :return:
-        """
-
-        if asynchronous:
-            thread = threading.Thread(
-                target=self.deploy_target_step_thread, args=(deployment_target, step)
-            )
-            thread.start()
-        else:
-            self.deploy_target_step_thread(deployment_target, step)
-
-    def deploy_target_step_thread(self, deployment_target, step):
+    def deploy_target_step(self, deployment_target: DeploymentTarget, step):
         """
         Deploying thread, can be run async.
 
@@ -656,23 +640,25 @@ class RemoteDeployer:
         """
 
         logger.info(
-            f"Starting deployment for target {deployment_target.deployment_target_address} step: {step.configuration.name}"
+            f"Starting deployment for target {deployment_target.deployment_target_address} step: {step.name}"
         )
         try:
             self.deploy_target_step_thread_helper(deployment_target, step)
         except Exception as exception_instance:
             logger.error(
-                f"Unhandled exception in deploy_target_step_thread {repr(exception_instance)})"
+                f"Unhandled exception in deploy_target_step {repr(exception_instance)})"
             )
             traceback_str = "".join(
                 traceback.format_tb(exception_instance.__traceback__)
             )
             logger.exception(traceback_str)
 
-            step.status_code = step.StatusCode.ERROR
+            step.status_code = DeploymentStep.StatusCode.ERROR
             step.output = repr(exception_instance)
+            deployment_target.status_code = deployment_target.StatusCode.FAILURE
+            deployment_target.status = f"Failed step: '{step.name()}'"
 
-    def deploy_target_step_thread_helper(self, deployment_target: DeploymentTarget, step: DeploymentStep):
+    def deploy_target_step_thread_helper(self, deployment_target: DeploymentTarget, step):
         """
         Unprotected code, should be enclosed in try except.
 
@@ -680,6 +666,8 @@ class RemoteDeployer:
         :param step:
         :return:
         """
+        if isinstance(step, RemoteDeploymentStep):
+            return self.deploy_target_step_thread_helper_remote(deployment_target, step)
 
         ssh_client = self.get_deployment_target_ssh_client(deployment_target)
         try:
@@ -744,9 +732,9 @@ class RemoteDeployer:
 
                 time.sleep(step.configuration.sleep_time)
             else:
-                step.status_code = step.StatusCode.ERROR
+                step.status_code = DeploymentStep.StatusCode.ERROR
                 deployment_target.status_code = deployment_target.StatusCode.FAILURE
-                deployment_target.status = f"Failed to fetch step's status and output files: {step.configuration.name}"
+                deployment_target.status = f"Failed to fetch step's status and output files: {step.name}"
                 raise TimeoutError(
                     f"[LOCAL->{deployment_target.deployment_target_address}] Failed to fetch remote script's status target: {deployment_target.deployment_target_address}"
                 )
@@ -754,10 +742,10 @@ class RemoteDeployer:
             step.update_finish_status()
             step.update_output()
 
-            if step.status_code != step.StatusCode.SUCCESS:
+            if step.status_code != DeploymentStep.StatusCode.SUCCESS:
                 last_lines = "\n".join(step.output.split("\n")[-50:])
                 deployment_target.status_code = deployment_target.StatusCode.FAILURE
-                deployment_target.status = f"Step returned status different from success: {step.configuration.name}"
+                deployment_target.status = f"Step returned status different from success: {step.name}"
                 raise RuntimeError(
                     f"[REMOTE<-{deployment_target.deployment_target_address}] Step finished with status: {step.status}, error: \n{last_lines}"
                 )
@@ -766,9 +754,40 @@ class RemoteDeployer:
                 f"[REMOTE<-{deployment_target.deployment_target_address}] Step finished successfully output in: '{step.configuration.output_file_name}'"
             )
         except Exception as error_instance:
-            step.status_code = step.StatusCode.ERROR
+            step.status_code = DeploymentStep.StatusCode.ERROR
             deployment_target.status_code = deployment_target.StatusCode.FAILURE
-            deployment_target.status = f"Unknown exception happened when deploying the step {step.configuration.name}. " \
+            deployment_target.status = f"Unknown exception happened when deploying the step {step.name}. " \
+                                       f"Error: {repr(error_instance)}"
+
+            traceback_str = "".join(
+                traceback.format_tb(error_instance.__traceback__)
+            )
+            logger.exception(traceback_str)
+
+            raise RemoteDeployer.DeployerError(
+                repr(error_instance)
+            ) from error_instance
+
+    @staticmethod
+    def deploy_target_step_thread_helper_remote(deployment_target: DeploymentTarget, step:RemoteDeploymentStep):
+        """
+        Unprotected code, should be enclosed in try except.
+
+        :param deployment_target:
+        :param step:
+        :return:
+        """
+
+        breakpoint()
+        try:
+            deployment_target.enty_point()
+            step.status_code = DeploymentStep.StatusCode.SUCCESS
+            step.status = "SUCCESS"
+            return True
+        except Exception as error_instance:
+            step.status_code = DeploymentStep.StatusCode.ERROR
+            deployment_target.status_code = deployment_target.StatusCode.FAILURE
+            deployment_target.status = f"Unknown exception happened when deploying the step {step.name}. " \
                                        f"Error: {repr(error_instance)}"
 
             traceback_str = "".join(
@@ -986,7 +1005,7 @@ class RemoteDeployer:
         """
 
         total_time = max(total_time, max(
-            step.configuration.sleep_time * step.configuration.retry_attempts for target in targets for step in
+            step.sleep_time * step.retry_attempts for target in targets for step in
             target.steps))
         logger.info(f"New time to finish calculated from steps and default: {total_time} seconds")
 
@@ -1050,36 +1069,38 @@ class RemoteDeployer:
         :return:
         """
 
-        total_time = step.configuration.retry_attempts * step.configuration.sleep_time
+        breakpoint()
+
+        total_time = step.retry_attempts * step.sleep_time
         start_time = datetime.datetime.now()
         end_time = start_time + datetime.timedelta(seconds=total_time)
 
         while datetime.datetime.now() < end_time:
             if step.status_code is not None:
-                logger.info(f"[REMOTE<-{target.deployment_target_address}] Finished step {step.configuration.name}")
+                logger.info(f"[REMOTE<-{target.deployment_target_address}] Finished step {step.name}")
                 break
 
             logger.info(
-                f"[LOCAL->{target.deployment_target_address}] Waiting for step: {step.configuration.name} going to sleep for {step.configuration.sleep_time} seconds"
+                f"[LOCAL->{target.deployment_target_address}] Waiting for step: {step.name} going to sleep for {step.sleep_time} seconds"
             )
 
-            time.sleep(step.configuration.sleep_time)
+            time.sleep(step.sleep_time)
         else:
-            step.status_code = step.StatusCode.ERROR
+            step.status_code = DeploymentStep.StatusCode.ERROR
             if target.status_code is None:
                 target.status_code = target.StatusCode.ERROR
-                target.status = f"Step failed. Name: {step.configuration.name}"
+                target.status = f"Step failed. Name: {step.name}"
             raise TimeoutError(
-                f"[REMOTE<-{target.deployment_target_address}] Step: {step.configuration.name}"
+                f"[REMOTE<-{target.deployment_target_address}] Step: {step.name}"
             )
 
-        if step.status_code != step.StatusCode.SUCCESS:
+        if step.status_code != DeploymentStep.StatusCode.SUCCESS:
             raise RuntimeError(
-                f"[REMOTE<-{target.deployment_target_address}] Step failed. Name: {step.configuration.name}, Status code:{step.status_code}, Status: {step.status}, Output: {step.output}"
+                f"[REMOTE<-{target.deployment_target_address}] Step failed. Name: {step.name}, Status code:{step.status_code}, Status: {step.status}, Output: {step.output}"
             )
 
         logger.info(
-            f"[REMOTE<-{target.deployment_target_address}] Finished step: {step.configuration.name}"
+            f"[REMOTE<-{target.deployment_target_address}] Finished step: {step.name}"
         )
 
     def deploy_target(self, target: DeploymentTarget, asynchronous=False):
@@ -1112,7 +1133,7 @@ class RemoteDeployer:
                 raise RuntimeError("Could not provision deployer infra")
 
             for step in target.steps:
-                self.deploy_target_step(target, step, asynchronous=False)
+                self.deploy_target_step(target, step)
                 self.wait_to_finish_step(target, step)
 
             target.status_code = target.StatusCode.SUCCESS
