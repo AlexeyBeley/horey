@@ -253,7 +253,7 @@ class CloudfrontClient(Boto3Client):
 
         return final_result
 
-    def provision_origin_access_identity(self, origin_access_identity):
+    def provision_origin_access_identity(self, origin_access_identity: CloudfrontOriginAccessIdentity):
         """
         Standard.
 
@@ -261,19 +261,40 @@ class CloudfrontClient(Boto3Client):
         :return:
         """
 
+        current_origin_access_identity = CloudfrontOriginAccessIdentity({})
+        current_origin_access_identity.id = origin_access_identity.id
+        current_origin_access_identity.comment = origin_access_identity.comment
+        if not self.update_origin_access_identity_information(current_origin_access_identity):
+            response = self.provision_origin_access_identity_raw(
+                origin_access_identity.generate_create_request()
+            )
+            origin_access_identity.id = response["Id"]
+            breakpoint()
+            return
+        breakpoint()
+
+        self.update_origin_access_identity_information(origin_access_identity)
+
+
+    def update_origin_access_identity_information(self, identity: CloudfrontOriginAccessIdentity) -> bool:
+        """
+        Standard
+
+        :param identity:
+        :return:
+        """
+
         existing_origin_access_identities = self.get_all_origin_access_identities()
         for existing_origin_access_identity in existing_origin_access_identities:
             if (
                     existing_origin_access_identity.comment
-                    == origin_access_identity.comment
+                    == identity.comment
             ):
-                origin_access_identity.id = existing_origin_access_identity.id
-                return
+                identity.id = existing_origin_access_identity.id
+                breakpoint()
+                return True
 
-        response = self.provision_origin_access_identity_raw(
-            origin_access_identity.generate_create_request()
-        )
-        origin_access_identity.id = response["Id"]
+        return False
 
     def provision_origin_access_identity_raw(self, request_dict):
         """

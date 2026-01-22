@@ -273,3 +273,12 @@ def test_run_remote_provision_constructor_crowdstrike_install_(cicd_api_integrat
                                                                      action="install_falcon_sensor",
                                                                      s3_deployment_uri=Configuration.TEST_CONFIG.crowdstrike_falcon_sensor_s3_directory_uri,
                                                                      falcon_sensor_cid=Configuration.TEST_CONFIG.crowdstrike_falcon_sensor_cid)
+
+@pytest.mark.wip
+def test_run_remote_provision_constructor_mysql_client(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
+    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+    for target in targets:
+        assert cicd_api_integration.run_remote_provision_constructor(target,
+                                                                     "apt_package_generic",
+                                                                     package_names=["mysql-client", "redis-tools", "postgresql-client"])

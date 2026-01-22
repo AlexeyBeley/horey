@@ -98,7 +98,12 @@ class MAauction(Provider):
                 try:
                     lot_list_contianer_element = None
                     for _ in range(100):
-                        lot_list_contianer_element = self.selenium_api.get_element(By.CLASS_NAME, "lotListContainer")
+                        try:
+                            lot_list_contianer_element = self.selenium_api.get_element(By.CLASS_NAME, "lotListContainer")
+                        except Exception:
+                            # F idiots!
+                            lot_list_contianer_element = self.selenium_api.get_element(By.CLASS_NAME,
+                                                                                       "lotListContainer ")
                         if "Loading..." not in lot_list_contianer_element.text:
                            break
                         time.sleep(0.1)
@@ -291,7 +296,11 @@ class MAauction(Provider):
 
         self.selenium_api.get(lot.url)
         self.selenium_api.wait_for_page_load()
-        start_time_element = self.selenium_api.get_element(By.CLASS_NAME, "startTime")
+        try:
+            start_time_element = self.selenium_api.get_element(By.CLASS_NAME, "startTime")
+        except NoSuchElementException:
+            breakpoint()
+            return None
         # '12/3/2025 10:00:00 PM'
         parse_format = '%m/%d/%Y %I:%M:%S %p'
         start_time_string = start_time_element.text.replace("Start Time:", "")

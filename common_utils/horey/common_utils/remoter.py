@@ -11,6 +11,13 @@ class Remoter(ABC):
     Remote work manager
     """
 
+    def get_state(self) -> dict:
+        """
+        Get the remote server state
+
+        :return:
+        """
+
     @abstractmethod
     def get_deployment_dir(self) -> Path:
         """

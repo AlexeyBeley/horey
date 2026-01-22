@@ -166,6 +166,7 @@ class Lot:
                            "brampton": "ontario",
                            "alvarado": "texas",
                            "ragueneau": "quebec",
+                           "toronto": "ontario",
                            "saint-jean-sur-richelieu": "quebec",
                            **{province: province for province in
                               ["offsite", "manitoba", "alberta", "new brunswick", "quebec", "ontario"]}}
