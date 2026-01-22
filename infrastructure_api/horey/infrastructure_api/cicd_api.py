@@ -679,7 +679,7 @@ class CICDAPI:
         """
 
         remote_deployer = RemoteDeployer()
-        remote_deployer.deploy_targets(targets, asynchronous=asynchronous)
+        return remote_deployer.deploy_targets(targets, asynchronous=asynchronous)
 
 class S3StorageService(StorageService):
     """

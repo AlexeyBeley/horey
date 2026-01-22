@@ -21,7 +21,7 @@ from sshtunnel import open_tunnel
 
 from horey.deployer.deployment_target import DeploymentTarget
 
-from deployer.horey.deployer.remote_deployment_step import RemoteDeploymentStep
+from horey.deployer.remote_deployment_step import RemoteDeploymentStep
 from horey.deployer.deployment_step import DeploymentStep
 from horey.deployer.replacement_engine import ReplacementEngine
 from horey.common_utils.zip_utils import ZipUtils
@@ -67,7 +67,6 @@ class SSHRemoter(Remoter):
         for output_validator in output_validators:
             try:
                 if not output_validator(lst_stdout, lst_stderr, status_code):
-                    breakpoint()
                     errors.append("Validation function returned False should have raised Exception or return True if succeeded")
             except Exception as inst_error:
                 errors.append(repr(inst_error))
@@ -88,6 +87,8 @@ class SSHRemoter(Remoter):
         if sudo:
             remote_tmp_file_path = Path('/tmp')/src.name
             self.sftp_client.put(str(src), str(remote_tmp_file_path))
+            if remote_tmp_file_path == dst:
+                return [], [], 0
             return self.execute(f"sudo mv {Path('/tmp')/src.name} {dst}")
         return self.sftp_client.put(str(src), str(dst))
 
@@ -557,6 +558,7 @@ class RemoteDeployer:
         :param remote_file_path:
         :return:
         """
+
         sleep_time = 1
         end_time = datetime.datetime.now() + datetime.timedelta(minutes=5)
         while datetime.datetime.now() < end_time:
@@ -689,7 +691,7 @@ class RemoteDeployer:
             self.execute_step(ssh_client, step, deployment_target.deployment_target_address)
             sftp_client = self.get_deployment_target_sftp_client(deployment_target)
 
-            for retry_counter in range(step.configuration.retry_attempts):
+            for retry_counter in range(step.retry_attempts):
                 try:
                     remote_status_path = str(step.configuration.remote_deployment_dir_path /
                         step.configuration.data_dir_name /
@@ -729,7 +731,7 @@ class RemoteDeployer:
                         raise
                     logger.info(
                         f"[LOCAL->{deployment_target.deployment_target_address}] Retrying to fetch remote script's status"
-                        f" in {step.configuration.sleep_time} seconds ({retry_counter}/{step.configuration.retry_attempts})"
+                        f" in {step.sleep_time} seconds ({retry_counter}/{step.retry_attempts})"
                     )
                 except Exception as error_received:
                     logger.error(
@@ -740,7 +742,7 @@ class RemoteDeployer:
                     )
                     logger.exception(traceback_str)
 
-                time.sleep(step.configuration.sleep_time)
+                time.sleep(step.sleep_time)
             else:
                 step.status_code = DeploymentStep.StatusCode.ERROR
                 deployment_target.status_code = deployment_target.StatusCode.FAILURE
@@ -788,9 +790,8 @@ class RemoteDeployer:
         :return:
         """
 
-        breakpoint()
         try:
-            deployment_target.enty_point()
+            step.enty_point()
             step.status_code = DeploymentStep.StatusCode.SUCCESS
             step.status = "SUCCESS"
             return True
@@ -1067,6 +1068,8 @@ class RemoteDeployer:
         if failed:
             raise error_type("\n".join(errors))
 
+        return True
+
     @staticmethod
     def wait_to_finish_step(
             target: DeploymentTarget, step: DeploymentStep
@@ -1078,8 +1081,6 @@ class RemoteDeployer:
         :param step:
         :return:
         """
-
-        breakpoint()
 
         total_time = step.retry_attempts * step.sleep_time
         start_time = datetime.datetime.now()
@@ -1132,15 +1133,21 @@ class RemoteDeployer:
         """
         Thread triggered async
 
+        :param provision_deployer_infrastructure:
         :param target:
         :return:
         """
 
         logger.info(f"Starting target deployment {target.deployment_target_address}")
         try:
-            self.provision_target_remote_deployer_infrastructure_thread(target)
-            if not target.remote_deployer_infrastructure_provisioning_succeeded:
-                raise RuntimeError("Could not provision deployer infra")
+
+            # If there is at least one deployment step - provision deployer infrastructure
+            for step in target.steps:
+                if isinstance(step, DeploymentStep):
+                    self.provision_target_remote_deployer_infrastructure_thread(target)
+                    if not target.remote_deployer_infrastructure_provisioning_succeeded:
+                        raise RuntimeError("Could not provision deployer infra")
+                    break
 
             for step in target.steps:
                 self.deploy_target_step(target, step)
@@ -1178,9 +1185,10 @@ class RemoteDeployer:
 
         for target in targets:
             self.deploy_target(target, asynchronous=asynchronous)
-            time.sleep(10)
+            if asynchronous:
+                time.sleep(10)
 
-        self.wait_to_finish(
+        return self.wait_to_finish(
             targets,
             lambda _target: _target.status_code is not None,
             lambda _target: _target.status_code == _target.StatusCode.SUCCESS,

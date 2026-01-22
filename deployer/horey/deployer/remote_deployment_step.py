@@ -3,7 +3,6 @@ Deployment step data class
 
 """
 
-from horey.deployer.deployment_step import DeploymentStep
 
 class RemoteDeploymentStep:
     """
@@ -13,7 +12,8 @@ class RemoteDeploymentStep:
     def __init__(self, name, enty_point):
         self.name = name
         self.enty_point = enty_point
+        self.sleep_time = 5
+        self.retry_attempts = 12
         self.status = None
         self.status_code = None
         self.output = None
-

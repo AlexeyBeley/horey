@@ -3,7 +3,7 @@ Copy generic file or folder
 
 """
 
-import os
+from horey.common_utils.remoter import Remoter
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 from horey.provision_constructor.system_functions.system_function_common import (
@@ -22,17 +22,11 @@ class Provisioner(SystemFunctionCommon):
     """
 
     # pylint: disable= too-many-arguments
-    def __init__(self, deployment_dir, force, upgrade, src=None, dst=None, sudo=False, **kwargs):
+    def __init__(self, deployment_dir, force, upgrade, **kwargs):
         super().__init__(deployment_dir, force, upgrade, **kwargs)
-        if os.path.isfile(src):
-            if os.path.isdir(dst):
-                dst = os.path.join(dst, os.path.basename(src))
-        else:
-            raise NotImplementedError(f"Src must be a file for now: '{src}'")
-
-        self.src = src
-        self.dst = dst
-        self.sudo = sudo
+        self.src = kwargs["src"]
+        self.dst = kwargs["dst"]
+        self.sudo = kwargs["sudo"]
 
     def test_provisioned(self):
         """
@@ -51,3 +45,15 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.provision_file(self.src, self.dst, sudo=self.sudo)
+
+    def provision_remote(self, remoter: Remoter):
+        """
+        Provision remotely
+
+        :param remoter:
+        :return:
+        """
+
+        remoter.put_file(self.src, self.dst, sudo=True)
+
+        return True
