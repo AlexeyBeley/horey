@@ -68,7 +68,7 @@ class EC2API:
         security_group.name = self.configuration.name
         security_group.description = security_group.name
         security_group.region = self.environment_api.region
-        security_group.tags = self.configuration.tags
+        security_group.tags = self.environment_api.configuration.tags
         security_group.tags.append({
             "Key": "Name",
             "Value": security_group.name

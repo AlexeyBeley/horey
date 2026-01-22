@@ -656,8 +656,12 @@ class CICDAPI:
         :return:
         """
 
-        s3_deployment_uri = kwargs.pop("s3_deployment_uri")
-        storage_service = S3StorageService(self.environment_api.aws_api,  s3_deployment_uri) if s3_deployment_uri else None
+        try:
+            s3_deployment_uri = kwargs.pop("s3_deployment_uri")
+            storage_service = S3StorageService(self.environment_api.aws_api,
+                                               s3_deployment_uri) if s3_deployment_uri else None
+        except KeyError:
+            storage_service = None
 
         remote_deployer = RemoteDeployer()
         remoter = remote_deployer.get_remoter(target)

@@ -3,6 +3,9 @@ Standard frontend maintainer.
 
 """
 import os
+from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity import CloudfrontOriginAccessIdentity
+from horey.aws_api.aws_services_entities.cloudfront_response_headers_policy import CloudfrontResponseHeadersPolicy
+from horey.infrastructure_api.frontend_api_configuration_policy import FrontendAPIConfigurationPolicy
 
 
 class FrontendAPI:
@@ -10,27 +13,26 @@ class FrontendAPI:
     Manage Frontend.
 
     """
-    def __init__(self, configuration, environment_api):
+    def __init__(self, configuration:FrontendAPIConfigurationPolicy, environment_api):
         self.configuration = configuration
         self.environment_api = environment_api
 
-    def provision(self):
+    def provision_cloudfront(self, cloudfront_distribution_name, s3_bucket_name, dns_address):
         """
         Provision frontend.
 
         :return:
         """
 
-        self.environment_api.clear_cache()
+        cloudfront_origin_access_identity = self.provision_cloudfront_origin_access_identity(cloudfront_distribution_name)
+        breakpoint()
+        certificate =  self.environment_api.provision_acm_certificate()
 
-        cloudfront_origin_access_identity = self.provision_cloudfront_origin_access_identity()
-        s3_bucket = self.provision_s3_bucket(cloudfront_origin_access_identity)
-        certificate = self.provision_cloudfront_acm_certificate()
+
         response_headers_policy = self.provision_response_headers_policy()
-        wafv2_web_acl = self.provision_wafv2_web_acl()
         cloudfront_distribution = self.provision_cloudfront_distribution(cloudfront_origin_access_identity,
                                                    certificate,
-                                                   s3_bucket, response_headers_policy, wafv2_web_acl)
+                                                   s3_bucket, response_headers_policy)
 
         self.environment_api.provision_public_dns_address(self.configuration.dns_address, cloudfront_distribution.domain_name)
         return self.update()
@@ -46,12 +48,15 @@ class FrontendAPI:
         paths = [f"{root_path}/{os.path.basename(self.configuration.build_directory_path)}/*"]
         return self.environment_api.create_invalidation(self.configuration.dns_address, paths)
 
-    def provision_s3_bucket(self, cloudfront_origin_access_identity):
+    def get_s3_bucket_policy(self):
         """
         Provision the bucket.
 
         :return:
         """
+
+        cloudfront_origin_access_identity = ""
+        self.environment_api.aws_api.cloudfront_client.update
 
         statements = [
             {
@@ -66,23 +71,18 @@ class FrontendAPI:
         ]
         return self.environment_api.provision_s3_bucket(self.configuration.bucket_name, statements)
 
-    def provision_cloudfront_origin_access_identity(self):
+    def provision_cloudfront_origin_access_identity(self, cloudfront_distribution_name):
         """
         Used to authenticate cloud-front with S3 bucket.
 
         :return:
         """
 
-        return self.environment_api.provision_cloudfront_origin_access_identity(self.configuration.cloudfront_distribution_name)
+        cloudfront_origin_access_identity = CloudfrontOriginAccessIdentity({})
+        cloudfront_origin_access_identity.comment = cloudfront_distribution_name
+        self.environment_api.aws_api.cloudfront_client.provision_origin_access_identity(cloudfront_origin_access_identity)
+        return cloudfront_origin_access_identity
 
-    def provision_cloudfront_acm_certificate(self):
-        """
-        All cloud front certificates must be created in us-east-1.
-
-        :return:
-        """
-
-        return self.environment_api.provision_acm_certificate()
 
     def provision_response_headers_policy(self):
         """
@@ -91,7 +91,57 @@ class FrontendAPI:
         :return:
         """
 
-        return self.environment_api.provision_response_headers_policy()
+        policy_config = {"Comment": "Response headers policy",
+                             "Name": "",
+                             "SecurityHeadersConfig": {
+                                 "XSSProtection": {
+                                     "Override": True,
+                                     "Protection": True,
+                                     "ModeBlock": True,
+                                 },
+                                 "FrameOptions": {
+                                     "Override": True,
+                                     "FrameOption": "DENY"
+                                 },
+                                 "ReferrerPolicy": {
+                                     "Override": True,
+                                     "ReferrerPolicy": "same-origin"
+                                 },
+                                 "ContentTypeOptions": {
+                                     "Override": True
+                                 },
+                                 "StrictTransportSecurity": {
+                                     "Override": True,
+                                     "IncludeSubdomains": True,
+                                     "Preload": False,
+                                     "AccessControlMaxAgeSec": 31536000
+                                 }
+                             },
+                             "ServerTimingHeadersConfig": {
+                                 "Enabled": False,
+                             },
+                             "RemoveHeadersConfig": {
+                                 "Quantity": 0,
+                                 "Items": []
+                             }
+                             }
+
+        policy = CloudfrontResponseHeadersPolicy({})
+        policy.name = self.generate_response_headers_policy_name()
+        policy_config["Name"] = policy.name
+        policy.response_headers_policy_config = policy_config
+        self.environment_api.aws_api.cloudfront_client.provision_response_headers_policy(policy)
+        return policy
+
+    @staticmethod
+    def generate_response_headers_policy_name():
+        """
+        Generate response headers policy name.
+
+        :return:
+        """
+
+        return "response_headers_policy_security_base"
 
     def provision_wafv2_web_acl(self):
         """
@@ -111,7 +161,7 @@ class FrontendAPI:
     def provision_cloudfront_distribution(self, cloudfront_origin_access_identity,
                                                    cloudfront_certificate,
                                                    s3_bucket, response_headers_policy,
-                                          web_acl):
+                                          web_acl=None):
         """
         Distribution with S3 origin.
 

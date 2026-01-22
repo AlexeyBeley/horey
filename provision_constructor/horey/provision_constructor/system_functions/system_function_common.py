@@ -39,7 +39,10 @@ class SystemFunctionCommon:
 
     def __init__(self, deployment_dir, force, upgrade, **kwargs):
         self.action = kwargs.get("action")
-        self.storage_service: StorageService = kwargs.pop("storage_service")
+        try:
+            self.storage_service: StorageService = kwargs.pop("storage_service")
+        except KeyError:
+            self.storage_service = None
 
         self.deployment_dir = deployment_dir
         self.kwargs = kwargs
@@ -649,7 +652,7 @@ class SystemFunctionCommon:
             command, raise_on_error_callback=raise_on_error_callback
         )
 
-        SystemFunctionCommon.reinit_apt_packages()
+        self.reinit_apt_packages()
 
     @staticmethod
     def apt_check_installed(package_name):
@@ -778,8 +781,7 @@ class SystemFunctionCommon:
         ret = SystemFunctionCommon.run_bash(f'sudo kill -s 9 "{str_pid}" || true')
         return ret
 
-    @staticmethod
-    def update_packages():
+    def update_packages(self):
         """
         Update the information from apt repositories.
         If we update the repo list we need to run update.
@@ -791,19 +793,31 @@ class SystemFunctionCommon:
 
         ret = SystemFunctionCommon.run_bash("sudo DEBIAN_FRONTEND=noninteractive apt update")
         output = ret["stdout"]
-        last_line = output.split("\n")[-1]
+        lines =  output.split("\n")
+
+        self.validate_apt_update_output(lines)
+
+        SystemFunctionCommon.APT_PACKAGES_UPDATED = True
+        SystemFunctionCommon.APT_PACKAGES = []
+        self.init_apt_packages()
+
+    @staticmethod
+    def validate_apt_update_output(stdout_lines):
+        """
+        Validate apt update output.
+
+        @param lines:
+        @return:
+        """
+
+        last_line = stdout_lines[-1]
         if (
             "can be upgraded" not in last_line
             and "All packages are up to date." not in last_line
         ):
-            raise RuntimeError(output)
+            raise RuntimeError(stdout_lines)
 
-        SystemFunctionCommon.APT_PACKAGES_UPDATED = True
-        SystemFunctionCommon.APT_PACKAGES = []
-        SystemFunctionCommon.init_apt_packages()
-
-    @staticmethod
-    def reinit_apt_packages():
+    def reinit_apt_packages(self):
         """
         After we modify the apt packages' statuses (install, update, remove...) we need to reinit.
 
@@ -811,24 +825,38 @@ class SystemFunctionCommon:
         """
         SystemFunctionCommon.APT_PACKAGES = []
         SystemFunctionCommon.APT_PACKAGES_UPDATED = None
-        SystemFunctionCommon.init_apt_packages()
+        self.init_apt_packages()
 
-    @staticmethod
-    def init_apt_packages():
+    def init_apt_packages(self):
         """
         Init installed packages list.
 
         @return:
         """
-        SystemFunctionCommon.update_packages()
+
+        self.update_packages()
         if not SystemFunctionCommon.APT_PACKAGES:
             response = SystemFunctionCommon.run_bash("sudo apt list --installed")
-            for line in response["stdout"].split("\n"):
-                if "Listing..." in line:
-                    continue
-                package = APTPackage()
-                package.init_from_line(line)
-                SystemFunctionCommon.APT_PACKAGES.append(package)
+            packages = self.init_apt_packages_from_output(response["stdout"].split("\n"))
+            SystemFunctionCommon.APT_PACKAGES = packages
+
+    @staticmethod
+    def init_apt_packages_from_output(stdout_lines):
+        """
+        Init packages
+
+        :param stdout_lines:
+        :return:
+        """
+
+        packages = []
+        for line in stdout_lines:
+            if "Listing..." in line:
+                continue
+            package = APTPackage()
+            package.init_from_line(line)
+            packages.append(package)
+        return packages
 
     @staticmethod
     def init_apt_repositories():

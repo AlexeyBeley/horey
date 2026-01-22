@@ -39,9 +39,18 @@ class SSHRemoter(Remoter):
     """
 
     def __init__(self, executor, sftp_client, remote_deployment_dir: Path):
+        self._state = {}
         self.executor = executor
         self.sftp_client = sftp_client
         self.remote_deployment_dir = remote_deployment_dir
+
+    def get_state(self) -> dict:
+        """
+        Get state
+
+        :return:
+        """
+        return self._state
 
     def execute(self, command: str, *output_validators: List[Any]) -> Tuple[List[str], List[str], int]:
         """
@@ -58,11 +67,12 @@ class SSHRemoter(Remoter):
         for output_validator in output_validators:
             try:
                 if not output_validator(lst_stdout, lst_stderr, status_code):
-                    errors.append("Validation failed")
+                    breakpoint()
+                    errors.append("Validation function returned False should have raised Exception or return True if succeeded")
             except Exception as inst_error:
                 errors.append(repr(inst_error))
         if errors:
-            raise RuntimeError(", ".join(errors))
+            raise RuntimeError("Validation failed "+ ", ".join(errors))
         return lst_stdout, lst_stderr, status_code
 
     def put_file(self, src: Path, dst: Path, sudo: bool = False):
