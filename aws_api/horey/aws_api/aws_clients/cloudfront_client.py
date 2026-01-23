@@ -269,9 +269,7 @@ class CloudfrontClient(Boto3Client):
                 origin_access_identity.generate_create_request()
             )
             origin_access_identity.id = response["Id"]
-            breakpoint()
             return
-        breakpoint()
 
         self.update_origin_access_identity_information(origin_access_identity)
 
@@ -291,7 +289,6 @@ class CloudfrontClient(Boto3Client):
                     == identity.comment
             ):
                 identity.id = existing_origin_access_identity.id
-                breakpoint()
                 return True
 
         return False
