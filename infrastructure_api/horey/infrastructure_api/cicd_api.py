@@ -44,6 +44,19 @@ class CICDAPI:
         self._cloudwatch_api = None
         self.ecs_api = None
         self._dns_api = None
+        self._remote_deployer = None
+
+    @property
+    def remote_deployer(self):
+        """
+        Remote deployer
+
+        :return:
+        """
+
+        if self._remote_deployer is None:
+            self._remote_deployer = RemoteDeployer()
+        return self._remote_deployer
 
     @property
     def cloudwatch_api(self):
@@ -676,8 +689,7 @@ class CICDAPI:
         except KeyError:
             storage_service = None
 
-        remote_deployer = RemoteDeployer()
-        remoter = remote_deployer.get_remoter(target)
+        remoter = self.remote_deployer.get_remoter(target)
         provision_constructor = ProvisionConstructor()
         provision_constructor.deployment_dir = target.local_deployment_dir_path
         return provision_constructor.provision_system_function_remote(remoter, function_name, storage_service=storage_service, **kwargs)
@@ -691,8 +703,7 @@ class CICDAPI:
         :return:
         """
 
-        remote_deployer = RemoteDeployer()
-        return remote_deployer.deploy_targets(targets, asynchronous=asynchronous)
+        return self.remote_deployer.deploy_targets(targets, asynchronous=asynchronous)
 
 class S3StorageService(StorageService):
     """
