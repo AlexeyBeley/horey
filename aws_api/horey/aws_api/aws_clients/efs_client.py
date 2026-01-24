@@ -313,6 +313,9 @@ class EFSClient(Boto3Client):
                                  [access_point.State.ERROR,
                                   access_point.State.DELETED,
                                   access_point.State.DELETING])
+        else:
+            access_point.update_from_attrs(current_access_point)
+
         return True
 
     def update_access_point_information(self, access_point: EFSAccessPoint, update_info=True):

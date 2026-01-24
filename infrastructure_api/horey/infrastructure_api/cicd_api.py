@@ -384,8 +384,6 @@ class CICDAPI:
         efs_access_point.tags = self.environment_api.configuration.tags
         efs_access_point.tags = [{"Key": "Name", "Value": self.configuration.master_efs_access_point_name}]
         self.environment_api.aws_api.efs_client.provision_access_point(efs_access_point)
-        # todo: check if needed.
-        self.environment_api.aws_api.efs_client.update_access_point_information(efs_access_point)
         return efs_access_point
 
     def provision_master_efs_file_system(self):
@@ -560,24 +558,30 @@ class CICDAPI:
         target.deployment_target_address = ec2_instance.private_ip_address
 
         if bastions:
-            self.environment_api.aws_api.get_secret_file(bastions[0].key_name,
-                                                         self.configuration.deployment_directory,
-                                                         region=self.environment_api.region)
-
-            bastion_ssh_key_path = self.configuration.deployment_directory / bastions[0].key_name
-            chain_link = DeploymentTarget.BastionChainLink(bastions[0].public_ip_address, bastion_ssh_key_path)
+            chain_link = self.init_bastion_chain_link(bastions[0], ec2_instance.public_ip_address)
             target.bastion_chain.append(chain_link)
 
         for bastion in bastions[1:]:
-            self.environment_api.aws_api.get_secret_file(bastion.key_name,
-                                                         self.configuration.deployment_directory,
-                                                         region=self.environment_api.region)
-
-            bastion_ssh_key_path = self.configuration.deployment_directory / bastion.key_name
-            chain_link = DeploymentTarget.BastionChainLink(bastion.private_ip_address, bastion_ssh_key_path)
+            chain_link = self.init_bastion_chain_link(bastion, ec2_instance.private_ip_address)
             target.bastion_chain.append(chain_link)
 
         return target
+
+    def init_bastion_chain_link(self, ec2_instance: EC2Instance, address: str) -> DeploymentTarget.BastionChainLink:
+        """
+
+        :param address:
+        :param address:
+        :param ec2_instance:
+        :return:
+        """
+        self.environment_api.aws_api.get_secret_file(ec2_instance.key_name,
+                                                     self.configuration.deployment_directory,
+                                                     region=self.environment_api.region)
+
+        bastion_ssh_key_path = self.configuration.deployment_directory / ec2_instance.key_name
+        return DeploymentTarget.BastionChainLink(address, bastion_ssh_key_path)
+
 
     def add_install_provision_constructor_step(self, target: DeploymentTarget, horey_repo_path=None):
         """
