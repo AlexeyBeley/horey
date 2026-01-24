@@ -495,11 +495,11 @@ class CICDAPI:
 
         return dir_path / "jenkins_api" / "horey" / "jenkins_api" / "master"
 
-    def generate_deployment_target(self, name=None, target_ssh_key_secret_name=None, bastion=None):
+    def generate_deployment_target(self, name=None, target_ssh_key_secret_name=None, bastions=None):
         """
         Generate target
 
-        :param bastion:
+        :param bastions:
         :param target_ssh_key_secret_name:
         :param name:
         :return:
@@ -510,15 +510,15 @@ class CICDAPI:
 
         ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]})
         return self.init_deployment_target(ec2_instance, target_ssh_key_secret_name=target_ssh_key_secret_name,
-                                                   bastion=bastion)
+                                                   bastions=bastions)
 
-    def generate_deployment_targets(self, name=None, target_ssh_key_secret_name:str=None, bastion=None) -> List[DeploymentTarget]:
+    def generate_deployment_targets(self, name=None, target_ssh_key_secret_name:str=None, bastions=None) -> List[DeploymentTarget]:
         """
         Generate targets
 
         :param name:
         :param target_ssh_key_secret_name:
-        :param bastion:
+        :param bastions:
         :return:
         """
 
@@ -528,18 +528,20 @@ class CICDAPI:
         ec2_instances = self.environment_api.get_ec2_instances(tags_dict={"Name": [name]})
         targets = []
         for ec2_instance in ec2_instances:
-            targets.append(self.init_deployment_target(ec2_instance, target_ssh_key_secret_name=target_ssh_key_secret_name, bastion=bastion))
+            targets.append(self.init_deployment_target(ec2_instance, target_ssh_key_secret_name=target_ssh_key_secret_name, bastions=bastions))
         return targets
 
-    def init_deployment_target(self, ec2_instance: EC2Instance, target_ssh_key_secret_name:str=None, bastion: EC2Instance=None) -> DeploymentTarget:
+    def init_deployment_target(self, ec2_instance: EC2Instance, target_ssh_key_secret_name:str=None, bastions: List[EC2Instance]=None) -> DeploymentTarget:
         """
         Init single target from ec2 Instance
 
         :param ec2_instance:
         :param target_ssh_key_secret_name:
-        :param bastion:
+        :param bastions:
         :return:
         """
+
+        bastions = bastions or []
 
         if ec2_instance.get_status() == ec2_instance.State.STOPPED:
             self.environment_api.aws_api.ec2_client.start_instances([ec2_instance])
@@ -555,18 +557,25 @@ class CICDAPI:
         target.deployment_target_user_name = "ubuntu"
         # target.deployment_target_ssh_key_type
         target.deployment_target_ssh_key_path = self.configuration.deployment_directory / target_ssh_key_secret_name
+        target.deployment_target_address = ec2_instance.private_ip_address
 
-        if bastion:
-            target.bastion_address = bastion.public_ip_address
-            bastion_ssh_key_secret_name = bastion.key_name
-            self.environment_api.aws_api.get_secret_file(bastion_ssh_key_secret_name,
+        if bastions:
+            self.environment_api.aws_api.get_secret_file(bastions[0].key_name,
                                                          self.configuration.deployment_directory,
                                                          region=self.environment_api.region)
 
-            target.bastion_ssh_key_path = self.configuration.deployment_directory / bastion_ssh_key_secret_name
-            target.bastion_user_name = "ubuntu"
+            bastion_ssh_key_path = self.configuration.deployment_directory / bastions[0].key_name
+            chain_link = DeploymentTarget.BastionChainLink(bastions[0].public_ip_address, bastion_ssh_key_path)
+            target.bastion_chain.append(chain_link)
 
-            target.deployment_target_address = ec2_instance.private_ip_address
+        for bastion in bastions[1:]:
+            self.environment_api.aws_api.get_secret_file(bastion.key_name,
+                                                         self.configuration.deployment_directory,
+                                                         region=self.environment_api.region)
+
+            bastion_ssh_key_path = self.configuration.deployment_directory / bastion.key_name
+            chain_link = DeploymentTarget.BastionChainLink(bastion.private_ip_address, bastion_ssh_key_path)
+            target.bastion_chain.append(chain_link)
 
         return target
 

@@ -46,6 +46,16 @@ class Configuration(ConfigurationPolicy):
         self._bastion_name = None
         self._environment_api_mgmt_configuration_file_secret_name = None
         self._crowdstrike_falcon_sensor_cid = None
+        self._bastion_chain = None
+
+    @property
+    def bastion_chain(self):
+        return self._bastion_chain
+
+    @bastion_chain.setter
+    def bastion_chain(self, value):
+        self._bastion_chain = value
+
 
     @property
     def crowdstrike_falcon_sensor_s3_directory_uri(self):
@@ -159,7 +169,7 @@ def fixture_ec2_api_mgmt_integration(env_api_mgmt_integration):
 @pytest.mark.unit
 def test_run_remote_provision_constructor_zabbix(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
-    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastions=[ec2_instance])
     assert cicd_api_integration.run_remote_provision_constructor(target, "zabbix", role="agent",
                                                                  zabbix_server_address=Configuration.TEST_CONFIG.zabbix_server_address,
                                                                  hostname=Configuration.TEST_CONFIG.hostname)
@@ -168,7 +178,7 @@ def test_run_remote_provision_constructor_zabbix(cicd_api_integration, ec2_api_m
 @pytest.mark.unit
 def test_run_remote_provision_constructor_influx_provision_influxdb(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
-    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastions=[ec2_instance])
     assert cicd_api_integration.run_remote_provision_constructor(target,
                                                                  "influxdb",
                                                                  action="provision_influxdb"
@@ -178,7 +188,7 @@ def test_run_remote_provision_constructor_influx_provision_influxdb(cicd_api_int
 @pytest.mark.unit
 def test_run_remote_provision_constructor_influx_enable_auth(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
-    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastions=[ec2_instance])
     assert cicd_api_integration.run_remote_provision_constructor(target,
                                                                  "influxdb",
                                                                  action="enable_auth",
@@ -189,7 +199,7 @@ def test_run_remote_provision_constructor_influx_enable_auth(cicd_api_integratio
 @pytest.mark.unit
 def test_run_remote_provision_constructor_influx_create_databases(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
-    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastions=[ec2_instance])
     assert cicd_api_integration.run_remote_provision_constructor(target, "influxdb",
                                                                  action="create_databases",
                                                                  databases=["db_horey", "db_horey_kapacitor_alerts"],
@@ -208,7 +218,7 @@ def test_run_remote_provision_constructor_influx_create_user(cicd_api_integratio
     """
 
     ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
-    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastions=[ec2_instance])
     assert cicd_api_integration.run_remote_provision_constructor(target, "influxdb",
                                                                  action="create_user",
                                                                  admin_username="horey_admin",
@@ -230,7 +240,7 @@ def test_run_remote_provision_constructor_kapacitor_enable_auth(cicd_api_integra
     """
 
     ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
-    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastions=[ec2_instance])
     assert cicd_api_integration.run_remote_provision_constructor(target, "influxdb",
                                                                  action="kapacitor_enable_auth",
                                                                  admin_username="kapacitor_horey_admin",
@@ -241,7 +251,7 @@ def test_run_remote_provision_constructor_kapacitor_enable_auth(cicd_api_integra
 @pytest.mark.unit
 def test_run_remote_provision_constructor_influx_provision_kapacitor(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
-    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastions=[ec2_instance])
     assert cicd_api_integration.run_remote_provision_constructor(target, "influxdb",
                                                                  action="provision_kapacitor")
 
@@ -249,7 +259,7 @@ def test_run_remote_provision_constructor_influx_provision_kapacitor(cicd_api_in
 @pytest.mark.unit
 def test_run_remote_provision_constructor_influx_configure_kapacitor(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
-    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastions=[ec2_instance])
     assert cicd_api_integration.run_remote_provision_constructor(target, "influxdb",
                                                                  action="configure_kapacitor",
                                                                  username="horey_kapacitor_user",
@@ -259,7 +269,7 @@ def test_run_remote_provision_constructor_influx_configure_kapacitor(cicd_api_in
 @pytest.mark.todo
 def test_run_remote_provision_constructor_influx_create_subscription(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
-    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+    target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname, bastions=[ec2_instance])
     assert cicd_api_integration.run_remote_provision_constructor(target, "influxdb", action="create_subscription",
                                                                  databases="db_horey", dst="http://127.0.0.1:9092")
 
@@ -267,7 +277,7 @@ def test_run_remote_provision_constructor_influx_create_subscription(cicd_api_in
 @pytest.mark.unit
 def test_run_remote_provision_constructor_crowdstrike_install_(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
-    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname, bastions=[ec2_instance])
     for target in targets:
         assert cicd_api_integration.run_remote_provision_constructor(target,
                                                                      "crowdstrike",
@@ -279,7 +289,7 @@ def test_run_remote_provision_constructor_crowdstrike_install_(cicd_api_integrat
 @pytest.mark.unit
 def test_run_remote_provision_constructor_mysql_client(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
-    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname, bastions=[ec2_instance])
     for target in targets:
         assert cicd_api_integration.run_remote_provision_constructor(target,
                                                                      "apt_package_generic",
@@ -290,7 +300,7 @@ def test_run_remote_provision_constructor_mysql_client(cicd_api_integration, ec2
 @pytest.mark.unit
 def test_run_remote_deployer_deploy_targets(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
-    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname, bastion=ec2_instance)
+    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname, bastions=[ec2_instance])
 
     def entrypoint():
         cicd_api_integration.run_remote_provision_constructor(target,
@@ -316,4 +326,22 @@ def test_run_remote_deployer_deploy_targets_restart(cicd_api_integration):
 
     for target in targets:
         target.append_remote_step("RestartServiceTest", entrypoint)
+    assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
+
+
+@pytest.mark.unit
+def test_run_remote_deployer_deploy_targets_bastion_chain(cicd_api_integration, ec2_api_mgmt_integration):
+
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in Configuration.TEST_CONFIG.bastion_chain.split(",")]
+    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname, bastions=ec2_instances)
+
+    def entrypoint():
+        cicd_api_integration.run_remote_provision_constructor(target,
+                                                                               "copy_generic",
+                                                                               src=Path(__file__),
+                                                                               dst=Path("/tmp") / Path(__file__).name,
+                                                                               sudo=True)
+
+    for target in targets:
+        target.append_remote_step("CopyTest", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)

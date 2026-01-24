@@ -6,11 +6,11 @@ Deployment target machine.
 import os.path
 from enum import Enum
 from pathlib import Path
+from typing import List
 
 from horey.deployer.deployment_step import DeploymentStep
 from horey.deployer.remote_deployment_step import RemoteDeploymentStep
 from horey.deployer.deployment_step_configuration_policy import DeploymentStepConfigurationPolicy
-
 
 # pylint: disable=too-many-instance-attributes
 class DeploymentTarget:
@@ -24,10 +24,7 @@ class DeploymentTarget:
         self.remote_deployment_dir_path = Path("/tmp/remote_deployer")
         self.deployment_data_dir_name = "deployment_data"
 
-        self.bastion_address = None
-        self.bastion_user_name = None
-        self.bastion_ssh_key_path = None
-        self.bastion_ssh_key_type = "rsa"  # or "ed25519key"
+        self.bastion_chain: List[DeploymentTarget.BastionChainLink] = []
 
         self.deployment_target_ssh_key_path = None
         self.deployment_target_ssh_key_type = "rsa"  # or "ed25519key"
@@ -47,6 +44,7 @@ class DeploymentTarget:
         self.steps = []
         self.status_code = None
         self.status = None
+
 
     def print(self):
         """
@@ -148,3 +146,23 @@ class DeploymentTarget:
         step_configuration.script_name = step_script_path
 
         return DeploymentStep(step_configuration)
+
+    class BastionChainLink:
+        """
+        Single bastion link in a chain
+
+        """
+
+        def __init__(self, address, ssh_key_path, user_name="ubuntu", ssh_key_type="ed25519key"):
+            """
+
+            :param address:
+            :param user_name:
+            :param ssh_key_path:
+            :param ssh_key_type:  "rsa" / "ed25519key"
+            """
+
+            self.address = address
+            self.user_name = user_name
+            self.ssh_key_path = ssh_key_path
+            self.ssh_key_type = ssh_key_type

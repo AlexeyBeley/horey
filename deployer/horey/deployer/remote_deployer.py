@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import List, Any, Tuple
 
 import paramiko
-from sshtunnel import open_tunnel
 
 from horey.deployer.deployment_target import DeploymentTarget
 
@@ -853,7 +852,7 @@ class RemoteDeployer:
         deployment_target_key = RemoteDeployer.load_ssh_key_from_file(target.deployment_target_ssh_key_path,
                                                                       target.deployment_target_ssh_key_type)
 
-        if target.bastion_address is None:
+        if not target.bastion_chain:
             with paramiko.SSHClient() as client:
                 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 logger.info(
@@ -870,19 +869,7 @@ class RemoteDeployer:
                 )
                 yield client
             return
-        logger.info(
-            f"Loading bastion SSH Key of type '{target.bastion_ssh_key_type}' from '{target.bastion_ssh_key_path}'")
-        bastion_key = RemoteDeployer.load_ssh_key_from_file(target.bastion_ssh_key_path, target.bastion_ssh_key_type)
-
-        with RemoteDeployer.get_client_context_with_bastion(
-                target.bastion_address,
-                target.bastion_user_name,
-                bastion_key,
-                target.deployment_target_address,
-                target.deployment_target_user_name,
-                deployment_target_key,
-        ) as client:
-            yield client
+        raise NotImplementedError("Bastion chain not implemented")
 
     @staticmethod
     def load_ssh_key_from_file(file_path, key_type):
@@ -902,70 +889,6 @@ class RemoteDeployer:
             return paramiko.Ed25519Key.from_private_key_file(file_path)
 
         return paramiko.RSAKey.from_private_key_file(file_path)
-
-    @staticmethod
-    @contextmanager
-    # pylint: disable= too-many-arguments, too-many-positional-arguments
-    def get_client_context_with_bastion(
-            bastion_address,
-            bastion_user_name,
-            bastion_key,
-            deployment_target_address,
-            deployment_target_user_name,
-            deployment_target_key,
-    ):
-        """
-        SSH client context via bastion tunnel
-
-        :param bastion_address:
-        :param bastion_user_name:
-        :param bastion_key:
-        :param deployment_target_address:
-        :param deployment_target_user_name:
-        :param deployment_target_key:
-        :return:
-        """
-
-        for i in range(10):
-            try:
-                with open_tunnel(
-                        ssh_address_or_host=(bastion_address, 22),
-                        remote_bind_address=(deployment_target_address, 22),
-                        ssh_username=bastion_user_name,
-                        ssh_pkey=bastion_key,
-                ) as tunnel:
-                    logger.info(
-                        f"Opened SSH tunnel to {deployment_target_user_name}@{deployment_target_address} via {bastion_user_name}@{bastion_address}"
-                    )
-
-                    with paramiko.SSHClient() as client:
-                        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                        client.connect(
-                            "localhost",
-                            port=tunnel.local_bind_port,
-                            username=deployment_target_user_name,
-                            pkey=deployment_target_key,
-                            compress=True,
-                            banner_timeout=60,
-                        )
-
-                        yield client
-                        return
-            except RemoteDeployer.DeployerError:
-                raise
-            except Exception as error_received:
-                logger.error(
-                    f"Low level ssh connection to {deployment_target_user_name}@{deployment_target_address} via {bastion_user_name}@{bastion_address} error: {repr(error_received)}. Retry {i}/10"
-                )
-
-            logger.info(
-                f"Going to sleep before retrying connecting to {deployment_target_user_name}@{deployment_target_address} via {bastion_user_name}@{bastion_address}"
-            )
-            time.sleep(1)
-
-        raise RemoteDeployer.DeployerError(
-            f"Timeout: Failed to open ssh tunnel to {deployment_target_user_name}@{deployment_target_address} via {bastion_user_name}@{bastion_address}"
-        )
 
     def execute_step(self, client: paramiko.SSHClient, step, deployment_target_address):
         """
@@ -1174,9 +1097,6 @@ class RemoteDeployer:
 
         errors = []
         for target in targets:
-            if target.bastion_ssh_key_path is not None and not os.path.exists(target.bastion_ssh_key_path):
-                errors.append(
-                    f"Target {target.hostname} bastion SSH key file is missing at {target.bastion_ssh_key_path}")
             if not os.path.exists(target.deployment_target_ssh_key_path):
                 errors.append(
                     f"Target {target.hostname} SSH key file is missing at {target.deployment_target_ssh_key_path}")
@@ -1285,20 +1205,23 @@ class RemoteDeployer:
         :return:
         """
 
-        if target.bastion_address is None:
-            return self.get_ssh_client(target.deployment_target_address,
-                                       target.deployment_target_user_name,
-                                       target.deployment_target_ssh_key_path)
 
-        proxy_jump_client = self.get_ssh_client(target.bastion_address,
-                                                target.bastion_user_name,
-                                                target.bastion_ssh_key_path)
+        proxy_jump_client = None
+        proxy_jump_addr = None
+        for bastion_chain_link in target.bastion_chain:
+            proxy_jump_client = self.get_ssh_client(bastion_chain_link.address,
+                                                bastion_chain_link.user_name,
+                                                bastion_chain_link.ssh_key_path,
+                                                    proxy_jump_client=proxy_jump_client,
+                                                    proxy_jump_addr=proxy_jump_addr)
+            proxy_jump_addr = bastion_chain_link.address
 
         return self.get_ssh_client(target.deployment_target_address,
                                    target.deployment_target_user_name,
                                    target.deployment_target_ssh_key_path,
                                    proxy_jump_client=proxy_jump_client,
-                                   proxy_jump_addr=target.bastion_address)
+                                   proxy_jump_addr=proxy_jump_addr)
+
 
     def get_deployment_target_sftp_client(self, target: DeploymentTarget
                                           ) -> HoreySFTPClient:

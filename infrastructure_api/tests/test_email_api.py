@@ -91,7 +91,7 @@ def test_unsupress_email(email_api):
 
 @pytest.mark.unit
 def test_grep_suppressed_emails(email_api):
-    ret = email_api.grep_suppressed_emails("")
+    ret = email_api.grep_suppressed_emails("horey")
     for x in ret:
         print(x)
     assert ret
