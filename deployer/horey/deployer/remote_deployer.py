@@ -848,9 +848,9 @@ class RemoteDeployer:
         """
 
         logger.info(
-            f"Loading target SSH Key of type '{target.deployment_target_ssh_key_type}' from '{target.deployment_target_ssh_key_path}'")
+            f"Loading target SSH Key of typefrom '{target.deployment_target_ssh_key_path}'")
         deployment_target_key = RemoteDeployer.load_ssh_key_from_file(target.deployment_target_ssh_key_path,
-                                                                      target.deployment_target_ssh_key_type)
+                                                                      "rsa")
 
         if not target.bastion_chain:
             with paramiko.SSHClient() as client:

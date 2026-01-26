@@ -597,16 +597,17 @@ class CICDAPI:
         return DeploymentTarget.BastionChainLink(address, bastion_ssh_key_path)
 
     @staticmethod
-    def init_bastion_chain_link_raw(address, key_file_path):
+    def init_bastion_chain_link_raw(address, key_file_path, user_name="ubuntu"):
         """
         From raw params
 
+        :param user_name:
         :param address:
         :param key_file_path:
         :return:
         """
 
-        return DeploymentTarget.BastionChainLink(address, key_file_path)
+        return DeploymentTarget.BastionChainLink(address, key_file_path, user_name=user_name)
 
     def add_install_provision_constructor_step(self, target: DeploymentTarget, horey_repo_path=None):
         """

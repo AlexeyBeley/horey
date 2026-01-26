@@ -27,9 +27,8 @@ class DeploymentTarget:
         self.bastion_chain: List[DeploymentTarget.BastionChainLink] = []
 
         self.deployment_target_ssh_key_path = None
-        self.deployment_target_ssh_key_type = "rsa"  # or "ed25519key"
         self.deployment_target_address = None
-        self.deployment_target_user_name = None
+        self.deployment_target_user_name = "ubuntu"
 
         self.deployment_step_configuration_file_name = None
 
@@ -55,7 +54,6 @@ class DeploymentTarget:
 
         str_ret = f"hostname: {self.hostname}\n" \
                   f"deployment_target_address: {self.deployment_target_address}\n" \
-                  f"deployment_target_ssh_key_type: {self.deployment_target_ssh_key_type}\n" \
                   f"deployment_target_ssh_key_path: {self.deployment_target_ssh_key_path}"
         print(str_ret)
         return str_ret
@@ -153,16 +151,14 @@ class DeploymentTarget:
 
         """
 
-        def __init__(self, address, ssh_key_path, user_name="ubuntu", ssh_key_type="ed25519key"):
+        def __init__(self, address, ssh_key_path, user_name="ubuntu"):
             """
 
             :param address:
             :param user_name:
             :param ssh_key_path:
-            :param ssh_key_type:  "rsa" / "ed25519key"
             """
 
             self.address = address
             self.user_name = user_name
             self.ssh_key_path = ssh_key_path
-            self.ssh_key_type = ssh_key_type
