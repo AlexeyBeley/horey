@@ -580,7 +580,7 @@ class CICDAPI:
 
         return target
 
-    def init_bastion_chain_link(self, ec2_instance: EC2Instance, address: str) -> DeploymentTarget.BastionChainLink:
+    def init_bastion_chain_link(self, ec2_instance: EC2Instance, address: str, ) -> DeploymentTarget.BastionChainLink:
         """
 
         :param address:
@@ -588,6 +588,7 @@ class CICDAPI:
         :param ec2_instance:
         :return:
         """
+
         self.environment_api.aws_api.get_secret_file(ec2_instance.key_name,
                                                      self.configuration.deployment_directory,
                                                      region=self.environment_api.region)
@@ -595,6 +596,17 @@ class CICDAPI:
         bastion_ssh_key_path = self.configuration.deployment_directory / ec2_instance.key_name
         return DeploymentTarget.BastionChainLink(address, bastion_ssh_key_path)
 
+    @staticmethod
+    def init_bastion_chain_link_raw(address, key_file_path):
+        """
+        From raw params
+
+        :param address:
+        :param key_file_path:
+        :return:
+        """
+
+        return DeploymentTarget.BastionChainLink(address, key_file_path)
 
     def add_install_provision_constructor_step(self, target: DeploymentTarget, horey_repo_path=None):
         """
