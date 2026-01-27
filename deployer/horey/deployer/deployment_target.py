@@ -58,21 +58,6 @@ class DeploymentTarget:
         print(str_ret)
         return str_ret
 
-    def copy(self):
-        """
-        Make a self copy
-
-        :return: 
-        """
-
-        # todo:  implement the same for bastion_chain
-
-        ret = DeploymentTarget()
-        for key, value in self.__dict__.items():
-            setattr(ret, key, value)
-        return ret
-
-
     @property
     def local_deployment_data_dir_path(self):
         """

@@ -1156,7 +1156,7 @@ class RemoteDeployer:
         # Create a new SSH client and connect it using the new channel
         target_client = paramiko.SSHClient()
         target_client.load_system_host_keys()
-        target_client.set_missing_host_key_policy(paramiko.WarningPolicy())
+        target_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         target_client.connect(
             hostname=target_host,
             username=target_user,
