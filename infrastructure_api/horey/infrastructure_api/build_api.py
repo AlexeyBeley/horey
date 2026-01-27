@@ -75,7 +75,7 @@ class BuildAPI:
         configuration.remote = "https://github.com/AlexeyBeley/horey.git"
         self._horey_git_api = GitAPI(configuration=configuration)
 
-    def run_build_image_routine(self, branch_name, build_number, nocache=False):
+    def run_build_image_routine(self, branch_name, build_number, nocache=False, dockerfile="Dockerfile"):
         """
         Run the build and upload routine
 
@@ -85,7 +85,7 @@ class BuildAPI:
         source_code_directory_path = self.prepare_source_code_directory(branch_name)
         build_directory = self.prepare_docker_image_build_directory(source_code_directory_path, build_number)
         tags = self.generate_docker_image_tags(build_number)
-        image = self.build_docker_image(build_directory, tags, nocache=nocache)
+        image = self.build_docker_image(build_directory, tags, nocache=nocache, dockerfile=dockerfile)
         # todo: self.validate_docker_image()
         self.upload_docker_image_to_artifactory(tags)
         return image
@@ -178,7 +178,7 @@ class BuildAPI:
             tag += f"-commit_{self.commit_id}"
         return [tag]
 
-    def build_docker_image(self, dir_path: Path, tags, nocache=False):
+    def build_docker_image(self, dir_path: Path, tags, nocache=False, dockerfile="Dockerfile"):
         """
         Image building fails for different reasons, this function aggregates the reasons and handles them.
 
@@ -190,7 +190,7 @@ class BuildAPI:
         for _ in range(120):
             try:
                 logger.info(f"Building docker image with arguments: {self.configuration.docker_build_arguments}")
-                return self.environment_api.docker_api.build(str(dir_path), tags, nocache=nocache, **self.configuration.docker_build_arguments)
+                return self.environment_api.docker_api.build(str(dir_path), tags, nocache=nocache, file=dockerfile, **self.configuration.docker_build_arguments)
             except Exception as error_inst:
                 repr_error_inst = repr(error_inst).lower()
                 if "authorization token has expired" in repr_error_inst:
@@ -200,7 +200,7 @@ class BuildAPI:
                 else:
                     raise
 
-                for registry, username, password in self.extract_registries_credentials_from_dockerfile(dir_path / "Dockerfile"):
+                for registry, username, password in self.extract_registries_credentials_from_dockerfile(dir_path / dockerfile):
                     if logout:
                         self.environment_api.docker_api.logout(registry)
                     self.environment_api.docker_api.login(registry, username, password)
