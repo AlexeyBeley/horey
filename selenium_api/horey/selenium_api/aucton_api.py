@@ -369,7 +369,10 @@ class AuctionAPI:
                 if lot.id is not None:
                     cursor.execute(update_sql, data_tuple + (lot.id,))
                 else:
-                    cursor.execute(insert_sql, data_tuple)
+                    try:
+                        cursor.execute(insert_sql, data_tuple)
+                    except Exception:
+                        breakpoint()
                 conn.commit()
         except sqlite3.OperationalError as e:
             if "unable to open database file" in str(e):

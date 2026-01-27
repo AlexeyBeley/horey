@@ -790,7 +790,7 @@ class RemoteDeployer:
         """
 
         try:
-            step.enty_point()
+            step.entry_point()
             step.status_code = DeploymentStep.StatusCode.SUCCESS
             step.status = "SUCCESS"
             return True
