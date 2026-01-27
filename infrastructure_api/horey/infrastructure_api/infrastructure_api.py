@@ -61,6 +61,23 @@ class InfrastructureAPI:
         return ECSAPI(configuration, environment_api)
 
     @staticmethod
+    def get_build_api(configuration, environment_api):
+        """
+        Get API
+
+        :param configuration:
+        :param environment_api:
+        :return:
+        """
+
+        from horey.infrastructure_api.build_api import BuildAPI
+        from horey.infrastructure_api.environment_api import EnvironmentAPI
+        if not isinstance(environment_api, EnvironmentAPI):
+            raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
+
+        return BuildAPI(configuration, environment_api)
+
+    @staticmethod
     def get_ec2_api(configuration, environment_api):
         """
         Get API

@@ -371,8 +371,15 @@ class AuctionAPI:
                 else:
                     try:
                         cursor.execute(insert_sql, data_tuple)
-                    except Exception:
+                    except Exception as inst_error:
+                        logger.exception(f"Error: {repr(inst_error)} inserting: {data_tuple}")
                         breakpoint()
+                        if "IntegrityError" in repr(inst_error):
+                            delete_sql = "DELETE from lots where url = ?"
+                            ret = cursor.execute(delete_sql, (lot.url,))
+                            logger.exception(f"Deleted: {ret}")
+                            cursor.execute(insert_sql, data_tuple)
+
                 conn.commit()
         except sqlite3.OperationalError as e:
             if "unable to open database file" in str(e):
