@@ -837,9 +837,8 @@ class RemoteDeployer:
             root, filename, string_replacements
         )
 
-    @staticmethod
     @contextmanager
-    def get_deployment_target_client_context(target: DeploymentTarget):
+    def get_deployment_target_client_context(self, target: DeploymentTarget):
         """
         SSH client context. With or without bastion tunnel
 
@@ -851,6 +850,9 @@ class RemoteDeployer:
             f"Loading target SSH Key of typefrom '{target.deployment_target_ssh_key_path}'")
         deployment_target_key = RemoteDeployer.load_ssh_key_from_file(target.deployment_target_ssh_key_path,
                                                                       "ed25519key")
+        client = self.get_deployment_target_ssh_client(target)
+        yield client
+        return
 
         if not target.bastion_chain:
             with paramiko.SSHClient() as client:
