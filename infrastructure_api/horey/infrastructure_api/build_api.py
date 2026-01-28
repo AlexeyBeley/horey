@@ -330,11 +330,11 @@ class BuildAPI:
         if dst_ecs_api is None:
             raise NotImplementedError("dst_ecs_api is None")
 
+        breakpoint()
         latest_source_build = src_ecs_api.fetch_latest_artifact_metadata()
 
         # todo: there is a problem with global AWS account, once set to src - it is not reset to DST and fails on permissions.
         # it is exposed when calling to this function, src_ecs_api argument sets the AWs account
-        AWSAccount._CURRENT_ACCOUNT = None
         latest_dst_build = dst_ecs_api.fetch_latest_artifact_metadata()
 
         if latest_dst_build and latest_dst_build.image_tags == latest_source_build.image_tags:
