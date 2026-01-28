@@ -17,6 +17,13 @@ class AWSAccount:
     _CURRENT_REGION = None
     KNOWN_IDS = []
 
+    def __init__(self):
+        self._id = None
+        self.name = None
+        self.regions = {}
+        self.connection_steps = []
+        self._default_region = None
+    
     @staticmethod
     def get_aws_account():
         """
@@ -69,7 +76,7 @@ class AWSAccount:
         Set current region to work against.
         :return:
         """
-        breakpoint()
+
         logger.info(f"Setting AWS default region to {value}")
         if (AWSAccount._CURRENT_REGION is not None) and (AWSAccount._CURRENT_REGION != value):
             raise ValueError(f"Default region can not be reset {str(AWSAccount._CURRENT_REGION)=}, {str(value)}")
@@ -91,13 +98,6 @@ class AWSAccount:
 
         logger.error("Use set_aws_default_region instead")
         return AWSAccount.set_aws_default_region(value)
-
-    def __init__(self):
-        self._id = None
-        self.name = None
-        self.regions = {}
-        self.connection_steps = []
-        self._default_region = None
 
     def __hash__(self):
         return hash(self.id)
