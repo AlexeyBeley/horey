@@ -32,6 +32,8 @@ class AWSAccount:
         :param value:
         :return:
         """
+
+        logger.info(f"Setting AWS account to {value}")
         AWSAccount._CURRENT_ACCOUNT = value
 
     @staticmethod
@@ -67,6 +69,8 @@ class AWSAccount:
         Set current region to work against.
         :return:
         """
+
+        logger.info(f"Setting AWS default region to {value}")
         if (AWSAccount._CURRENT_REGION is not None) and (AWSAccount._CURRENT_REGION != value):
             raise ValueError(f"Default region can not be reset {str(AWSAccount._CURRENT_REGION)=}, {str(value)}")
 
