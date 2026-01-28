@@ -134,12 +134,13 @@ class ECRClient(Boto3Client):
         @param request_dict:
         @return:
         """
-
+        breakpoint()
         for response in self.execute(
                 self.get_session_client(region=region).get_repository_policy, None, raw_data=True, filters_req=request_dict,
                 exception_ignore_callback=lambda error: "RepositoryPolicyNotFoundException" in repr(error)
         ):
             return response
+        return None
 
     def set_repository_policy_raw(self, region, request_dict):
         """
