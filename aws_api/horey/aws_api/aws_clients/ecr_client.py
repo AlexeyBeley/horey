@@ -19,9 +19,9 @@ class ECRClient(Boto3Client):
     NEXT_PAGE_REQUEST_KEY = "nextToken"
     NEXT_PAGE_RESPONSE_KEY = "nextToken"
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "ecr"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     def get_authorization_info(self, region):
         """

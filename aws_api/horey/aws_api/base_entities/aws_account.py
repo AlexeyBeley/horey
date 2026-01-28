@@ -97,6 +97,7 @@ class AWSAccount:
         self.name = None
         self.regions = {}
         self.connection_steps = []
+        self._default_region = None
 
     def __hash__(self):
         return hash(self.id)
@@ -113,6 +114,32 @@ class AWSAccount:
         if self._id is None:
             raise RuntimeError("Accessing unset attribute ID")
         return self._id
+
+    @property
+    def default_region(self):
+        """
+        Get unique identifier of the account.
+        :return:
+        """
+
+        if self._default_region is None:
+            if self.regions:
+                self._default_region = list(self.regions.values())[0]
+            elif self.connection_steps:
+                self._default_region = self.connection_steps[0].region
+
+        return self._default_region
+
+    @default_region.setter
+    def default_region(self, value):
+        """
+        Standard
+
+        :param value:
+        :return:
+        """
+
+        self._default_region = value
 
     @id.setter
     def id(self, value):

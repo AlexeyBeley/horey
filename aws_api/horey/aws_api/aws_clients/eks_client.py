@@ -19,7 +19,7 @@ class EKSClient(Boto3Client):
     Client to handle specific aws service API calls.
     """
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         """
         ret = self.get_all_clusters()
 
@@ -28,7 +28,7 @@ class EKSClient(Boto3Client):
         list_nodegroups = list(self.execute(self.get_session_client(region=region).list_nodegroups, "nodegroups", filters_req={"clusterName": ret[0].name}))
         """
         client_name = "eks"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     # region cluster
     def get_all_clusters(self, region=None, full_information=True):

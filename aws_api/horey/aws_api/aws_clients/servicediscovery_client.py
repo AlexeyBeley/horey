@@ -25,9 +25,9 @@ class ServicediscoveryClient(Boto3Client):
     Client to handle specific aws service API calls.
     """
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "servicediscovery"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     def get_all_services(self, region=None):
         """

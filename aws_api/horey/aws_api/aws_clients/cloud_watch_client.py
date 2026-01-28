@@ -16,9 +16,9 @@ class CloudWatchClient(Boto3Client):
     Client to work with cloud watch entities API
     """
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "cloudwatch"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     def yield_cloud_watch_metrics(self):
         """

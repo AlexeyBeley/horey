@@ -22,9 +22,9 @@ class SESV2Client(Boto3Client):
 
     UNSUPPORTED_REGIONS = ["ap-east-1", "ap-southeast-3"]
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "sesv2"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     # pylint: disable= too-many-arguments
     def yield_accounts(self, region=None, update_info=False, filters_req=None):

@@ -24,9 +24,9 @@ class ELBV2Client(Boto3Client):
         "us-east-2": "Z3AADJGX6KTTL2"
     }
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "elbv2"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     # pylint: disable= too-many-arguments
     def get_all_load_balancers(self, region=None, update_info=False, filters_req=None, full_information=True,

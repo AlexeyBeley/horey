@@ -39,9 +39,9 @@ class ECSClient(Boto3Client):
     NEXT_PAGE_REQUEST_KEY = "nextToken"
     NEXT_PAGE_RESPONSE_KEY = "nextToken"
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "ecs"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     def run_task(self, region, request_dict):
         """

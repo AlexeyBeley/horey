@@ -28,9 +28,9 @@ class CloudfrontClient(Boto3Client):
     NEXT_PAGE_RESPONSE_KEY = "NextMarker"
     NEXT_PAGE_INITIAL_KEY = ""
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "cloudfront"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     def get_all_distributions(self, full_information=True):
         """

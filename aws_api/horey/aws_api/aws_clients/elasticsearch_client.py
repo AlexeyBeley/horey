@@ -15,9 +15,9 @@ class ElasticsearchClient(Boto3Client):
     Client to handle specific aws service API calls.
     """
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "es"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
         self.request_key_to_attribute_mapping = {"DomainName": "name", "TagList": "tags"}
 
     def get_all_domains(self):

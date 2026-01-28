@@ -13,9 +13,9 @@ class Route53Client(Boto3Client):
     Client to handle specific aws service API calls.
     """
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "route53"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     # pylint: disable= too-many-arguments
     def yield_hosted_zones(self, update_info=False, filters_req=None, full_information=True):

@@ -17,9 +17,9 @@ class SQSClient(Boto3Client):
     Client to handle specific aws service API calls.
     """
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "sqs"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     # pylint: disable= too-many-arguments
     def yield_queues(self, region=None, update_info=False, filters_req=None, get_tags=True):

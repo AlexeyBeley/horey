@@ -214,9 +214,9 @@ class S3Client(Boto3Client):
     TASKS_QUEUE = None
     THREAD_POOL_EXECUTOR = None
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "s3"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
         self._multipart_chunk_size = 8 * 1024 * 1024
         self._max_queue_size = 1000
         self._multipart_threshold = 10 * 1024 * 1024

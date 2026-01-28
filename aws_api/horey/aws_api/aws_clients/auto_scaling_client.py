@@ -21,9 +21,9 @@ class AutoScalingClient(Boto3Client):
     Client to handle specific aws service API calls.
     """
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "autoscaling"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     def yield_auto_scaling_groups(self, region=None, update_info=False, filters_req=None):
         """

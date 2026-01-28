@@ -28,9 +28,9 @@ class LambdaClient(Boto3Client):
     NEXT_PAGE_RESPONSE_KEY = "NextMarker"
     NEXT_PAGE_INITIAL_KEY = ""
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "lambda"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     # pylint: disable= too-many-arguments
     def yield_lambdas(self, region=None, update_info=False, filters_req=None, full_information=True):

@@ -17,9 +17,9 @@ class AccountClient(Boto3Client):
     openssl pkcs8 -in file_name.pem -inform PEM -outform DER -topk8 -nocrypt | openssl sha1 -c
     """
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "account"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     def yield_regions(self, update_info=False):
         """

@@ -16,7 +16,7 @@ class StepfunctionsClient(Boto3Client):
     Client to handle specific aws service API calls.
     """
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         """
         list_activities = list(self.execute(self.get_session_client(region=region).list_activities, None, raw_data=True))
         # list_executions = list(self.execute(self.get_session_client(region=region).list_executions, None, raw_data=True))
@@ -26,7 +26,7 @@ class StepfunctionsClient(Boto3Client):
 
         """
         client_name = "stepfunctions"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     def get_all_state_machines(self, region=None, full_information=True):
         """

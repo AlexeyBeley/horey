@@ -31,7 +31,7 @@ class Boto3Client:
     DEBUG = False
     _main_cache_dir_path = None
 
-    def __init__(self, client_name):
+    def __init__(self, client_name, aws_account:AWSAccount=None):
         """
         self.client shouldn't be inited, the init should be done on demand if execute is called
         Client is a singleton identified by client_name and region_name
@@ -42,6 +42,7 @@ class Boto3Client:
 
         self.client_name = client_name
         self._account_id = None
+        self.aws_account = aws_account
 
     @property
     def main_cache_dir_path(self):
@@ -81,7 +82,10 @@ class Boto3Client:
 
         if self._account_id is None:
             try:
-                region = AWSAccount.get_default_region() or AWSAccount.get_account_default_region()
+                if self.aws_account is None:
+                    region = AWSAccount.get_default_region() or AWSAccount.get_account_default_region()
+                else:
+                    region = self.aws_account.default_region
             except AttributeError:
                 region = Region.get_region("us-east-1")
 
@@ -97,7 +101,10 @@ class Boto3Client:
         :return:
         """
         if region is None:
-            region = AWSAccount.get_default_region()
+            if self.aws_account is None:
+                region = AWSAccount.get_default_region()
+            else:
+                region = self.aws_account.default_region
 
         if region is None:
             region = AWSAccount.get_account_default_region()
@@ -666,7 +673,7 @@ class Boto3Client:
         if self.main_cache_dir_path is None:
             return True
 
-        aws_api_account = AWSAccount.get_aws_account()
+        aws_api_account = self.aws_account if self.aws_account is not None else AWSAccount.get_aws_account()
         cache_dir = os.path.join(self.main_cache_dir_path, aws_api_account.name)
         if not os.path.exists(cache_dir):
             return False
@@ -740,7 +747,7 @@ class Boto3Client:
         if cache_suffix:
             file_name = file_name.replace(".", f"_{cache_suffix}.")
 
-        aws_api_account = AWSAccount.get_aws_account()
+        aws_api_account = self.aws_account if self.aws_account is not None else AWSAccount.get_aws_account()
 
         cache_client_dir_path = os.path.join(self.main_cache_dir_path, aws_api_account.name, region_dir_name,
                                              self.client_cache_dir_name)
@@ -797,23 +804,17 @@ class Boto3Client:
         :return:
         """
 
+        aws_account = self.aws_account if self.aws_account is not None else AWSAccount.get_aws_account()
         if global_service:
             if regions:
                 raise ValueError(f"Can not set both {global_service=} and {regions=}")
-            region = AWSAccount.get_default_region()
-            if region is None:
-                regions = list(AWSAccount.get_aws_account().regions.values())[:1]
-            else:
-                regions = [region]
+            regions = [aws_account.default_region]
 
         if not isinstance(update_info, bool):
             raise ValueError(f"update_info must be bool, received: '{update_info}'")
 
         if not regions:
-            regions = AWSAccount.get_aws_account().regions.values()
-
-        if not regions:
-            regions = [AWSAccount.get_aws_account().connection_steps[0].region]
+            regions = [aws_account.default_region]
 
         if not regions:
             raise ValueError(f"Was not able to find region while fetching {entity_class} information.")

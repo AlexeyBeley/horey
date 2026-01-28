@@ -17,9 +17,9 @@ class KMSClient(Boto3Client):
     NEXT_PAGE_REQUEST_KEY = "Marker"
     NEXT_PAGE_RESPONSE_KEY = "NextMarker"
 
-    def __init__(self):
+    def __init__(self, aws_account=None):
         client_name = "kms"
-        super().__init__(client_name)
+        super().__init__(client_name, aws_account=aws_account)
 
     def get_all_keys(self, region=None, full_information=True):
         """
