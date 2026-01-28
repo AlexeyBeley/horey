@@ -335,18 +335,18 @@ class BuildAPI:
         # todo: there is a problem with global AWS account, once set to src - it is not reset to DST and fails on permissions.
         # it is exposed when calling to this function, src_ecs_api argument sets the AWs account
         latest_dst_build = dst_ecs_api.fetch_latest_artifact_metadata()
-        breakpoint()
 
         if latest_dst_build and latest_dst_build.image_tags == latest_source_build.image_tags:
             return True
 
+        breakpoint()
         image_registry_reference = src_ecs_api.generate_image_registry_reference(latest_source_build.image_tags[0])
 
         for _ in range(2):
             try:
                 return self.environment_api.docker_api.copy_image(image_registry_reference, dst_ecs_api.ecr_repository.repository_uri, copy_all_tags=True)
             except Exception as inst_error:
-                # Different ECR regions generate errors differently - part gooes to repr part to str.
+                # Different ECR regions generate errors differently - part goes to repr part to str.
                 if "no basic auth credentials" not in repr(inst_error) + str(inst_error):
                     raise
                 if src_ecs_api.ecr_repository.repository_uri in repr(inst_error).replace("%2F", "/"):
