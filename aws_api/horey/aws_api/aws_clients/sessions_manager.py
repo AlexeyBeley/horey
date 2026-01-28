@@ -85,7 +85,7 @@ class SessionsManager:
             finally:
                 SessionsManager.Connection.LOCK.release()
 
-    def __init__(self, aws_account=None):
+    def __init__(self, aws_account:AWSAccount=None):
         self.aws_account = aws_account
 
     def get_connection_id(self, region=None):

@@ -42,7 +42,7 @@ class Boto3Client:
         self.client_name = client_name
         self._account_id = None
         self.aws_account = aws_account
-        self.sessions_manager = SessionsManager()
+        self.sessions_manager = SessionsManager(aws_account=aws_account)
 
     @property
     def main_cache_dir_path(self):
