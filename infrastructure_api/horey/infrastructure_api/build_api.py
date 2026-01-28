@@ -339,24 +339,25 @@ class BuildAPI:
         if latest_dst_build and latest_dst_build.image_tags == latest_source_build.image_tags:
             return True
 
-        breakpoint()
         image_registry_reference = src_ecs_api.generate_image_registry_reference(latest_source_build.image_tags[0])
 
-        for _ in range(2):
+        for _ in range(3):
             try:
                 return self.environment_api.docker_api.copy_image(image_registry_reference, dst_ecs_api.ecr_repository.repository_uri, copy_all_tags=True)
             except Exception as inst_error:
                 # Different ECR regions generate errors differently - part goes to repr part to str.
                 if "no basic auth credentials" not in repr(inst_error) + str(inst_error):
                     raise
+
                 if src_ecs_api.ecr_repository.repository_uri in repr(inst_error).replace("%2F", "/"):
-                    self.login_to_ecr_registry(src_ecs_api.environment_api.region)
+                    region_mark = src_ecs_api.ecr_repository.repository_uri.split(".")[3]
                 elif dst_ecs_api.ecr_repository.repository_uri in repr(inst_error).replace("%2F", "/"):
-                    self.login_to_ecr_registry(dst_ecs_api.environment_api.region)
+                    region_mark = dst_ecs_api.ecr_repository.repository_uri.split(".")[3]
                 else:
                     raise
+                self.login_to_ecr_registry(Region.get_region(region_mark))
+        raise RuntimeError("Was not able to copy image after 3 retries - 1 retry per each ECR region and final after both did relogin")
 
-        return self.environment_api.docker_api.copy_image(image_registry_reference, dst_ecs_api.ecr_repository.repository_uri, copy_all_tags=True)
 
     def init_temporary_source_code_directory(self):
         """
