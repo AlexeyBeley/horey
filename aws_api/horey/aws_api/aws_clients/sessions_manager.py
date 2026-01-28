@@ -85,39 +85,40 @@ class SessionsManager:
             finally:
                 SessionsManager.Connection.LOCK.release()
 
-    @staticmethod
-    def get_connection_id(region=None):
+    def __init__(self, aws_account=None):
+        self.aws_account = aws_account
+
+    def get_connection_id(self, region=None):
         """
         Each connection has a unique id- in order to reuse it. This function generates it.
         :return:
         """
-        aws_account = AWSAccount.get_aws_account()
+
+        aws_account = self.aws_account if self.aws_account is not None else AWSAccount.get_aws_account()
         aws_account_id = "default_account" if aws_account is None else aws_account.id
 
-        aws_region = region or AWSAccount.get_default_region()
+        aws_region = region or aws_account.defalt_region
         region_mark = aws_region.region_mark if aws_region is not None else ""
         return f"{aws_account_id}/{region_mark}"
 
-    @staticmethod
-    def get_connection(region=None):
+    def get_connection(self, region=None):
         """
         AWS connection to an account.
         :return: Connects Session if there is no one already
         """
 
-        connection_id = SessionsManager.get_connection_id(region=region)
+        connection_id = self.get_connection_id(region=region)
         connection = SessionsManager.CONNECTIONS.get(connection_id)
         if connection is not None:
             return connection
 
-        session = SessionsManager.connect_session(region=region)
+        session = self.connect_session(region=region)
         connection = SessionsManager.Connection(session)
         SessionsManager.add_new_connection(connection_id, connection)
 
         return connection
 
-    @staticmethod
-    def execute_connection_step(connection_step, session, region=None):
+    def execute_connection_step(self, connection_step, session, region=None):
         """
         Executes on of AWS accounts' connection the steps.
 
@@ -126,11 +127,15 @@ class SessionsManager:
         :param session:
         :return:
         """
-        current_used_region = region or AWSAccount.get_aws_region()
-        if current_used_region is None:
-            region_name = connection_step.region.region_mark if connection_step.region is not None else None
-        else:
-            region_name = current_used_region.region_mark
+
+        if region is None and connection_step.region is not None:
+                region = connection_step.region
+
+        if region is None and self.aws_account is not None:
+                region = self.aws_account.default_region
+
+        if region is None:
+            region = AWSAccount.get_aws_region()
 
         if connection_step.external_id is not None:
             extra_args = {"ExternalId": connection_step.external_id}
@@ -144,7 +149,7 @@ class SessionsManager:
 
             session = boto3.session.Session(
                 profile_name=connection_step.profile_name,
-                region_name=region_name,
+                region_name=region.region_mark,
             )
         elif connection_step.type == connection_step.Type.ASSUME_ROLE:
             logger.info("Connecting session using assumed role")
@@ -154,14 +159,14 @@ class SessionsManager:
         elif connection_step.type == connection_step.Type.CURRENT_ROLE:
             logger.info("Connecting session using current role")
             session = boto3.session.Session(
-                region_name=region_name
+                region_name=region.region_mark
             )
         elif connection_step.type == connection_step.Type.CREDENTIALS:
-            logger.info(f"Connecting session using credentials. Region: '{region_name}'")
+            logger.info(f"Connecting session using credentials. Region: '{region.region_mark}'")
             session = boto3.session.Session(
                 aws_access_key_id=connection_step.aws_access_key_id,
                 aws_secret_access_key=connection_step.aws_secret_access_key,
-                region_name=region_name
+                region_name=region.region_mark
             )
         else:
             raise NotImplementedError(
@@ -170,20 +175,20 @@ class SessionsManager:
 
         return session
 
-    @staticmethod
-    def connect_session(region=None):
+    def connect_session(self, region=None):
         """
         Each account can be managed after several steps of connection - run all steps in order to connect.
         :return:
         """
+
         session = None
-        aws_account = AWSAccount.get_aws_account()
+        aws_account = self.aws_account or AWSAccount.get_aws_account()
 
         if aws_account is None or len(aws_account.connection_steps) == 0:
             session = boto3.session.Session()
         else:
             for connection_step in aws_account.connection_steps:
-                session = SessionsManager.execute_connection_step(
+                session = self.execute_connection_step(
                     connection_step, session, region=region
                 )
 
@@ -202,6 +207,7 @@ class SessionsManager:
         :param connection:
         :return:
         """
+
         SessionsManager.CONNECTIONS[aws_account] = connection
 
     @staticmethod
@@ -239,8 +245,7 @@ class SessionsManager:
 
         return boto3.Session(botocore_session=botocore_session)
 
-    @staticmethod
-    def get_client(client_name, region=None):
+    def get_client(self, client_name, region=None):
         """
         Connects if no clients
 
@@ -250,7 +255,8 @@ class SessionsManager:
         """
 
         if region is None:
-            region = AWSAccount.get_default_region()
+            aws_account = self.aws_account or AWSAccount.get_aws_account()
+            region = aws_account.default_region
 
-        connection = SessionsManager.get_connection(region=region)
+        connection = self.get_connection(region=region)
         return connection.get_client(client_name, region)
