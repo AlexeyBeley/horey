@@ -23,7 +23,6 @@ class Boto3Client:
     """
 
     EXEC_COUNT = 0
-    SESSIONS_MANAGER = SessionsManager()
     EXECUTION_RETRY_COUNT = 1000
     NEXT_PAGE_REQUEST_KEY = "NextToken"
     NEXT_PAGE_RESPONSE_KEY = "NextToken"
@@ -43,6 +42,7 @@ class Boto3Client:
         self.client_name = client_name
         self._account_id = None
         self.aws_account = aws_account
+        self.sessions_manager = SessionsManager()
 
     @property
     def main_cache_dir_path(self):
@@ -89,7 +89,7 @@ class Boto3Client:
             except AttributeError:
                 region = Region.get_region("us-east-1")
 
-            sts_client = self.SESSIONS_MANAGER.get_client("sts", region=region)
+            sts_client = self.sessions_manager.get_client("sts", region=region)
             self._account_id = sts_client.get_caller_identity()["Account"]
         return self._account_id
 
@@ -115,7 +115,7 @@ class Boto3Client:
         if not isinstance(region, Region):
             raise ValueError(f"Parameter region is not of a proper type: '{region}'")
 
-        return self.SESSIONS_MANAGER.get_client(self.client_name, region=region)
+        return self.sessions_manager.get_client(self.client_name, region=region)
 
     @property
     def client(self):
@@ -123,7 +123,7 @@ class Boto3Client:
         Returns current sessions AWS client, which executes the base api calls
         :return:
         """
-        return self.SESSIONS_MANAGER.get_client(self.client_name)
+        return self.sessions_manager.get_client(self.client_name)
 
     @client.setter
     def client(self, _):

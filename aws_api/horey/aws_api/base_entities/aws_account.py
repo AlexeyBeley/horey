@@ -23,7 +23,7 @@ class AWSAccount:
         self.regions = {}
         self.connection_steps = []
         self._default_region = None
-    
+
     @staticmethod
     def get_aws_account():
         """
