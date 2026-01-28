@@ -366,21 +366,23 @@ class AuctionAPI:
         data_tuple = lot.generate_db_tuple()
 
         try:
-                if lot.id is not None:
-                    cursor.execute(update_sql, data_tuple + (lot.id,))
-                else:
-                    try:
+            if lot.id is not None:
+                cursor.execute(update_sql, data_tuple + (lot.id,))
+            else:
+                try:
+                    cursor.execute(insert_sql, data_tuple)
+                except Exception as inst_error:
+                    logger.exception(f"Error: {repr(inst_error)} inserting: {data_tuple}")
+                    if "IntegrityError" in repr(inst_error):
+                        delete_sql = "DELETE from lots where url = ?"
+                        ret = cursor.execute(delete_sql, (lot.url,))
+                        logger.exception(f"Deleted: {ret.fetchall()}")
                         cursor.execute(insert_sql, data_tuple)
-                    except Exception as inst_error:
-                        logger.exception(f"Error: {repr(inst_error)} inserting: {data_tuple}")
+                    else:
                         breakpoint()
-                        if "IntegrityError" in repr(inst_error):
-                            delete_sql = "DELETE from lots where url = ?"
-                            ret = cursor.execute(delete_sql, (lot.url,))
-                            logger.exception(f"Deleted: {ret}")
-                            cursor.execute(insert_sql, data_tuple)
+                        raise
 
-                conn.commit()
+            conn.commit()
         except sqlite3.OperationalError as e:
             if "unable to open database file" in str(e):
                 logger.error(f"Database file access error: {self.db_file_path}")

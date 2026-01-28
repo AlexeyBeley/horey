@@ -190,7 +190,7 @@ class BuildAPI:
         for _ in range(120):
             try:
                 logger.info(f"Building docker image with arguments: {self.configuration.docker_build_arguments}")
-                return self.environment_api.docker_api.build(str(dir_path), tags, nocache=nocache, file=dockerfile, **self.configuration.docker_build_arguments)
+                return self.environment_api.docker_api.build(str(dir_path), tags, nocache=nocache, **self.configuration.docker_build_arguments)
             except Exception as error_inst:
                 repr_error_inst = repr(error_inst).lower()
                 if "authorization token has expired" in repr_error_inst:
