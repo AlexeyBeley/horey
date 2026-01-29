@@ -564,18 +564,16 @@ class CICDAPI:
         # key_pairs = self.environment_api.aws_api.ec2_client.get_region_key_pairs(self.environment_api.region)
 
         target = DeploymentTarget()
-        target.deployment_target_address = ec2_instance.public_ip_address
         target.deployment_target_user_name = "ubuntu"
         # target.deployment_target_ssh_key_type
         target.deployment_target_ssh_key_path = self.configuration.deployment_directory / target_ssh_key_secret_name
         target.deployment_target_address = ec2_instance.private_ip_address
-
         if bastions:
-            chain_link = self.init_bastion_chain_link(bastions[0], ec2_instance.public_ip_address)
+            chain_link = self.init_bastion_chain_link(bastions[0], bastions[0].public_ip_address)
             target.bastion_chain.append(chain_link)
 
         for bastion in bastions[1:]:
-            chain_link = self.init_bastion_chain_link(bastion, ec2_instance.private_ip_address)
+            chain_link = self.init_bastion_chain_link(bastion, bastion.private_ip_address)
             target.bastion_chain.append(chain_link)
 
         return target

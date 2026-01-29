@@ -159,6 +159,12 @@ class DeploymentTarget:
             :param ssh_key_path:
             """
 
+            if not address:
+                raise ValueError(f"Address was not set")
+
+            if not ssh_key_path:
+                raise ValueError(f"SSH Key file path was not set")
+
             self.address = address
             self.user_name = user_name
             self.ssh_key_path = ssh_key_path
