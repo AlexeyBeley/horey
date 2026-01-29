@@ -2,6 +2,7 @@
 Copy generic file or folder
 
 """
+from pathlib import Path
 
 from horey.common_utils.remoter import Remoter
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
@@ -54,6 +55,12 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-        remoter.put_file(self.src, self.dst, sudo=True)
+        parent = str(Path(self.dst).parent)
+        command = f"mkdir -p {parent}"
+        if self.sudo:
+            command = "sudo " + command
+        remoter.execute(command)
+
+        remoter.put_file(self.src, self.dst, sudo=self.sudo)
 
         return True
