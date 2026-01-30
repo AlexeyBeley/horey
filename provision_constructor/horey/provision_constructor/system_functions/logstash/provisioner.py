@@ -130,6 +130,10 @@ class Provisioner(SystemFunctionCommon):
         line = f"deb [signed-by={dst_file_path}] https://artifacts.elastic.co/packages/{elastic_version}/apt stable main"
         self.add_line_to_file_remote(remoter, line=line, file_path=Path(f"/etc/apt/sources.list.d/{elastic_file_name}"),
                                      sudo=True)
+
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
+                                                                          action="update_packages").provision_remote(remoter)
+
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
                                                                           package_names=[
                                                                               "logstash"]).provision_remote(
