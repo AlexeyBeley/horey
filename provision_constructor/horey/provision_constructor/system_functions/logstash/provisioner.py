@@ -132,7 +132,7 @@ class Provisioner(SystemFunctionCommon):
                                      sudo=True)
 
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
-                                                                          action="update_packages").provision_rqemote(remoter)
+                                                                          action="update_packages").provision_remote(remoter)
 
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
                                                                           package_names=[
