@@ -23,15 +23,16 @@ class Provisioner(SystemFunctionCommon):
 
     # pylint: disable= too-many-arguments
     def __init__(self, deployment_dir, force, upgrade, package_name=None, package_names=None, needrestart_mode="a", **kwargs):
-        super().__init__(deployment_dir, force, upgrade)
-        self.deployment_dir = deployment_dir
+        super().__init__(deployment_dir, force, upgrade, **kwargs)
 
         if package_name is not None:
             self.package_names = [package_name]
         elif package_names is not None:
             self.package_names = package_names
         else:
-            raise ValueError("package_name/package_names not set")
+            if self.action != "update_packages":
+                raise ValueError("package_name/package_names not set")
+
         self.needrestart_mode = needrestart_mode
 
     def test_provisioned(self):
@@ -79,7 +80,10 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.remoter = remoter
-        self.apt_install_remote(package_names=self.package_names, needrestart_mode=self.needrestart_mode)
+        if self.action == "update_packages":
+            return self.update_packages_remote()
+
+        return self.apt_install_remote(package_names=self.package_names, needrestart_mode=self.needrestart_mode)
 
     def apt_install_remote(self, package_names=None, needrestart_mode="a"):
         """

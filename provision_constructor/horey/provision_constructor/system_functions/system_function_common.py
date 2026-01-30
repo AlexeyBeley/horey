@@ -10,6 +10,7 @@ import os
 import argparse
 import subprocess
 import time
+from pathlib import Path
 
 from horey.common_utils.actions_manager import ActionsManager
 from horey.replacement_engine.replacement_engine import ReplacementEngine
@@ -273,7 +274,7 @@ class SystemFunctionCommon:
     @staticmethod
     def check_file_exists(file_path, sudo=False) -> bool:
         """
-        Self explanatory.
+        Check file exists.
 
         @param file_path: str
         @param sudo:
@@ -288,14 +289,26 @@ class SystemFunctionCommon:
 
         command = f'if sudo test -f "{file_path}"; then echo "true"; else echo "false"; fi'
         ret = SystemFunctionCommon.run_bash(command)
+        return SystemFunctionCommon.check_file_exists_output_validator(file_path, ret["stdout"], ret["stderr"])
 
-        if ret["stdout"] == "true":
+    @staticmethod
+    def check_file_exists_output_validator(file_path, stdout, stderr):
+        """
+        Validate output
+        :param file_path:
+        :param stderr:
+        :param stdout:
+        :return:
+        """
+
+        if stdout[-1] == "true":
             return True
 
-        if ret["stdout"] == "false":
+        if stdout[-1] == "false":
             raise SystemFunctionCommon.FailedCheckError(f"File '{file_path}' does not exist or is not a file")
 
-        raise RuntimeError(f"Expected true/false, received: {ret}")
+        raise RuntimeError(f"Expected true/false, received: {stdout=} {stderr=}")
+
 
     @staticmethod
     def remove_file(file_path, sudo=False):
@@ -1360,6 +1373,93 @@ class SystemFunctionCommon:
         self.remoter.execute(f"sudo systemctl restart {service_name}")
 
         self.check_systemd_service_status_remotely(service_name)
+
+    def remove_file_remote(self, remoter:Remoter, file_path, sudo=False):
+        """
+        Delete file.
+
+        :param remoter:
+        :param file_path:
+        :param sudo:
+        :return:
+        """
+
+        if self.check_file_exists_remote(remoter, file_path, sudo=sudo):
+            command = f"rm -rf {file_path}"
+            if sudo:
+                command = "sudo " + command
+            remoter.execute(command)
+            return self.check_file_exists_remote(remoter, file_path, sudo=sudo)
+
+        return True
+
+    @staticmethod
+    def check_file_exists_remote(remoter: Remoter, file_path, sudo=False):
+        """
+        Check exists file.
+
+        :param remoter:
+        :param file_path:
+        :param sudo:
+        :return:
+        """
+
+        command = f'if {'sudo ' if sudo else ''}test -f "{file_path}"; then echo "true"; else echo "false"; fi'
+        ret = remoter.execute(command)
+        logger.info(f"check_file_exists_remote: {ret}")
+        return SystemFunctionCommon.check_file_exists_output_validator(file_path, [line.strip("\n") for line in ret[0]], [line.strip("\n") for line in ret[1]])
+
+    @staticmethod
+    def add_line_to_file_remote(remoter: Remoter, line=None, file_path:Path=None, sudo=False):
+        """
+        Standard
+
+        @param line:
+        @param file_path:
+        @return:
+        """
+
+        if not isinstance(line, str):
+            raise ValueError(line)
+
+
+        try:
+            SystemFunctionCommon.check_file_exists_remote(remoter, file_path, sudo=sudo)
+        except SystemFunctionCommon.FailedCheckError:
+            remoter.execute(
+               f" {"sudo " if sudo else ""}touch {file_path}"
+            )
+            SystemFunctionCommon.check_file_exists_remote(remoter, file_path, sudo=sudo)
+
+        try:
+            return SystemFunctionCommon.check_line_in_file_remote(remoter, line, file_path, sudo=sudo)
+        except SystemFunctionCommon.FailedCheckError:
+            remoter.execute(
+            f'echo "{line}" | {"sudo " if sudo else ""}tee -a {file_path} > /dev/null'
+            )
+
+        return SystemFunctionCommon.check_line_in_file_remote(remoter, line, file_path, sudo=sudo)
+
+
+    @staticmethod
+    def check_line_in_file_remote(remoter: Remoter, line:str, file_path:Path, sudo=False):
+        """
+        Check exists file.
+
+        :param line:
+        :param remoter:
+        :param file_path:
+        :param sudo:
+        :return:
+        """
+
+        response = remoter.execute(
+                f"{'sudo ' if sudo else ''}grep -F '{line}' {file_path} || true"
+            )
+
+        if response[0]:
+            return True
+        raise SystemFunctionCommon.FailedCheckError(f"Line: '{line}' was not found in the file: '{file_path}'")
 
 
 SystemFunctionCommon.ACTION_MANAGER.register_action(

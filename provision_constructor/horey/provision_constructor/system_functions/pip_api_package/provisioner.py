@@ -33,8 +33,7 @@ class Provisioner(SystemFunctionCommon):
         pip_api_configuration_file=None,
             **kwargs
     ):
-        super().__init__(force, upgrade, **kwargs)
-        self.deployment_dir = deployment_dir
+        super().__init__(deployment_dir, force, upgrade, **kwargs)
         self.requirements_file_path = requirements_file_path
 
         configuration = PipAPIConfigurationPolicy()

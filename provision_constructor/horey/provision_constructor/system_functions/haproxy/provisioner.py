@@ -28,8 +28,7 @@ class Provisioner(SystemFunctionCommon):
     """
 
     def __init__(self, deployment_dir, force, upgrade, **kwargs):
-        super().__init__(force, upgrade, **kwargs)
-        self.deployment_dir = deployment_dir
+        super().__init__(deployment_dir, force, upgrade, **kwargs)
 
     def test_provisioned(self):
         self.init_apt_packages()

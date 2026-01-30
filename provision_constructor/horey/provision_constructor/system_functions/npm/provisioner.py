@@ -21,8 +21,7 @@ class Provisioner(SystemFunctionCommon):
 
     # pylint: disable=too-many-arguments
     def __init__(self, deployment_dir, force, upgrade, npm_version="8.19.4", nodejs_version="16.20.1", **kwargs):
-        super().__init__(force, upgrade, **kwargs)
-        self.deployment_dir = deployment_dir
+        super().__init__(deployment_dir, force, upgrade, **kwargs)
         self.npm_version = npm_version
         self.nodejs_version = nodejs_version
 

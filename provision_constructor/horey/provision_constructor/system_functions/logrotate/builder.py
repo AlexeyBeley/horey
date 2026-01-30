@@ -14,12 +14,14 @@ class Builder(SystemFunctionCommon):
         force=False,
         rotation_path=None,
         file_name=None,
+            **kwargs
     ):
         super().__init__(
             root_deployment_dir,
             provisioner_script_name,
             force=force,
             explicitly_add_system_function=False,
+            **kwargs
         )
         self.add_system_function_common()
 

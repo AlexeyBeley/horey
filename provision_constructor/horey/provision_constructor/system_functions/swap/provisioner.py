@@ -22,9 +22,7 @@ class Provisioner(SystemFunctionCommon):
         ram_size_in_gb=None,
             **kwargs
     ):
-        super().__init__(force, upgrade, **kwargs)
-        self.deployment_dir = deployment_dir
-
+        super().__init__(deployment_dir, force, upgrade, **kwargs)
         self.swap_size_in_gb = swap_size_in_gb
         self.ram_size_in_gb = ram_size_in_gb
 

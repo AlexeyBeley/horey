@@ -4,6 +4,7 @@ Logstash service provisioner.
 """
 
 import os
+from pathlib import Path
 
 from horey.common_utils.remoter import Remoter
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
@@ -20,8 +21,7 @@ class Provisioner(SystemFunctionCommon):
     """
 
     def __init__(self, deployment_dir, force, upgrade, **kwargs):
-        super().__init__(force, upgrade, **kwargs)
-        self.deployment_dir = deployment_dir
+        super().__init__(deployment_dir, force, upgrade, **kwargs)
 
     def _provision(self):
         """
@@ -92,29 +92,25 @@ class Provisioner(SystemFunctionCommon):
         """
 
         plugin_name = self.kwargs.get("plugin_name")
-        ret = remoter.execute(f"sudo /usr/share/logstash/bin/logstash-plugin install {plugin_name}")
-        breakpoint()
-        self.plugin_name
-        parent = str(Path(self.dst).parent)
-        command = f"mkdir -p {parent}"
-        if self.sudo:
-            command = "sudo " + command
-        remoter.execute(command)
-
-        remoter.put_file(self.src, self.dst, sudo=self.sudo)
+        if not plugin_name:
+            raise ValueError("plugin_name must be specified")
+        remoter.execute(f"sudo /usr/share/logstash/bin/logstash-plugin install {plugin_name}",
+                        self.last_line_validator("Installation successful"))
 
         return True
-
 
     def provision_remote_install_logstash(self, remoter: Remoter):
         """
         Install plugin
 
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
+                                                                          package_names=[
+                                                                              "openjdk-17-jdk"]).provision_remote(
+            remoter)
+
         :param remoter:
         :return:
         """
-        breakpoint()
-        SystemFunctionFactory.REGISTERED_FUNCTIONS["java"](self.deployment_dir, self.force, self.upgrade).provision_remote(remoter)
 
         src_url = "https://artifacts.elastic.co/GPG-KEY-elasticsearch"
         dst_file_path = "/usr/share/keyrings/elastic-keyring.gpg"
@@ -122,21 +118,44 @@ class Provisioner(SystemFunctionCommon):
                                                               self.upgrade, src_url=src_url,
                                                               dst_file_path=dst_file_path).provision_remote(remoter)
 
-        ret = remoter.execute("sudo ls /etc/apt/sources.list.d/")
+        file_names = self.ls_remote(remoter, Path("/etc/apt/sources.list.d/"), sudo=True)
         elastic_version = "8.x"
         elastic_file_name = f"elastic-{elastic_version}.list"
 
-        for file_name in ret[0]:
+        for file_name in file_names:
             if "elastic-" in file_name:
                 if file_name != elastic_file_name:
                     self.remove_file_remote(remoter, f"/etc/apt/sources.list.d/{file_name}", sudo=True)
 
         line = f"deb [signed-by={dst_file_path}] https://artifacts.elastic.co/packages/{elastic_version}/apt stable main"
-        self.add_line_to_file_remote(remoter, line=line, file_path=f"/etc/apt/sources.list.d/{elastic_file_name}", sudo=True)
-        self.apt_install_remote("logstash")
-        ret = remoter.execute("sudo systemctl daemon-reload")
-        # self.run_bash(f"sudo systemctl restart logstash")
-        ret = remoter.execute("sudo systemctl enable logstash")
+        self.add_line_to_file_remote(remoter, line=line, file_path=Path(f"/etc/apt/sources.list.d/{elastic_file_name}"),
+                                     sudo=True)
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
+                                                                          package_names=[
+                                                                              "logstash"]).provision_remote(
+            remoter)
+        remoter.execute("sudo systemctl daemon-reload")
+        remoter.execute("sudo systemctl enable logstash")
         # fix the memory size allowed for logstash
-        ret = remoter.execute("sudo sed -i '/-Xms/c\-Xms2g' /etc/logstash/jvm.options")
-        ret = remoter.execute("sudo sed -i '/-Xmx/c\-Xmx2g' /etc/logstash/jvm.options")
+        remoter.execute("sudo sed -i '/-Xms/c\-Xms2g' /etc/logstash/jvm.options")
+        remoter.execute("sudo sed -i '/-Xmx/c\-Xmx2g' /etc/logstash/jvm.options")
+
+    @staticmethod
+    def ls_remote(remoter, path, sudo=False):
+        """
+        List remote files
+
+        :param remoter:
+        :param path:
+        :param sudo:
+        :return:
+        """
+
+        ret = remoter.execute(f"{'sudo ' if sudo else ''}ls -l {path}")
+        lines = [line.strip("\n") for line in ret[0]]
+        ret = []
+        for line in reversed(lines):
+            if line.startswith("total"):
+                return ret
+            ret.append(line.split(" ")[-1])
+        raise ValueError(f"Was not able to find 'total <number>' in the output: '{ret}'")
