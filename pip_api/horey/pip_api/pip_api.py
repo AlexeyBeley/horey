@@ -570,3 +570,38 @@ class PipAPI:
                 shutil.copy(obj_path, build_horey_dir_path / obj_name)
 
         return build_horey_dir_path
+
+    @staticmethod
+    def copy_horey_package_required_packages_to_build_dir(package_raw_name: str, build_dir_path: Path, horey_repo_path: Path):
+        """
+        Copy all needed directories and files.
+
+        :param horey_repo_path:
+        :param package_raw_name:
+        :param build_dir_path:
+        :return:
+        """
+
+        base_names = ["pip_api", "build", "Makefile", "pip_api_docker_configuration.py", "pip_api_configuration.py"]
+
+        build_horey_dir_path = build_dir_path / "horey"
+        build_horey_dir_path.mkdir()
+
+        requirement = Requirement(None, f"horey.{package_raw_name}")
+        venv_dir_path = build_horey_dir_path / "build" / "_build" / "_venv"
+        multi_package_repo_to_prefix_map = {"horey.": horey_repo_path}
+        requirements_aggregator = {}
+        StandaloneMethods(venv_dir_path, multi_package_repo_to_prefix_map).compose_requirements_recursive([requirement],
+                                                                                                          requirements_aggregator)
+        recursively_found_horey_directories = [requirement_name.split(".")[1] for requirement_name in requirements_aggregator if requirement_name.startswith("horey")]
+
+        def ignore_build(_, file_names):
+            return ["_build"] if "_build" in file_names else []
+
+        for obj_name in list(set(base_names + recursively_found_horey_directories)):
+            obj_path = horey_repo_path / obj_name
+            if obj_path.is_dir():
+                shutil.copytree(obj_path, build_horey_dir_path / obj_name, ignore=ignore_build)
+            else:
+                shutil.copy(obj_path, build_horey_dir_path / obj_name)
+        return build_horey_dir_path

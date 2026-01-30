@@ -46,6 +46,18 @@ class Remoter(ABC):
         """
 
     @abstractmethod
+    def put_directory(self, src: Path, dst: Path, sudo: bool = False):
+        """
+        Put local directory remotely
+
+        :param src:
+        :param dst:
+        :param sudo:
+        :return:
+        """
+
+
+    @abstractmethod
     def get_file(self, src: Path, dst: Path, sudo: bool = False):
         """
         Get remote file to local disk.

@@ -91,6 +91,25 @@ class SSHRemoter(Remoter):
             return self.execute(f"sudo mv {Path('/tmp')/src.name} {dst}")
         return self.sftp_client.put(str(src), str(dst))
 
+    def put_directory(self, src: Path, dst: Path, sudo: bool = False):
+        """
+        Put local dir to remote.
+
+        :param src:
+        :param dst:
+        :param sudo:
+        :return:
+        """
+
+        if sudo:
+            remote_tmp_path = Path('/tmp')/src.name
+            self.sftp_client.put_dir(src, remote_tmp_path)
+            if remote_tmp_path == dst:
+                return [], [], 0
+            return self.execute(f"sudo mv {Path('/tmp')/src.name} {dst}")
+        return self.sftp_client.put_dir(src, dst)
+
+
     def get_deployment_dir(self) -> Path:
         """
         Remote deployment dir.
