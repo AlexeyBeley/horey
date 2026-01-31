@@ -668,6 +668,29 @@ class DockerAPI:
 
             all_images = self.get_all_images()
 
+    def prune_old_images(self, limit, timeout = 10 * 60):
+        """
+        Delete old images
+
+        :param timeout:
+        :param limit:
+        :return:
+        """
+
+        all_images = self.get_all_images()
+
+        for image in all_images:
+            if len(image.tags) == 0:
+                logger.info(f"Deleting image without tags: {image.id}")
+                self.remove_image(image.id, force=True, wait_to_finish=timeout)
+
+        all_images = self.get_all_images()
+
+        for image in sorted(all_images, key=lambda x: x.attrs["Created"], reverse=True)[limit:]:
+            logger.info(f"Deleting image {image.id}")
+            self.remove_image(image.id, force=True, wait_to_finish=timeout)
+
+
     @staticmethod
     def prune_dead_containers():
         """

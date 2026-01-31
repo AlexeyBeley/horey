@@ -10,6 +10,7 @@ import docker
 logger = logging.Logger(__name__)
 
 from horey.common_utils.actions_manager import ActionsManager
+from horey.docker_api.docker_api import DockerAPI
 
 docker_client = docker.from_env()
 action_manager = ActionsManager()
@@ -86,6 +87,38 @@ def push(arguments) -> None:
 
 
 action_manager.register_action("push", push_parser, push)
+# endregion
+
+
+# region prune_old_images
+def prune_old_images_parser():
+    description = "delete images"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--limit", required=True, type=int, help="limit")
+    parser.add_argument("--timeout", required=False, type=int, help="timeout for containers to gracefully stop")
+    return parser
+
+
+def prune_old_images(arguments) -> None:
+    return DockerAPI().prune_old_images(arguments.limit)
+
+
+action_manager.register_action("prune_old_images", prune_old_images_parser, prune_old_images)
+# endregion
+
+# region prune_old_images
+def pull_parser():
+    description = "Pull images"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--image", required=True, type=str, help="Image tag")
+    return parser
+
+
+def pull(arguments) -> None:
+    return DockerAPI().pull_images(arguments.image)
+
+
+action_manager.register_action("pull", pull_parser, pull)
 # endregion
 
 if __name__ == "__main__":

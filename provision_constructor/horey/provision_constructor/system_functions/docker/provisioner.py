@@ -104,6 +104,13 @@ class Provisioner(SystemFunctionCommon):
 
         :return:
         """
+        self.remoter = remoter
+        if self.action == "prune_old_images":
+            return self.provision_prune_old_images_remote()
+        if self.action == "pull":
+            return self.provision_pull_remote()
+        if self.action == "login":
+            return self.provision_login_remote()
 
         if not SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force,
                                                                   self.upgrade,
@@ -135,3 +142,45 @@ class Provisioner(SystemFunctionCommon):
         remoter.execute("sudo groupadd docker || true")
         remoter.execute('sudo usermod -aG docker "${USER}"')
         remoter.execute("sudo chmod 0666 /var/run/docker.sock")
+    
+    def provision_prune_old_images_remote(self):
+        """
+        Clean old images.
+
+        :return: 
+        """
+
+        horey_dir_path= Path(self.kwargs.get("horey_dir_path"))
+        limit = self.kwargs.get("limit")
+        self.remoter.execute(f"source {horey_dir_path / 'build' / '_build' / '_venv' / 'bin' / 'activate'} && "
+                             f"python {horey_dir_path / 'docker_api'/ 'horey' / 'docker_api' / 'docker_actor.py'} --action prune_old_images --limit {limit}")
+        return True
+
+    def provision_pull_remote(self):
+        """
+        Clean old images.
+
+        :return:
+        """
+
+        horey_dir_path= Path(self.kwargs.get("horey_dir_path"))
+        image = self.kwargs.get("image")
+        self.remoter.execute(f"source {horey_dir_path / 'build' / '_build' / '_venv' / 'bin' / 'activate'} && "
+                             f"python {horey_dir_path / 'docker_api'/ 'horey' / 'docker_api' / 'docker_actor.py'} --action pull --image {image}")
+        return True
+
+    def provision_login_remote(self):
+        """
+        Clean old images.
+
+        :return:
+        """
+
+        horey_dir_path= Path(self.kwargs.get("horey_dir_path"))
+        host = self.kwargs.get("host")
+        username = self.kwargs.get("username")
+        password = self.kwargs.get("password")
+        self.remoter.execute(f"source {horey_dir_path / 'build' / '_build' / '_venv' / 'bin' / 'activate'} && "
+                             f"python {horey_dir_path / 'docker_api'/ 'horey' / 'docker_api' / 'docker_actor.py'} --action login --host '{host}' --username '{username}' --password '{password}'")
+
+        return True
