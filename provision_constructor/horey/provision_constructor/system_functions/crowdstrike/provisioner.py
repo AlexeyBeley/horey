@@ -55,6 +55,7 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.remoter = remoter
+        remoter.execute("pwd")
 
         match self.action:
             case "install_falcon_sensor":
