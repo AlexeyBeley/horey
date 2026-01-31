@@ -720,6 +720,7 @@ class SystemFunctionCommon:
         @param repo_name:
         @return:
         """
+
         self.init_apt_repositories()
         for repo in self.APT_REPOSITORIES:
             if repo_name in repo.str_src:

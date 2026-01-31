@@ -49,5 +49,9 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-        remoter.execute(f"wget -qO - {self.src_url} | sudo gpg --batch --yes --dearmor -o {self.dst_file_path}")
+        #old:  remoter.execute(f"wget -qO - {self.src_url} | sudo gpg --batch --yes --dearmor -o {self.dst_file_path}")
+
+        # curl is installed by default
+
+        remoter.execute(f"curl -fsSL {self.src_url} | sudo gpg --batch --yes --dearmor -o {self.dst_file_path}")
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade, action="update_packages").provision_remote(remoter)

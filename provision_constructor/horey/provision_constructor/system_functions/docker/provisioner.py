@@ -4,6 +4,9 @@ Docker provisioner.
 """
 
 import os.path
+from pathlib import Path
+
+from horey.common_utils.remoter import Remoter
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 from horey.provision_constructor.system_functions.system_function_common import (
@@ -47,13 +50,13 @@ class Provisioner(SystemFunctionCommon):
 
         self.init_apt_packages()
         return (
-            os.path.isfile("/usr/share/keyrings/docker-archive-keyring.gpg")
-            and self.check_file_contains(
-                "/etc/apt/sources.list.d/docker.list", "download.docker.com"
-            )
-            and self.apt_check_installed("docker-ce")
-            and self.apt_check_installed("docker-ce-cli")
-            and self.apt_check_installed("docker-ce")
+                os.path.isfile("/usr/share/keyrings/docker-archive-keyring.gpg")
+                and self.check_file_contains(
+            "/etc/apt/sources.list.d/docker.list", "download.docker.com"
+        )
+                and self.apt_check_installed("docker-ce")
+                and self.apt_check_installed("docker-ce-cli")
+                and self.apt_check_installed("docker-ce")
         )
 
     def _provision(self):
@@ -81,3 +84,54 @@ class Provisioner(SystemFunctionCommon):
         self.run_bash("sudo groupadd docker || true")
         self.run_bash('sudo usermod -aG docker "${USER}"')
         self.run_bash("sudo chmod 0666 /var/run/docker.sock")
+
+    def init_release_codename_remote(self, remoter:Remoter):
+        """
+        Init the release
+
+        :param remoter:
+        :return:
+        """
+
+        if self._release_codename is None:
+            ret = remoter.execute("lsb_release -cs")
+            self._release_codename = ret[0][-1].strip("\n")
+        return self._release_codename
+
+    def provision_remote(self, remoter: Remoter):
+        """
+        Provision stable docker
+
+        :return:
+        """
+
+        if not SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force,
+                                                                  self.upgrade,
+                                                                  action="check_repository_exists",
+                                                                                 repository_name="download.docker.com").provision_remote(
+                                                                  remoter):
+
+            SystemFunctionFactory.REGISTERED_FUNCTIONS["gpg_key"](self.deployment_dir, self.force,
+                                                                  self.upgrade,
+                                                                  src_url="https://download.docker.com/linux/ubuntu/gpg",
+                                                                  dst_file_path="/usr/share/keyrings/docker-archive-keyring.gpg").provision_remote(
+                                                                  remoter)
+            self.init_release_codename_remote(remoter)
+            self.add_line_to_file_remote(remoter,
+                line=f"deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {self.release_codename} stable",
+                file_path=Path("/etc/apt/sources.list.d/docker.list"),
+                sudo=True,
+            )
+
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
+                                                                          action="update_packages").provision_remote(
+            remoter)
+
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
+                                                                          package_names=["docker-ce",
+                                                                                         ]).provision_remote(
+            remoter)
+
+        remoter.execute("sudo groupadd docker || true")
+        remoter.execute('sudo usermod -aG docker "${USER}"')
+        remoter.execute("sudo chmod 0666 /var/run/docker.sock")

@@ -2,9 +2,12 @@
 APT packages provisioning.
 
 """
+from pathlib import Path
 
 from horey.common_utils.remoter import Remoter
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
+from horey.provision_constructor.system_functions.apt_repository import APTRepository
+
 
 from horey.provision_constructor.system_functions.system_function_common import (
     SystemFunctionCommon,
@@ -30,7 +33,7 @@ class Provisioner(SystemFunctionCommon):
         elif package_names is not None:
             self.package_names = package_names
         else:
-            if self.action != "update_packages":
+            if self.action not in ["update_packages", "check_repository_exists"]:
                 raise ValueError("package_name/package_names not set")
 
         self.needrestart_mode = needrestart_mode
@@ -82,6 +85,8 @@ class Provisioner(SystemFunctionCommon):
         self.remoter = remoter
         if self.action == "update_packages":
             return self.update_packages_remote()
+        if self.action == "check_repository_exists":
+            return self.apt_check_repository_exists_remote()
 
         return self.apt_install_remote(package_names=self.package_names, needrestart_mode=self.needrestart_mode)
 
@@ -172,3 +177,62 @@ class Provisioner(SystemFunctionCommon):
         self.remoter.get_state()["APT_PACKAGES_UPDATED"] = True
         self.remoter.get_state()["APT_PACKAGES"] = []
         return self.init_apt_packages_remote()
+
+    def apt_check_repository_exists_remote(self):
+        """
+        Check weather we already have this repo.
+
+        @param repo_name:
+        @return:
+        """
+
+        repo_name = self.kwargs["repository_name"]
+        self.init_apt_repositories_remote()
+        for repo in self.remoter.get_state()["APT_REPOSITORIES"]:
+            if repo_name in repo.str_src:
+                return True
+        return False
+
+    def init_apt_repositories_remote(self):
+        """
+        Init all repositories from all .list files.
+        Used to validate we have all the needed repos added already.
+
+        @return:
+        """
+
+        if not self.remoter.get_state().get("APT_REPOSITORIES"):
+            self.remoter.get_state()["APT_REPOSITORIES"] = self.init_apt_repositories_from_file_remote(Path("/etc/apt/sources.list"))
+            dir_name = "/etc/apt/sources.list.d"
+            ret = self.remoter.execute(f'find {dir_name} -name "*.list"')
+            for line in reversed(ret[0]):
+                if not line.startswith(dir_name):
+                    break
+
+                repos = self.init_apt_repositories_from_file_remote(
+                        Path(line.strip("\n"))
+                    )
+                self.remoter.get_state()["APT_REPOSITORIES"].extend(repos)
+
+    def init_apt_repositories_from_file_remote(self, file_path:Path):
+        """
+        init via cat
+
+        :param file_path:
+        :return:
+        """
+
+        lst_ret = []
+        ret = self.remoter.execute(f"echo 'Start cat {file_path}'; cat {file_path}")
+
+        for line in reversed(ret[0]):
+            if line.startswith(f"Start cat {file_path}"):
+                return lst_ret
+            if line.strip().startswith("#"):
+                continue
+
+            repo = APTRepository()
+            repo.init_from_line(line.strip("\n"), file_path)
+            lst_ret.append(repo)
+
+        raise RuntimeError(f"'Start cat {file_path}' was not found in {ret[0]}")
