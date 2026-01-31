@@ -75,7 +75,7 @@ class Provisioner(SystemFunctionCommon):
         if (falcon_sensor_cid:=self.kwargs.get("falcon_sensor_cid")) is None:
             raise RuntimeError("falcon_sensor_cid was not set")
 
-        arch = self.init_cpu_data()
+        arch = self.init_cpu_data_remote()
         options = []
         if arch == "x86_64":
             for file_path in self.storage_service.list():
@@ -112,7 +112,7 @@ class Provisioner(SystemFunctionCommon):
         return True
 
 
-    def init_cpu_data(self)-> str:
+    def init_cpu_data_remote(self)-> str:
         """
         Init cpu data
 
@@ -120,6 +120,7 @@ class Provisioner(SystemFunctionCommon):
         """
 
         cpu_data = "".join(self.remoter.execute("lscpu --json")[0])
+        logger.info(f"Fetched {cpu_data=}")
         cpu_data = json.loads(cpu_data)
         cpu_arch = cpu_data["lscpu"][0]["data"]
         if cpu_arch !="x86_64":
