@@ -520,7 +520,7 @@ def test_run_remote_deployer_deploy_targets_docker_install(cicd_api_integration,
         target.append_remote_step("Test", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_remote_deployer_deploy_targets_swap(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
@@ -531,6 +531,29 @@ def test_run_remote_deployer_deploy_targets_swap(cicd_api_integration, ec2_api_m
         cicd_api_integration.run_remote_provision_constructor(target,
                                                               "swap"
                                                               )
+
+    for target in targets:
+        target.append_remote_step("Test", entrypoint)
+    assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
+
+
+@pytest.mark.wip
+def test_run_remote_deployer_deploy_horey_package_generic_venv(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname,
+                                                               bastions=ec2_instances)
+
+    def entrypoint():
+        cicd_api_integration.run_remote_provision_constructor(target,
+                                                     "horey_package_generic",
+                                                                                package_names=["aws_api",
+                                                                                               "docker_api",
+                                                                                               "h_logger",
+                                                                                               "configuration_policy",
+                                                                                               "common_utils"],
+                                                                                horey_repo_path=Path("/opt/horey"),
+                                                     local_horey_repo_path=Path(__file__).parent.parent.parent)
 
     for target in targets:
         target.append_remote_step("Test", entrypoint)

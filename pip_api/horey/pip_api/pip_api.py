@@ -585,7 +585,7 @@ class PipAPI:
         base_names = ["pip_api", "build", "Makefile", "pip_api_docker_configuration.py", "pip_api_configuration.py"]
 
         build_horey_dir_path = build_dir_path / "horey"
-        build_horey_dir_path.mkdir()
+        build_horey_dir_path.mkdir(exist_ok=True)
 
         requirement = Requirement(None, f"horey.{package_raw_name}")
         venv_dir_path = build_horey_dir_path / "build" / "_build" / "_venv"
@@ -601,7 +601,8 @@ class PipAPI:
         for obj_name in list(set(base_names + recursively_found_horey_directories)):
             obj_path = horey_repo_path / obj_name
             if obj_path.is_dir():
-                shutil.copytree(obj_path, build_horey_dir_path / obj_name, ignore=ignore_build)
+                if not (build_horey_dir_path / obj_name).exists():
+                    shutil.copytree(obj_path, build_horey_dir_path / obj_name, ignore=ignore_build)
             else:
                 shutil.copy(obj_path, build_horey_dir_path / obj_name)
         return build_horey_dir_path

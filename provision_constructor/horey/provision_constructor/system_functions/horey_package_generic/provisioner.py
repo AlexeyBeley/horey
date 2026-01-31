@@ -78,6 +78,9 @@ class Provisioner(SystemFunctionCommon):
     def provision_remote(self, remoter: Remoter):
         """
         Provision remotely
+
+        UNZIP example:
+
              command = (
             "#!/bin/bash\n"
             "sudo sed -i 's/#$nrconf{kernelhints} = -1;/$nrconf{kernelhints} = 0;/' /etc/needrestart/needrestart.conf\n"
@@ -95,23 +98,27 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-
-        remoter.execute("rm -rf horey")
+        remote_horey_repo_path = self.horey_repo_path or "./horey"
+        remoter.execute(f"sudo rm -rf {remote_horey_repo_path}")
         if self.local_horey_repo_path:
             self.deployment_dir.mkdir(exist_ok=True)
             deployment_horey_dir = self.deployment_dir / "horey"
-            shutil.rmtree(deployment_horey_dir)
+            if deployment_horey_dir.is_dir():
+                shutil.rmtree(deployment_horey_dir)
             for package_name in self.package_names:
                 PipAPI.copy_horey_package_required_packages_to_build_dir(package_name,
                                                                          self.deployment_dir,
                                                                      self.local_horey_repo_path,
                                                                      )
 
-            remoter.put_directory(Path(deployment_horey_dir), Path("./horey"))
+            remoter.put_directory(Path(deployment_horey_dir), Path(remote_horey_repo_path), sudo=True)
+
+            remoter.execute(f'CURRENT_USER=$(whoami) && sudo chown -R "$CURRENT_USER":"$CURRENT_USER" {remote_horey_repo_path}')
+        else:
+            raise NotImplementedError("git clone horey")
 
         for package_name in self.package_names:
             install_command = f"python pip_api/horey/pip_api/pip_api_make.py --install horey.{package_name} --force_reinstall --pip_api_configuration ./pip_api_configuration.py"
-
-            remoter.execute(f"cd horey && {install_command}")
+            remoter.execute(f"cd {remote_horey_repo_path} && {install_command}")
 
         return True
