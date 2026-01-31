@@ -1296,7 +1296,7 @@ class SystemFunctionCommon:
                 if string_to_look_for in line:
                     return True
 
-            raise ValueError(f"Can not find '{convert_to_lower}' in the last line {line}")
+            raise ValueError(f"Can not find '{line}' in the last line {line}")
         return helper
 
     @staticmethod
