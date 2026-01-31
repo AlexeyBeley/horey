@@ -128,6 +128,9 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
+        # todo: refactor to handle new ssh connection.
+        self.remoter.execute("pwd")
+
         ret = self.remoter.execute("free -h")
         lines = ret[0]
         if not lines[0].strip().startswith("total"):
