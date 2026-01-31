@@ -74,15 +74,24 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-        zabbix_agent_version = "zabbix-release_7.0-2+ubuntu24.04_all.deb"
+        self.remoter = remoter
+        if deb_file_path:=self.kwargs.get("deb_file_path"):
+            remote_deb_file_path = Path("/tmp") / deb_file_path.name
+            remoter.put_file(deb_file_path, remote_deb_file_path, sudo=False)
+        else:
+            zabbix_agent_version = "zabbix-release_7.0-2+ubuntu24.04_all.deb"
+            remote_deb_file_path = Path("/tmp") / zabbix_agent_version
 
-        remoter.execute(f"wget https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/{zabbix_agent_version}",
+            remoter.execute(f"wget https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/{zabbix_agent_version} -o {remote_deb_file_path}",
                               self.last_line_validator(" saved "),
                               self.last_line_validator(zabbix_agent_version),
                               )
+        remoter.execute(f"ls -la {remote_deb_file_path}")
 
-        remoter.execute(f"sudo dpkg -i {zabbix_agent_version}", self.last_line_validator("Setting up zabbix-release "))
-        remoter.execute(f"sudo apt update", self.last_line_validator("All packages are up to date."))
+        remoter.execute(f"sudo dpkg -i {remote_deb_file_path}", self.last_line_validator("Setting up zabbix-release "))
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
+                                                                          action="update_packages").provision_remote(
+            remoter)
 
         remoter.execute("sudo apt install zabbix-agent2 -y")
 
@@ -95,7 +104,7 @@ class Provisioner(SystemFunctionCommon):
 
         remoter.execute("sudo systemctl restart zabbix-agent2")
         remoter.execute("sudo systemctl enable zabbix-agent2", self.last_line_validator("Executing: /usr/lib/systemd/systemd-sysv-install enable zabbix-agent2"))
-        self.check_systemd_service_status_remotely(remoter, "zabbix-agent2")
+        self.check_systemd_service_status_remote("zabbix-agent2")
         return True
 
     def validate_input(self):

@@ -1339,7 +1339,7 @@ class SystemFunctionCommon:
 
         return helper
 
-    def check_systemd_service_status_remotely(self, service_name: str, min_uptime: int = 60):
+    def check_systemd_service_status_remote(self, service_name: str, min_uptime: int = 60):
         """
         Check the service uptime.
 
@@ -1373,7 +1373,7 @@ class SystemFunctionCommon:
 
         self.remoter.execute(f"sudo systemctl restart {service_name}")
 
-        self.check_systemd_service_status_remotely(service_name)
+        self.check_systemd_service_status_remote(service_name)
 
     def remove_file_remote(self, remoter:Remoter, file_path, sudo=False):
         """

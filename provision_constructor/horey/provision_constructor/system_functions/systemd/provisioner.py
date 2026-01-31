@@ -48,5 +48,5 @@ class Provisioner(SystemFunctionCommon):
 
         service_name = self.kwargs.get("service_name")
         self.remoter.execute(f"sudo systemctl restart {service_name}")
-        self.check_systemd_service_status_remotely(service_name, 60)
+        self.check_systemd_service_status_remote(service_name, 60)
         return True
