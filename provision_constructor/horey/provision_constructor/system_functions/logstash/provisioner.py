@@ -81,6 +81,9 @@ class Provisioner(SystemFunctionCommon):
         if self.action == "install_plugin":
             return self.provision_remote_install_plugin(remoter)
 
+        if self.action == "restart":
+            return self.provision_remote_restart(remoter)
+
         raise NotImplementedError(self.action)
 
     def provision_remote_install_plugin(self, remoter: Remoter):
@@ -163,3 +166,37 @@ class Provisioner(SystemFunctionCommon):
                 return ret
             ret.append(line.split(" ")[-1])
         raise ValueError(f"Was not able to find 'total <number>' in the output: '{ret}'")
+
+    def provision_remote_restart(self, remoter:Remoter):
+        """
+        Restart logstash service
+
+        :param remoter:
+        :return:
+        """
+
+        ret = remoter.execute("logstash_pid=$(ps aux | grep 'logstash' | grep 'java' | awk '{print $2}') && echo \"logstash_pid=${logstash_pid}\"")
+        last_line = ret[0][-1]
+
+        if "logstash_pid=" not in last_line:
+            raise NotImplementedError(ret)
+
+        logstash_pid = last_line.strip("\n").split("=")[1]
+        if logstash_pid:
+            remoter.execute(f"sudo kill -s 9 {int(logstash_pid)}")
+        else:
+           remoter.execute("sudo systemctl restart logstash")
+
+        self.remoter = remoter
+        self.systemctl_restart_service_and_wait_remote("logstash")
+
+        """ 
+        
+        if [ -n "${logstash_pid}" ]
+        then
+              sudo kill -s 9 "${logstash_pid}"
+        else
+              sudo systemctl restart logstash
+        fi
+        sudo systemctl enable logstash
+        """

@@ -492,7 +492,7 @@ class RemoteDeployer:
         exit_status = 0
         for line in stdout:
             # get rid of 'coloring and formatting' special characters
-            line = RemoteDeployer.REGEX_CLEANER.sub('', line).replace('\b', '').replace('\r', '')
+            line = RemoteDeployer.REGEX_CLEANER.sub('', line).replace('\b', '').replace('\r', '').replace('\x1b8', "").replace('\x1b7', "")
 
             logger.info(f"[{remote_address} REMOTE<-] {line}")
             if str(line).startswith(cmd) or str(line).startswith(echo_cmd):

@@ -446,3 +446,59 @@ def test_run_remote_deployer_deploy_targets_dns_set_dns_resolvers(cicd_api_integ
     for target in targets:
         target.append_remote_step("Test", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
+
+
+@pytest.mark.unit
+def test_run_remote_deployer_deploy_targets_set_ntp_server(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname,
+                                                               bastions=ec2_instances)
+
+    def entrypoint():
+        cicd_api_integration.run_remote_provision_constructor(target,
+                                                              "ntp",
+                                                              action="set_ntp_server"
+                                                              )
+
+    for target in targets:
+        target.append_remote_step("Test", entrypoint)
+    assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
+
+
+@pytest.mark.unit
+def test_run_remote_deployer_deploy_targets_copy_generic_dir(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname,
+                                                               bastions=ec2_instances)
+
+    def entrypoint():
+        cicd_api_integration.run_remote_provision_constructor(target,
+                                                              "copy_generic",
+                                                              src=Path(__file__).parent,
+                                                              dst=Path("/etc/logstash"),
+                                                              sudo=True
+                                                              )
+
+    for target in targets:
+        target.append_remote_step("Test", entrypoint)
+    assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
+
+
+@pytest.mark.wip
+def test_run_remote_deployer_deploy_targets_logstash_restart(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname,
+                                                               bastions=ec2_instances)
+
+    def entrypoint():
+        cicd_api_integration.run_remote_provision_constructor(target,
+                                                              "logstash",
+                                                              action="restart"
+                                                              )
+
+    for target in targets:
+        target.append_remote_step("Test", entrypoint)
+    assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)

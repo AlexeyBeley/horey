@@ -1362,7 +1362,7 @@ class SystemFunctionCommon:
             time.sleep(sleep_time)
         raise TimeoutError(f"Waited for {min_uptime} seconds")
 
-    def systemctl_restart_service_and_wait_remotely(self, service_name: str):
+    def systemctl_restart_service_and_wait_remote(self, service_name: str):
         """
         Restart and wait for service to be up and healthy.
 

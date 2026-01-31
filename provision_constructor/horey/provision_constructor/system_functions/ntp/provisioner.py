@@ -6,7 +6,9 @@ Provision ntp service.
 import os.path
 import platform
 import json
+from pathlib import Path
 
+from horey.common_utils.remoter import Remoter
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 from horey.provision_constructor.system_functions.system_function_common import (
@@ -80,3 +82,48 @@ class Provisioner(SystemFunctionCommon):
 
         ret = self.run_bash("sudo systemctl restart systemd-timedated")
         logger.info(ret)
+
+    def provision_remote(self, remoter: Remoter):
+        """
+        Provision remotely
+
+        :param remoter:
+        :return:
+        """
+
+        if self.action == "set_ntp_server":
+            return self.set_ntp_servers_remote(remoter)
+
+        raise NotImplementedError(self.action)
+
+    def set_ntp_servers_remote(self, remoter: Remoter):
+        """
+        set ntp server
+        [Time]
+        NTP=pool.ntp.org
+
+
+        :param remoter:
+        :return:
+        """
+
+        for str_regex_name in ["ntp*", "sntp*", "chrony*"]:
+            remoter.execute(f"sudo apt purge -y {str_regex_name}")
+
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force,
+                                                                          self.upgrade, package_names=[
+                "systemd-timesyncd"]).provision_remote(remoter)
+
+        remoter.execute("sudo timedatectl set-ntp false")
+
+        file_content = "[Time]\nNTP=pool.ntp.org\n"
+        local_file_path = self.deployment_dir / "timesyncd.conf"
+
+        with open(local_file_path, "w", encoding="utf-8") as file_handle:
+            file_handle.write(file_content)
+
+        remoter.put_file(local_file_path, Path("/etc/systemd/timesyncd.conf"), sudo=True)
+
+        remoter.execute("sudo timedatectl set-ntp true")
+        remoter.execute("sudo systemctl restart systemd-timedated")
+        return True

@@ -61,6 +61,9 @@ class Provisioner(SystemFunctionCommon):
             command = "sudo " + command
         remoter.execute(command)
 
+        if self.src.is_dir():
+            return remoter.put_directory(self.src, self.dst, sudo=self.sudo)
+
         remoter.put_file(self.src, self.dst, sudo=self.sudo)
 
         return True

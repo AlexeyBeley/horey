@@ -128,7 +128,7 @@ class Provisioner(SystemFunctionCommon):
         self.remoter.get_file(remote_file_path, local_file_path)
         self.generate_influx_configuration_file(local_file_path)
         self.remoter.put_file(local_file_path, remote_file_path, sudo=True)
-        self.systemctl_restart_service_and_wait_remotely("influxdb")
+        self.systemctl_restart_service_and_wait_remote("influxdb")
 
         return True
 
@@ -159,7 +159,7 @@ class Provisioner(SystemFunctionCommon):
         self.remoter.get_file(remote_file_path, local_file_path)
         self.generate_influx_configuration_file(local_file_path)
         self.remoter.put_file(local_file_path, remote_file_path, sudo=True)
-        self.systemctl_restart_service_and_wait_remotely("influxdb")
+        self.systemctl_restart_service_and_wait_remote("influxdb")
 
         return True
 
@@ -251,7 +251,7 @@ class Provisioner(SystemFunctionCommon):
         self.generate_kapacitor_configuration_file(local_file_path, "[[influxdb]]", **kwargs)
         self.remoter.put_file(local_file_path, remote_file_path, sudo=True)
 
-        self.systemctl_restart_service_and_wait_remotely("kapacitor")
+        self.systemctl_restart_service_and_wait_remote("kapacitor")
 
         return True
 
