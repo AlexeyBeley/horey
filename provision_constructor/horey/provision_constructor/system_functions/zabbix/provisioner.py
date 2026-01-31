@@ -103,7 +103,7 @@ class Provisioner(SystemFunctionCommon):
         remoter.put_file(local_file_path, remote_file_path, sudo=True)
 
         remoter.execute("sudo systemctl restart zabbix-agent2")
-        remoter.execute("sudo systemctl enable zabbix-agent2", self.last_line_validator("Executing: /usr/lib/systemd/systemd-sysv-install enable zabbix-agent2"))
+        remoter.execute("sudo systemctl enable zabbix-agent2", self.grep_validator("Executing: /usr/lib/systemd/systemd-sysv-install enable zabbix-agent2"))
         self.check_systemd_service_status_remote("zabbix-agent2")
         return True
 
