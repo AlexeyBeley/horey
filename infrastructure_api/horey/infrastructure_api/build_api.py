@@ -230,8 +230,9 @@ class BuildAPI:
 
     def login_to_ecr_registry(self, region, logout=False):
         """
-        Login or relogin
+        Login or re-login
 
+        :param logout:
         :param region:
         :return:
         """

@@ -209,7 +209,11 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def data_directory_path(self):
         if self._data_directory_path is None:
-            return Path("/opt") / self.project_name
+            try:
+                return Path("/opt") / self.project_name
+            except self.UndefinedValueError:
+                return Path("/tmp") / "horey_data"
+
         return self._data_directory_path
 
     @data_directory_path.setter

@@ -1118,6 +1118,7 @@ class LionKing:
         
         :return:
         """
+
         logger.info(f"Fetching ECR credentials for region {self.configuration.region}")
         credentials = self.aws_api.get_ecr_authorization_info(region=self.region)
 

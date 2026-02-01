@@ -521,6 +521,7 @@ def test_run_remote_deployer_deploy_targets_docker_install(cicd_api_integration,
         target.append_remote_step("Test", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
 
+
 @pytest.mark.unit
 def test_run_remote_deployer_deploy_targets_swap(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
@@ -547,14 +548,14 @@ def test_run_remote_deployer_deploy_horey_package_generic_venv(cicd_api_integrat
 
     def entrypoint():
         cicd_api_integration.run_remote_provision_constructor(target,
-                                                     "horey_package_generic",
-                                                                                package_names=["aws_api",
-                                                                                               "docker_api",
-                                                                                               "h_logger",
-                                                                                               "configuration_policy",
-                                                                                               "common_utils"],
-                                                                                horey_repo_path=Path("/opt/horey"),
-                                                     local_horey_repo_path=Path(__file__).parent.parent.parent)
+                                                              "horey_package_generic",
+                                                              package_names=["aws_api",
+                                                                             "docker_api",
+                                                                             "h_logger",
+                                                                             "configuration_policy",
+                                                                             "common_utils"],
+                                                              horey_repo_path=Path("/opt/horey"),
+                                                              local_horey_repo_path=Path(__file__).parent.parent.parent)
 
     for target in targets:
         target.append_remote_step("Test", entrypoint)
@@ -582,18 +583,17 @@ def test_run_remote_deployer_deploy_zabbix_agent(cicd_api_integration, ec2_api_m
             raise Exception(f"Failed to download file. Status code: {response.status_code}")
 
         cicd_api_integration.run_remote_provision_constructor(target, "zabbix",
-                                                                 role="agent",
-                                                                 zabbix_server_address="zabbix.horey.sever",
-                                                                 hostname=Configuration.TEST_CONFIG.hostname,
-                                                                 deb_file_path=Path(agent2_deb_path))
+                                                              role="agent",
+                                                              zabbix_server_address="zabbix.horey.sever",
+                                                              hostname=Configuration.TEST_CONFIG.hostname,
+                                                              deb_file_path=Path(agent2_deb_path))
 
     for target in targets:
         target.append_remote_step("Test", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
 
 
-
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_remote_deployer_deploy_targets_docker_prune_old_images(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
@@ -604,23 +604,23 @@ def test_run_remote_deployer_deploy_targets_docker_prune_old_images(cicd_api_int
         cicd_api_integration.run_remote_provision_constructor(target,
                                                               "raw",
                                                               command="sudo rm -rf /opt/horey &&"
-                                                                    " sudo mkdir /opt/horey &&"
-                                                                    " sudo chown -R ubuntu:ubuntu /opt/horey"
+                                                                      " sudo mkdir /opt/horey &&"
+                                                                      " sudo chown -R ubuntu:ubuntu /opt/horey"
                                                               )
 
         cicd_api_integration.run_remote_provision_constructor(target,
-                                                     "horey_package_generic",
-                                                                                package_names=[
-                                                                                               "docker_api",
-                                                                                               ],
-                                                                                horey_repo_path=Path("/opt/horey"),
-                                                     local_horey_repo_path=Path(__file__).parent.parent.parent)
-
+                                                              "horey_package_generic",
+                                                              package_names=[
+                                                                  "docker_api",
+                                                                  "infrastructure_api"
+                                                              ],
+                                                              horey_repo_path=Path("/opt/horey"),
+                                                              local_horey_repo_path=Path(__file__).parent.parent.parent)
 
         cicd_api_integration.run_remote_provision_constructor(target,
                                                               "docker",
                                                               action="prune_old_images",
-                                                              horey_dir_path = "/opt/horey",
+                                                              horey_dir_path="/opt/horey",
                                                               limit=4
                                                               )
 
@@ -629,6 +629,10 @@ def test_run_remote_deployer_deploy_targets_docker_prune_old_images(cicd_api_int
                                                               action="pull",
                                                               horey_dir_path="/opt/horey",
                                                               image="public.ecr.aws/lambda/python:3.12"
+                                                              )
+        cicd_api_integration.run_remote_provision_constructor(target,
+                                                              "raw",
+                                                              command="source /opt/horey/build/_build/_venv/bin/activate && python /opt/horey/infrastructure_api/horey/infrastructure_api/infrastructure_api_actor.py --action ecr_login --region us-west-2 --logout true",
                                                               )
 
     for target in targets:
