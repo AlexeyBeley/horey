@@ -2,6 +2,7 @@
 Manage systemd
 
 """
+from pathlib import Path
 
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
@@ -47,6 +48,31 @@ class Provisioner(SystemFunctionCommon):
         """
 
         service_name = self.kwargs.get("service_name")
+        if not service_name:
+            raise ValueError("service_name was not set")
         self.remoter.execute(f"sudo systemctl restart {service_name}")
         self.check_systemd_service_status_remote(service_name, 60)
         return True
+
+
+    def provision_service_remote(self, remoter: Remoter):
+        """
+        Provision service.
+
+        @return:
+        """
+
+        service_name = self.kwargs.get("service_name")
+        if not service_name:
+            raise ValueError("service_name was not set")
+        unit_file_path = self.kwargs.get("unit_file_path")
+        if not unit_file_path:
+            raise ValueError("unit_file_path was not set")
+        unit_file_path = Path(unit_file_path)
+
+        self.remoter = remoter
+        remoter.put_file(unit_file_path, Path("/etc/systemd/system/") / unit_file_path.name, sudo=True)
+
+        self.run_bash("sudo systemctl daemon-reload")
+        self.run_bash(f"sudo systemctl enable {service_name}")
+        self.restart_service_remote()
