@@ -166,13 +166,14 @@ def fixture_ec2_api_mgmt_integration(env_api_mgmt_integration):
     yield api
 
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_run_remote_provision_constructor_zabbix(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instance = ec2_api_mgmt_integration.get_instance(name=Configuration.TEST_CONFIG.bastion_name)
     target = cicd_api_integration.generate_deployment_target(Configuration.TEST_CONFIG.hostname,
                                                              bastions=[ec2_instance])
-    assert cicd_api_integration.run_remote_provision_constructor(target, "zabbix", role="agent",
-                                                                 zabbix_server_address=Configuration.TEST_CONFIG.zabbix_server_address,
+    assert cicd_api_integration.run_remote_provision_constructor(target, "zabbix",
+                                                                 role="agent",
+                                                                 zabbix_server_address="horey.zabbix.server",
                                                                  hostname=Configuration.TEST_CONFIG.hostname)
 
 
@@ -636,7 +637,7 @@ def test_run_remote_deployer_deploy_targets_docker_prune_old_images(cicd_api_int
 
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_remote_deployer_deploy_targets_docker_login(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
