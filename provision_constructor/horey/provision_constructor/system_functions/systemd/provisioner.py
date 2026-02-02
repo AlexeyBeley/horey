@@ -70,10 +70,9 @@ class Provisioner(SystemFunctionCommon):
         unit_file_path = self.kwargs.get("unit_file_path")
         if not unit_file_path:
             raise ValueError("unit_file_path was not set")
-        unit_file_path = Path(unit_file_path)
 
         self.remoter.put_file(unit_file_path, Path("/etc/systemd/system/") / unit_file_path.name, sudo=True)
 
-        self.run_bash("sudo systemctl daemon-reload")
-        self.run_bash(f"sudo systemctl enable {service_name}")
+        self.remoter.execute("sudo systemctl daemon-reload")
+        self.remoter.execute(f"sudo systemctl enable {service_name}")
         self.restart_service_remote()
