@@ -37,6 +37,8 @@ class Provisioner(SystemFunctionCommon):
         match self.action:
             case "restart_service":
                 return self.restart_service_remote()
+            case "provision_service":
+                return self.provision_service_remote()
             case _:
                 raise NotImplementedError(f"{self.action}")
 
@@ -55,7 +57,7 @@ class Provisioner(SystemFunctionCommon):
         return True
 
 
-    def provision_service_remote(self, remoter: Remoter):
+    def provision_service_remote(self):
         """
         Provision service.
 
@@ -70,8 +72,7 @@ class Provisioner(SystemFunctionCommon):
             raise ValueError("unit_file_path was not set")
         unit_file_path = Path(unit_file_path)
 
-        self.remoter = remoter
-        remoter.put_file(unit_file_path, Path("/etc/systemd/system/") / unit_file_path.name, sudo=True)
+        self.remoter.put_file(unit_file_path, Path("/etc/systemd/system/") / unit_file_path.name, sudo=True)
 
         self.run_bash("sudo systemctl daemon-reload")
         self.run_bash(f"sudo systemctl enable {service_name}")
