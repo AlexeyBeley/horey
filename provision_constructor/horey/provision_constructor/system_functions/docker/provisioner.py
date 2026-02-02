@@ -2,7 +2,7 @@
 Docker provisioner.
 
 """
-
+import json
 import os.path
 from pathlib import Path
 
@@ -176,11 +176,20 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-        horey_dir_path= Path(self.kwargs.get("horey_dir_path"))
-        host = self.kwargs.get("host")
-        username = self.kwargs.get("username")
-        password = self.kwargs.get("password")
-        self.remoter.execute(f"source {horey_dir_path / 'build' / '_build' / '_venv' / 'bin' / 'activate'} && "
-                             f"python {horey_dir_path / 'docker_api'/ 'horey' / 'docker_api' / 'docker_actor.py'} --action login --host '{host}' --username '{username}' --password '{password}'")
+        region = self.kwargs.get("region")
+        logout = self.kwargs.get("logout")
+        # True by default unless "false" explicitly set
+        logout = str(logout).lower() != "false"
+
+        self.remoter.execute("ls")
+        ret = self.remoter.execute("aws sts get-caller-identity")
+        response = json.loads("".join(ret[0]))
+        registry = f"{response["Account"]}.dkr.ecr.{region}.amazonaws.com"
+        if logout:
+            self.remoter.execute(f"docker logout {registry}")
+
+        breakpoint()
+        ret = self.remoter.execute(f"aws ecr get-login-password --region {region} | docker login --username AWS --password-stdin {registry}")
+        ret = self.remoter.execute("~/.docker/config.json")
 
         return True

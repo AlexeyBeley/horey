@@ -208,6 +208,7 @@ class RemoteDeployer:
     Remote target deployer.
 
     """
+
     REGEX_CLEANER = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]')
 
     def __init__(self, configuration=None):
@@ -492,7 +493,16 @@ class RemoteDeployer:
         exit_status = 0
         for line in stdout:
             # get rid of 'coloring and formatting' special characters
-            line = RemoteDeployer.REGEX_CLEANER.sub('', line).replace('\b', '').replace('\r', '').replace('\x1b8', "").replace('\x1b7', "")
+            # Faking SSH!!! It backspaces output:
+
+            while "\x08" in line:
+                backspace_index = line.find("\x08")
+                line = line[:backspace_index-1] + line[backspace_index+1:]
+            line = (RemoteDeployer.REGEX_CLEANER.sub('', line).replace('\b', '').replace('\r', '').
+                    replace('\x1b8', "").
+                    replace('\x1b7', "").
+                    replace("\x1b>", "").
+                    replace("\x1b=", ""))
 
             logger.info(f"[{remote_address} REMOTE<-] {line}")
             if str(line).startswith(cmd) or str(line).startswith(echo_cmd):

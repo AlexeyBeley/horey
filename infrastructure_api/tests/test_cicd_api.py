@@ -630,9 +630,25 @@ def test_run_remote_deployer_deploy_targets_docker_prune_old_images(cicd_api_int
                                                               horey_dir_path="/opt/horey",
                                                               image="public.ecr.aws/lambda/python:3.12"
                                                               )
+    for target in targets:
+        target.append_remote_step("Test", entrypoint)
+    assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
+
+
+
+@pytest.mark.wip
+def test_run_remote_deployer_deploy_targets_docker_login(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname,
+                                                               bastions=ec2_instances)
+
+    def entrypoint():
         cicd_api_integration.run_remote_provision_constructor(target,
-                                                              "raw",
-                                                              command="source /opt/horey/build/_build/_venv/bin/activate && python /opt/horey/infrastructure_api/horey/infrastructure_api/infrastructure_api_actor.py --action ecr_login --region us-west-2 --logout true",
+                                                              "docker",
+                                                              action="login",
+                                                              region="us-west-2",
+                                                              logout=True,
                                                               )
 
     for target in targets:

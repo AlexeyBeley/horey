@@ -8,7 +8,7 @@ import pytest
 from horey.infrastructure_api.infrastructure_api_actor import ecr_login
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_ecr_login():
     """
     Test basic init.
@@ -23,7 +23,7 @@ def test_ecr_login():
 
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_ecr_login_logout_false():
     """
     Test basic init.
