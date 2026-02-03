@@ -16,10 +16,18 @@ def test_init_auction_events():
     assert auction.init_auction_events()
 
 
+
+@pytest.mark.wip
+def test_init_auction_event():
+    auction = Pennerauction()
+    auction_event = AuctionEvent()
+    auction_event.url = "https://pennerauctions.hibid.com/catalog/710766"
+    assert auction.init_auction_event(auction_event)
+
 @pytest.mark.unit
 def test_init_auction_event_lots():
     auction = Pennerauction()
     auction_event = AuctionEvent()
-    auction_event.url = "https://pennerauctions.hibid.com/catalog/673234"
     auction_event.provinces = "manitoba"
+    auction_event.url = "https://pennerauctions.hibid.com/catalog/710766"
     assert auction.init_auction_event_lots(auction_event)

@@ -223,7 +223,8 @@ class Pennerauction(Provider):
 
         try:
             title_element = self.selenium_api.get_element(By.CLASS_NAME, "auction-title")
-        except Exception:
+        except Exception as inst_error:
+            logger.info(f"Was not able to locate auction-title, {inst_error}")
             try:
                 title_element = self.selenium_api.get_element(By.CLASS_NAME, "auction-event-name")
             except Exception:
@@ -231,6 +232,8 @@ class Pennerauction(Provider):
                 raise NotImplementedError()
 
         auction_event.name = title_element.text
+        if not auction_event.name:
+            breakpoint()
         for _ in range(10):
             try:
                 col_element = self.selenium_api.get_element(By.CLASS_NAME, "col")
@@ -272,7 +275,22 @@ class Pennerauction(Provider):
         auction_event.init_provinces()
         if not auction_event.provinces:
             breakpoint()
-            raise ValueError("Was not able to find provinces")
+
+        if not auction_event.name:
+            breakpoint()
+
+        if not auction_event.url:
+            breakpoint()
+
+        if not auction_event.provinces:
+            raise NotImplementedError()
+
+        if not auction_event.name:
+            raise NotImplementedError()
+
+        if not auction_event.url:
+            raise NotImplementedError()
+        return True
 
     def load_auction_event_lots(self, auction_event: AuctionEvent):
         """

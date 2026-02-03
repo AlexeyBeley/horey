@@ -134,7 +134,7 @@ class Provisioner(SystemFunctionCommon):
         self.add_line_to_file_remote(remoter, line=line, file_path=Path(f"/etc/apt/sources.list.d/{elastic_file_name}"),
                                      sudo=True)
 
-        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, True, self.upgrade,
                                                                           action="update_packages").provision_remote(remoter)
 
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
