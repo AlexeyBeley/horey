@@ -255,9 +255,12 @@ class AuctionAPI:
                 cursor.execute(sql, data_tuple)
                 conn.commit()
             except Exception as inst_err:
-                logger.exception(inst_err)
+                logger.exception(f"Error Inserting {repr(inst_err)}")
                 if "UNIQUE constraint" in repr(inst_err):
                     logger.error(f"Data is not unique: {data_tuple}")
+                    select_sql = "select * from auction_events where name=? or url=?"
+                    ret = cursor.execute(select_sql, (auction_event.name, auction_event.url,))
+                    breakpoint()
                 else:
                     logger.error(f"Unknown error with data: {data_tuple}")
                 breakpoint()

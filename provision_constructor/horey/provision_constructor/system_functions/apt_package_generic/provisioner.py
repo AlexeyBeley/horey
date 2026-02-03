@@ -166,10 +166,9 @@ class Provisioner(SystemFunctionCommon):
         @return:
         """
 
-
-
         if self.remoter.get_state().get("APT_PACKAGES_UPDATED"):
             if self.force:
+                self.force = False
                 return self.reinit_apt_packages_remote()
             return True
 
