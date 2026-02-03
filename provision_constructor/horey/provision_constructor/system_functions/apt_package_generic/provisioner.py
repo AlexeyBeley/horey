@@ -166,7 +166,11 @@ class Provisioner(SystemFunctionCommon):
         @return:
         """
 
+
+
         if self.remoter.get_state().get("APT_PACKAGES_UPDATED"):
+            if self.force:
+                return self.reinit_apt_packages_remote()
             return True
 
         stdout, stderr, errcode = self.remoter.execute("sudo DEBIAN_FRONTEND=noninteractive apt update")

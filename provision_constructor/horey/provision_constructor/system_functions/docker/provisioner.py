@@ -130,7 +130,7 @@ class Provisioner(SystemFunctionCommon):
                 sudo=True,
             )
 
-        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, True, self.upgrade,
                                                                           action="update_packages").provision_remote(
             remoter)
 

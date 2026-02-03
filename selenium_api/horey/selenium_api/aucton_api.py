@@ -261,7 +261,12 @@ class AuctionAPI:
                 else:
                     logger.error(f"Unknown error with data: {data_tuple}")
                 breakpoint()
-                # for x in known_auction_events: print(x.id, x.name, x.url)
+
+                #delete_sql = "DELETE from auction_events where url = ?"
+                #ret = cursor.execute(delete_sql, (lot.url,))
+                #logger.exception(f"Deleted: {ret.fetchall()}")
+                #cursor.execute(insert_sql, data_tuple)
+
                 # url = 'https://www.jardineauctioneers.com/auctions/24895-45th-annual-fredericton-sports-investment-auction?filter=(auction_ring_id:1200)'
                 # self.update_auction_event(23, url=url)
                 raise
@@ -727,7 +732,7 @@ class AuctionEventReport:
     @property
     def load_data_button_text(self):
         if self.auction_event.end_time:
-            return f"[{self.auction_event.id}] {self.provider.name} {self.auction_event.end_time.strftime('%d/%m')}"
+            return f"<a href='{self.auction_event.url}'>[{self.auction_event.id}]</a> {self.provider.name} {self.auction_event.end_time.strftime('%d/%m')}"
         return f"[{self.auction_event.id}] {self.provider.name} {self.auction_event.start_time.strftime('%d/%m')}"
 
 
