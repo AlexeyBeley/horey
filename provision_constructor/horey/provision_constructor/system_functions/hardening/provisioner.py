@@ -94,6 +94,7 @@ class Provisioner(SystemFunctionCommon):
         assert len(ret[0]) == 0
 
         # xccdf_org.ssgproject.content_rule_service_timesyncd_configured
+        ret = self.remoter.execute("sudo touch /etc/systemd/timesyncd.conf")
         ret = self.remoter.execute("sudo sed -i 's/^#NTP=/NTP=ntp.ubuntu.com pool.ntp.org /' /etc/systemd/timesyncd.conf &&"
                                    "sudo systemctl enable --now systemd-timesyncd")
         ret = self.remoter.execute("timedatectl show-timesync --all", self.grep_validator("ServerName=pool.ntp.org"))
