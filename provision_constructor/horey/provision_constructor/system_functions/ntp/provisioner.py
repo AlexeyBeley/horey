@@ -111,7 +111,8 @@ class Provisioner(SystemFunctionCommon):
             try:
                 remoter.execute(f"sudo apt purge -y {str_regex_name}")
             except Exception as inst_error:
-                if "Couldn't find any package by glob" not in repr(inst_error):
+                err_str = "Couldn't find any package by glob"
+                if err_str not in repr(inst_error) and err_str not in str(inst_error):
                     raise
 
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force,
