@@ -89,6 +89,7 @@ class SSHRemoter(Remoter):
             if remote_tmp_file_path == dst:
                 return [], [], 0
             return self.execute(f"sudo mv {Path('/tmp')/src.name} {dst}")
+        logger.info(f"SFTP put_file: {src} -> {dst}")
         return self.sftp_client.put(str(src), str(dst))
 
     def put_directory(self, src: Path, dst: Path, sudo: bool = False):

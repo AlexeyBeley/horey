@@ -223,6 +223,13 @@ class Pennerauction(Provider):
 
         try:
             title_element = self.selenium_api.get_element(By.CLASS_NAME, "auction-title")
+            for i in range(10):
+                auction_event.name = title_element.text
+                if auction_event.name:
+                    break
+                time.sleep(0.1)
+            if not auction_event.name:
+                breakpoint()
         except Exception as inst_error:
             logger.info(f"Was not able to locate auction-title, {inst_error}")
             try:
