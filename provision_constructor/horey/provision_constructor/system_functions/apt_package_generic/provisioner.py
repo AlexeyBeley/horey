@@ -93,6 +93,16 @@ class Provisioner(SystemFunctionCommon):
     def apt_install_remote(self, package_names=None, needrestart_mode="a"):
         """
         Run apt install or upgrade.
+         Y or I  : install the package maintainer's version
+        N or O  : keep your currently-installed version
+        D     : show the differences between the versions
+             Z     : start a shell to examine the situation
+        The default action is to keep your current version.
+
+
+        -o Dpkg::Options::="--force-confnew"
+        vs
+        -o Dpkg::Options::="--force-confold"
 
         @param package_name:
         @param package_names:
@@ -104,7 +114,7 @@ class Provisioner(SystemFunctionCommon):
 
         logger.info(f"Installing apt packages: {package_names}")
 
-        command = f"sudo NEEDRESTART_MODE={needrestart_mode} apt{' --upgrade ' if self.upgrade else ' '}install -y {' '.join(package_names)}"
+        command = f"sudo NEEDRESTART_MODE={needrestart_mode} apt{' --upgrade ' if self.upgrade else ' '}install -y -o Dpkg::Options::=\"--force-confnew\" {' '.join(package_names)}"
 
         def raise_on_error_callback(lst_stdout, lst_stderr, status_code):
             """
