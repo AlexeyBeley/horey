@@ -102,6 +102,7 @@ class Provisioner(SystemFunctionCommon):
 
         remote_path = self.remoter.get_deployment_dir() / local_file_path.name
         self.remoter.execute(f"mkdir -p {self.remoter.get_deployment_dir()}")
+        self.remoter.execute(f"sudo chown ubuntu:ubuntu {self.remoter.get_deployment_dir()}")
         self.remoter.put_file(local_file_path, remote_path)
         self.remoter.execute(f"sudo dpkg -i {remote_path}",
                                    self.grep_validator("Unpacking falcon-sensor"),
