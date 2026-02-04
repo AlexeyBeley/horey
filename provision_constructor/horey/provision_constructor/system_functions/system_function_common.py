@@ -1404,8 +1404,8 @@ class SystemFunctionCommon:
         :param sudo:
         :return:
         """
-
-        command = f'if {'sudo ' if sudo else ''}test -f "{file_path}"; then echo "true"; else echo "false"; fi'
+        use_sudo = 'sudo ' if sudo else ''
+        command = f'if {use_sudo}test -f "{file_path}"; then echo "true"; else echo "false"; fi'
         ret = remoter.execute(command)
         logger.info(f"check_file_exists_remote: {ret}")
         return SystemFunctionCommon.check_file_exists_output_validator(file_path, [line.strip("\n") for line in ret[0]], [line.strip("\n") for line in ret[1]])
