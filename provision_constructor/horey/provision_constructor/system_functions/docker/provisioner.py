@@ -184,7 +184,7 @@ class Provisioner(SystemFunctionCommon):
         self.remoter.execute("ls")
         ret = self.remoter.execute("aws sts get-caller-identity")
         response = json.loads("".join(ret[0]))
-        registry = f"{response["Account"]}.dkr.ecr.{region}.amazonaws.com"
+        registry = f"{response['Account']}.dkr.ecr.{region}.amazonaws.com"
         if logout:
             self.remoter.execute(f"docker logout {registry}", self.last_line_validator(f"Removing login credentials for {registry}\n"))
 
