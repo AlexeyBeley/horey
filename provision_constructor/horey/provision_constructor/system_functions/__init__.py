@@ -20,3 +20,4 @@ from .zabbix import *
 from .influxdb import *
 from .crowdstrike import *
 from .raw import *
+from .hardening import *

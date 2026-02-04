@@ -227,8 +227,12 @@ class Pennerauction(Provider):
                 auction_event.name = title_element.text
                 if auction_event.name:
                     break
-            except StaleElementReferenceException:
-                time.sleep(1)
+            except StaleElementReferenceException as inst_err:
+                breakpoint()
+                logger.info(f"auction-title was not set in {auction_event.url}, {repr(inst_err)} ")
+                logger.info()
+            logger.info(f"Waiting for auction-title to be set in {auction_event.url}")
+            time.sleep(1)
 
         if not auction_event.name:
             breakpoint()
@@ -239,7 +243,7 @@ class Pennerauction(Provider):
                 breakpoint()
                 raise NotImplementedError()
 
-        auction_event.name = title_element.text
+            auction_event.name = title_element.text
         if not auction_event.name:
             breakpoint()
         for _ in range(10):

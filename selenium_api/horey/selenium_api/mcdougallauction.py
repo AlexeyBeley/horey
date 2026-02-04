@@ -251,6 +251,8 @@ class Mcdougallauction(Provider):
         if not match:
             if gmt_string == "CST":
                 tz_delta = datetime.timedelta(hours=-6)
+            elif gmt_string == "CDT":
+                tz_delta = datetime.timedelta(hours=-5)
             else:
                 raise ValueError(f"Invalid GMT offset format. Must be like 'GMT+2'., received: {gmt_string}")
         else:
