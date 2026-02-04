@@ -1467,14 +1467,15 @@ class SystemFunctionCommon:
         Force unlocking - kill processes using the lock.
         @return:
         """
-        breakpoint()
+
         ret = self.remoter.execute(
             "sudo lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}'"
         )
-        breakpoint()
+
         if ret[0]:
+            pid = int(ret[0][-1].strip("\n"))
             ret = self.remoter.execute(
-                f'sudo kill -s 9 {ret[0][-1].strip("\n")} || true'
+                f'sudo kill -s 9 {pid} || true'
             )
             logger.info(ret)
 
