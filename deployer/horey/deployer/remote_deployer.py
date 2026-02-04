@@ -41,6 +41,7 @@ class SSHRemoter(Remoter):
         self._state = {}
         self.executor = executor
         self.sftp_client = sftp_client
+        logger.info(f"Setting remote deployment dir in deployer: {remote_deployment_dir}")
         self.remote_deployment_dir = remote_deployment_dir
 
     def get_state(self) -> dict:
