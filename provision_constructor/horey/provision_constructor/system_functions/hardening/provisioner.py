@@ -52,7 +52,7 @@ class Provisioner(SystemFunctionCommon):
         """
 
         # xccdf_org.ssgproject.content_rule_package_inetutils-telnet_removed
-        ret = self.remoter.execute(f"sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y \"inetutils-telnetd\"")
+        ret = self.remoter.execute(f"sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y \"inetutils-telnetd\" || true")
         ret = self.remoter.execute("dpkg -l inetutils-telnetd || true", self.grep_validator("no packages found matching inetutils-telnetd"))
         # check:
 
