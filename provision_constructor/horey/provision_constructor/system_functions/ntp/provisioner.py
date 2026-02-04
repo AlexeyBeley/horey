@@ -116,9 +116,7 @@ class Provisioner(SystemFunctionCommon):
             except Exception as inst_error:
                 err_str = "Couldn't find any package by glob"
                 if err_str not in repr(inst_error) and err_str not in str(inst_error):
-                    breakpoint()
                     raise
-        breakpoint()
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force,
                                                                           self.upgrade, package_names=[
                 "systemd-timesyncd"]).provision_remote(remoter)

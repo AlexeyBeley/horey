@@ -1474,10 +1474,11 @@ class SystemFunctionCommon:
 
         if ret[0]:
             pid = int(ret[0][-1].strip("\n"))
-            ret = self.remoter.execute(
+            self.remoter.execute(
                 f'sudo kill -s 9 {pid} || true'
             )
-            logger.info(ret)
+            # if "sudo dpkg --configure -a" in repr(inst_error):
+            self.remoter.execute("yes n | sudo DEBIAN_FRONTEND=noninteractive dpkg --configure -a")
 
 
 SystemFunctionCommon.ACTION_MANAGER.register_action(
