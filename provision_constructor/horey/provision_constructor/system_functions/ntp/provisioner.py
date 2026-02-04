@@ -92,6 +92,7 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.remoter = remoter
+        self.remoter.execute("ls")
 
         if self.action == "set_ntp_server":
             return self.set_ntp_servers_remote(remoter)
