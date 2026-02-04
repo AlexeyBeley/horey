@@ -1423,12 +1423,12 @@ class SystemFunctionCommon:
         if not isinstance(line, str):
             raise ValueError(line)
 
-
+        sudo_prefix = "sudo " if sudo else ""
         try:
             SystemFunctionCommon.check_file_exists_remote(remoter, file_path, sudo=sudo)
         except SystemFunctionCommon.FailedCheckError:
             remoter.execute(
-               f" {"sudo " if sudo else ""}touch {file_path}"
+               f" {sudo_prefix}touch {file_path}"
             )
             SystemFunctionCommon.check_file_exists_remote(remoter, file_path, sudo=sudo)
 
@@ -1436,7 +1436,7 @@ class SystemFunctionCommon:
             return SystemFunctionCommon.check_line_in_file_remote(remoter, line, file_path, sudo=sudo)
         except SystemFunctionCommon.FailedCheckError:
             remoter.execute(
-            f'echo "{line}" | {"sudo " if sudo else ""}tee -a {file_path} > /dev/null'
+            f'echo "{line}" | {sudo_prefix}tee -a {file_path} > /dev/null'
             )
 
         return SystemFunctionCommon.check_line_in_file_remote(remoter, line, file_path, sudo=sudo)
@@ -1453,9 +1453,10 @@ class SystemFunctionCommon:
         :param sudo:
         :return:
         """
-
+        sudo_prefix = "sudo " if sudo else ""
         response = remoter.execute(
-                f"{'sudo ' if sudo else ''}grep -F '{line}' {file_path} || true"
+
+                f"{sudo_prefix}grep -F '{line}' {file_path} || true"
             )
 
         if response[0]:
