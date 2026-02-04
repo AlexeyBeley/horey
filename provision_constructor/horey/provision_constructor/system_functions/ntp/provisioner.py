@@ -91,6 +91,8 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
+        self.remoter = remoter
+
         if self.action == "set_ntp_server":
             return self.set_ntp_servers_remote(remoter)
 
@@ -109,13 +111,14 @@ class Provisioner(SystemFunctionCommon):
 
         for str_regex_name in ["ntp*", "sntp*", "chrony*"]:
             try:
-                remoter.execute(f"sudo timeout 30s apt purge -y {str_regex_name}")
+                self.unlock_dpckg_lock_remote()
+                remoter.execute(f"sudo apt purge -y {str_regex_name}")
             except Exception as inst_error:
                 err_str = "Couldn't find any package by glob"
                 if err_str not in repr(inst_error) and err_str not in str(inst_error):
                     breakpoint()
                     raise
-
+        breakpoint()
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force,
                                                                           self.upgrade, package_names=[
                 "systemd-timesyncd"]).provision_remote(remoter)

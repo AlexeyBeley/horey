@@ -1462,6 +1462,22 @@ class SystemFunctionCommon:
             return True
         raise SystemFunctionCommon.FailedCheckError(f"Line: '{line}' was not found in the file: '{file_path}'")
 
+    def unlock_dpckg_lock_remote(self):
+        """
+        Force unlocking - kill processes using the lock.
+        @return:
+        """
+        breakpoint()
+        ret = self.remoter.execute(
+            "sudo lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}'"
+        )
+        breakpoint()
+        if ret[0]:
+            ret = self.remoter.execute(
+                f'sudo kill -s 9 {ret[0][-1].strip("\n")} || true'
+            )
+            logger.info(ret)
+
 
 SystemFunctionCommon.ACTION_MANAGER.register_action(
     "check_files_exist",
