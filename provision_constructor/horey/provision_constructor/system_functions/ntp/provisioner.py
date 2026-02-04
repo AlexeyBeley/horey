@@ -108,7 +108,11 @@ class Provisioner(SystemFunctionCommon):
         """
 
         for str_regex_name in ["ntp*", "sntp*", "chrony*"]:
-            remoter.execute(f"sudo apt purge -y {str_regex_name}")
+            try:
+                remoter.execute(f"sudo apt purge -y {str_regex_name}")
+            except Exception as inst_error:
+                if "Couldn't find any package by glob" not in repr(inst_error):
+                    raise
 
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force,
                                                                           self.upgrade, package_names=[
