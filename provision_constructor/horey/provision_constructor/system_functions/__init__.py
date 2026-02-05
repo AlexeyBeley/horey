@@ -7,6 +7,7 @@ from .swap import *
 from .logrotate import *
 from .ntp import *
 from .dns import *
+from .haproxy import *
 from .python import *
 from .java import *
 from .apt_package_generic import *
