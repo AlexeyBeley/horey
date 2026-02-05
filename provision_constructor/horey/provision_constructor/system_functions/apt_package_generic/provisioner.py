@@ -182,6 +182,7 @@ class Provisioner(SystemFunctionCommon):
                 return self.reinit_apt_packages_remote()
             return True
 
+        self.unlock_dpckg_lock_remote()
         stdout, stderr, errcode = self.remoter.execute("sudo DEBIAN_FRONTEND=noninteractive apt update")
 
         lines = [line.strip("\n") for line in stdout]
