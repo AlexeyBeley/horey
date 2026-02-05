@@ -1469,6 +1469,10 @@ class SystemFunctionCommon:
         @return:
         """
 
+        self.remoter.execute(
+            "ls"
+        )
+
         ret = self.remoter.execute(
             "sudo lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}'"
         )
