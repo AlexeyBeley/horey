@@ -65,7 +65,7 @@ class Provisioner(SystemFunctionCommon):
 
         remoter.execute("sudo apt install zabbix-agent2 -y")
 
-        local_file_path = Path("/tmp/zabbix_agent2.conf")
+        local_file_path = self.deployment_dir / "zabbix_agent2.conf"
         remote_file_path = Path("/etc/zabbix/zabbix_agent2.conf")
 
 

@@ -123,7 +123,7 @@ class Provisioner(SystemFunctionCommon):
         # '{"error":"unable to parse authentication credentials"}\n'
 
         remote_file_path = Path("/etc/influxdb/influxdb.conf")
-        local_file_path = Path("/tmp") / remote_file_path.name
+        local_file_path = self.deployment_dir / remote_file_path.name
 
         self.remoter.get_file(remote_file_path, local_file_path)
         self.generate_influx_configuration_file(local_file_path)
@@ -153,7 +153,7 @@ class Provisioner(SystemFunctionCommon):
         kwargs["password"] = self.kwargs["admin_password"]
 
         remote_file_path = Path("/etc/kapacitor/kapacitor.conf")
-        local_file_path = Path("/tmp") / remote_file_path.name
+        local_file_path = self.deployment_dir / remote_file_path.name
         self.generate_kapacitor_configuration_file(local_file_path, "[auth]", **kwargs)
 
         self.remoter.get_file(remote_file_path, local_file_path)
@@ -245,7 +245,7 @@ class Provisioner(SystemFunctionCommon):
                 pass
 
         remote_file_path = Path("/etc/kapacitor/kapacitor.conf")
-        local_file_path = Path("/tmp") / remote_file_path.name
+        local_file_path = self.deployment_dir / remote_file_path.name
 
         self.remoter.get_file(remote_file_path, local_file_path)
         self.generate_kapacitor_configuration_file(local_file_path, "[[influxdb]]", **kwargs)
