@@ -93,8 +93,8 @@ class DeploymentTarget:
         step_configuration.deployment_dir_path = self.remote_deployment_dir_path
         step_configuration.script_name = script_name
         os.makedirs(self.local_deployment_data_dir_path, exist_ok=True)
-        step_configuration.generate_configuration_file(os.path.join(self.local_deployment_data_dir_path,
-                                                                    step_configuration.script_configuration_file_name))
+        step_configuration.generate_configuration_file_ng(self.local_deployment_data_dir_path/
+                                                                    step_configuration.script_configuration_file_name)
         step = DeploymentStep(step_configuration)
         self.add_step(step)
 
