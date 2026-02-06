@@ -33,6 +33,6 @@ class Provisioner(SystemFunctionCommon):
         """
 
         if self.action == "ls":
-            return self.ls_re (remoter)
+            return self.ls_remote(Path(self.kwargs["path"]))
 
         raise NotImplementedError(self.action)
