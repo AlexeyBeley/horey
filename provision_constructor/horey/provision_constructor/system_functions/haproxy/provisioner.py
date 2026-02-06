@@ -51,6 +51,9 @@ class Provisioner(SystemFunctionCommon):
 
         :return:
         """
-        breakpoint()
+        
         ret = self.remoter.execute("echo \"show backend\" | sudo -u haproxy socat stdio unix-connect:/var/run/haproxy/admin.sock")
-        ret = self.remoter.execute("echo \"show servers state {backend_name}\" | sudo -u haproxy socat stdio unix-connect:/var/run/haproxy/admin.sock")
+        backend_names = [line.strip("\n") for line in ret[0] if not line.startswith("#") and line.strip("\n")]
+        for backend_name in backend_names:
+            ret = self.remoter.execute(f"echo \"show servers state {backend_name}\" | sudo -u haproxy socat stdio unix-connect:/var/run/haproxy/admin.sock")
+            breakpoint()
