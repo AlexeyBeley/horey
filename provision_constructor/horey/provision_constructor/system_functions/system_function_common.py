@@ -11,6 +11,7 @@ import argparse
 import subprocess
 import time
 from pathlib import Path
+from typing import List
 
 from horey.common_utils.actions_manager import ActionsManager
 from horey.replacement_engine.replacement_engine import ReplacementEngine
@@ -1484,6 +1485,25 @@ class SystemFunctionCommon:
             )
             # if "sudo dpkg --configure -a" in repr(inst_error):
             self.remoter.execute("yes n | sudo DEBIAN_FRONTEND=noninteractive dpkg --configure -a")
+
+    def ls_remote(self, path, sudo=False) -> List[Path]:
+        """
+        List remote files
+
+        :param path:
+        :param sudo:
+        :return:
+        """
+
+        sudo_prefix = {'sudo ' if sudo else ''}
+        ret = self.remoter.execute(f"{sudo_prefix}ls -l {path}")
+        lines = [line.strip("\n") for line in ret[0]]
+        ret = []
+        for line in reversed(lines):
+            if line.startswith("total"):
+                return ret
+            ret.append(path / line.split(" ")[-1])
+        raise ValueError(f"Was not able to find 'total <number>' in the output: '{ret}'")
 
 
 SystemFunctionCommon.ACTION_MANAGER.register_action(

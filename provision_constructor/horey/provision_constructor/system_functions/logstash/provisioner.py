@@ -120,11 +120,12 @@ class Provisioner(SystemFunctionCommon):
                                                               self.upgrade, src_url=src_url,
                                                               dst_file_path=dst_file_path).provision_remote(self.remoter)
 
-        file_names = self.ls_remote(Path("/etc/apt/sources.list.d/"), sudo=True)
+        file_paths = self.ls_remote(Path("/etc/apt/sources.list.d/"), sudo=True)
         elastic_version = "8.x"
         elastic_file_name = f"elastic-{elastic_version}.list"
 
-        for file_name in file_names:
+        for file_path in file_paths:
+            file_name = file_path.name.name
             if "elastic-" in file_name:
                 if file_name != elastic_file_name:
                     self.remove_file_remote(self.remoter, f"/etc/apt/sources.list.d/{file_name}", sudo=True)
@@ -145,24 +146,6 @@ class Provisioner(SystemFunctionCommon):
         # fix the memory size allowed for logstash
         self.remoter.execute("sudo sed -i '/-Xms/c\-Xms2g' /etc/logstash/jvm.options")
         self.remoter.execute("sudo sed -i '/-Xmx/c\-Xmx2g' /etc/logstash/jvm.options")
-
-    def ls_remote(self, path, sudo=False):
-        """
-        List remote files
-
-        :param path:
-        :param sudo:
-        :return:
-        """
-
-        ret = self.remoter.execute(f"{'sudo ' if sudo else ''}ls -l {path}")
-        lines = [line.strip("\n") for line in ret[0]]
-        ret = []
-        for line in reversed(lines):
-            if line.startswith("total"):
-                return ret
-            ret.append(line.split(" ")[-1])
-        raise ValueError(f"Was not able to find 'total <number>' in the output: '{ret}'")
 
     def provision_remote_restart(self):
         """
