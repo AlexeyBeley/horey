@@ -48,12 +48,25 @@ class Provisioner(SystemFunctionCommon):
     def check_backends_remote(self):
         """
         Check backends have live servers
+        enable server <backend>/<server>: Enables a specific server in a backend, bringing it back into the rotation for health checks and traffic.
+        disable server <backend>/<server>: Disables a specific server, useful for maintenance without stopping HAProxy.
+        set server <backend>/<server> state <state>: Sets the operational state of a server (e.g., ready, maint, drain etc.).
+        get weight <backend>/<server>: Retrieves the current weight of a server.
+        set weight <backend>/<server> <weight>: Dynamically changes a server's weight.
+
 
         :return:
         """
-        
+
         ret = self.remoter.execute("echo \"show backend\" | sudo -u haproxy socat stdio unix-connect:/var/run/haproxy/admin.sock")
         backend_names = [line.strip("\n") for line in ret[0] if not line.startswith("#") and line.strip("\n")]
         for backend_name in backend_names:
             ret = self.remoter.execute(f"echo \"show servers state {backend_name}\" | sudo -u haproxy socat stdio unix-connect:/var/run/haproxy/admin.sock")
-            breakpoint()
+            backend_lines = [line.strip("\n") for line in ret[0] if not line.startswith("#") and line.strip("\n")]
+            for backend_line in backend_lines:
+                breakpoint()
+                lst_line = backend_line.split(" ")
+                if lst_line[5] != "2":
+                    raise self.FailedCheckError(f"Backend {backend_name} server {lst_line} is not UP")
+
+        return True
