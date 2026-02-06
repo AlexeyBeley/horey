@@ -2658,6 +2658,7 @@ class EnvironmentAPI:
         filters = {"Filters": [{"Name": f"tag:{name}", "Values": values} for name, values in tags_dict.items()] +
                               [{"Name": "vpc-id", "Values": [self.vpc.id]}]
                    }
+        logger.info(f"Looking for instances with filters: {filters}")
         ec2_instances = self.aws_api.ec2_client.get_region_instances(self.region, filters=filters, update_info=update_info)
 
         return ec2_instances
