@@ -449,6 +449,13 @@ class AuctionAPI:
         return reports
 
     def update_info_provider_auction_events(self, provider_id, asynchronous=False):
+        """
+        Update info for all provider's auction events.
+
+        :param provider_id:
+        :param asynchronous:
+        :return:
+        """
         if asynchronous:
             task_name = f"update_info_provider_auction_events_asynchronous->{provider_id}"
             try:
@@ -484,11 +491,17 @@ class AuctionAPI:
         return provider
 
     def update_info_provider_auction_events_asynchronous(self, provider_id):
+        """
+        Update asynchronous in backend
+
+        :param provider_id:
+        :return:
+        """
         provider = self.init_provider_from_db(provider_id=provider_id)
 
         known_auction_events_by_url= {auction_event.url: auction_event  for auction_event in provider.auction_events}
 
-        new_auction_events = provider.init_auction_events()
+        new_auction_events = provider.init_auction_events(known_auction_events_by_url)
         if new_auction_events is None:
             return None
 

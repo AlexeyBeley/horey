@@ -139,7 +139,7 @@ class Provider:
         """
         raise NotImplementedError()
 
-    def init_auction_events(self):
+    def init_auction_events(self, known_auction_events_by_url):
         """
         Load and validate.
 

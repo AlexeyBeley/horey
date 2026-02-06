@@ -182,7 +182,7 @@ class Kayesauction(Provider):
         logger.info(f"Found max page: {max_page}")
         return max_page
 
-    def init_auction_events(self):
+    def init_auction_events(self, known_auction_events_by_url):
         """
         Load free items.
 

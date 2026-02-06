@@ -3,7 +3,7 @@ Manage locks.
 
 """
 
-from azure.mgmt.resource import ManagementLockClient
+from azure.mgmt.resource.locks import ManagementLockClient
 from horey.azure_api.azure_clients.azure_client import AzureClient
 
 

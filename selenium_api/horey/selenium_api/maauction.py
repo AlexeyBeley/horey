@@ -186,7 +186,7 @@ class MAauction(Provider):
 
         return items
 
-    def init_auction_events(self):
+    def init_auction_events(self, known_auction_events_by_url):
         """
         Load free items.
 
@@ -210,12 +210,12 @@ class MAauction(Provider):
 
         auction_events = []
         for url in urls:
-            auction_events += self.init_auction_events_from_internal_url(url)
+            auction_events += self.init_auction_events_from_internal_url(url, known_auction_events_by_url)
 
         self.disconnect()
         return auction_events
 
-    def init_auction_events_from_internal_url(self, url):
+    def init_auction_events_from_internal_url(self, url, known_auction_events_by_url):
         """
         This provider has multiple events under same base event.
 
@@ -236,7 +236,7 @@ class MAauction(Provider):
 
             auction_events = []
             for url in urls:
-                auction_events += self.init_auction_events_from_internal_url(url)
+                auction_events += self.init_auction_events_from_internal_url(url, known_auction_events_by_url)
             return auction_events
 
         auction_event = AuctionEvent()
@@ -251,7 +251,10 @@ class MAauction(Provider):
         auction_event.address = auction_location.text
         auction_event.init_provinces()
         if not auction_event.provinces:
-            breakpoint()
+            if auction_event.url in known_auction_events_by_url:
+                auction_event.provinces = known_auction_events_by_url[auction_event.url].provinces
+            else:
+                breakpoint()
 
         self.init_auction_event_times(auction_event)
         return [auction_event]
