@@ -1219,13 +1219,15 @@ class RemoteDeployer:
             try:
                 client = self.ssh_clients[key]
                 logger.info(f"Reusing existing ssh client for: {key}")
+                return client
             except KeyError:
-                logger.info(f"Creating new ssh client for: {key}: {target_host=}, {target_user=}, {target_key_path=}, {proxy_jump_client=}")
-                client = RemoteDeployer.connect_to_target(target_host,
+                pass
+            logger.info(f"Creating new ssh client for: {key}: {target_host=}, {target_user=}, {target_key_path=}, {proxy_jump_client=}")
+            client = RemoteDeployer.connect_to_target(target_host,
                                                           target_user,
                                                           target_key_path,
                                                           proxy_jump_client=proxy_jump_client)
-                self.ssh_clients[key] = client
+            self.ssh_clients[key] = client
 
         return client
 
