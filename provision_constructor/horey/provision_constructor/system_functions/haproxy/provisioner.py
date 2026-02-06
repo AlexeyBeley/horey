@@ -64,7 +64,9 @@ class Provisioner(SystemFunctionCommon):
             ret = self.remoter.execute(f"echo \"show servers state {backend_name}\" | sudo -u haproxy socat stdio unix-connect:/var/run/haproxy/admin.sock")
             backend_lines = [line.strip("\n") for line in ret[0] if not line.startswith("#") and line.strip("\n")]
             for backend_line in backend_lines:
-                breakpoint()
+                if " " not in backend_line:
+                    continue
+
                 lst_line = backend_line.split(" ")
                 if lst_line[5] != "2":
                     raise self.FailedCheckError(f"Backend {backend_name} server {lst_line} is not UP")
