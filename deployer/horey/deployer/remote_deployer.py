@@ -131,7 +131,7 @@ class SSHRemoter(Remoter):
         :return:
         """
 
-        self.sftp_client.get(str(src), str(dst))
+        return self.sftp_client.get(str(src), str(dst))
 
 
 class HoreySFTPClient(paramiko.SFTPClient):
@@ -158,6 +158,7 @@ class HoreySFTPClient(paramiko.SFTPClient):
             else:
                 self.mkdir(target / item, ignore_existing=True)
                 self.put_dir(source / item, target / item)
+        return True
 
     def mkdir(self, path: pathlib.Path, mode=511, ignore_existing=False):
         """
@@ -203,6 +204,7 @@ class HoreySFTPClient(paramiko.SFTPClient):
                 str(remote_path/ attribute.filename),
                 str(local_path / attribute.filename),
             )
+        return True
 
 
 class RemoteDeployer:
