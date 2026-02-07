@@ -12,32 +12,6 @@ from horey.azure_api.azure_api_configuration_policy import AzureAPIConfiguration
 from horey.common_utils.common_utils import CommonUtils
 
 
-mock_values_file_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "azure_api_mock_values.py"
-    )
-)
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
-
-configuration = AzureAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "..",
-        "..",
-        "ignore",
-        "azure_api_configuration_values.py",
-    )
-)
-configuration.init_from_file()
-
-compute_client = ComputeClient()
-accounts = CommonUtils.load_object_from_module(
-            configuration.accounts_file, "main"
-        )
-AzureAccount.set_azure_account(accounts[configuration.azure_account])
-region = Region.get_region("uaenorth")
 # pylint: disable= missing-function-docstring
 
 

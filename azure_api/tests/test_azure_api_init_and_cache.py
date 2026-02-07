@@ -6,7 +6,6 @@ import sys
 
 sys.path.insert(0, "/Users/alexey.beley/private/horey/azure_api")
 
-import os
 import pytest
 from horey.azure_api.azure_api import AzureAPI
 from horey.h_logger import get_logger
@@ -17,19 +16,9 @@ logger = get_logger()
 
 
 configuration = AzureAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "..",
-        "..",
-        "ignore",
-        "azure_api_configuration_values.py",
-    )
-)
-configuration.init_from_file()
 
-azure_api = AzureAPI(configuration=configuration)
+
+azure_api = AzureAPI()
 
 # pylint: disable= missing-function-docstring
 

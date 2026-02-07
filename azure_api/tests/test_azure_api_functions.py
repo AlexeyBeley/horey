@@ -10,14 +10,6 @@ from horey.azure_api.azure_api_configuration_policy import AzureAPIConfiguration
 from horey.common_utils.common_utils import CommonUtils
 
 
-mock_values_file_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "azure_api_mock_values.py"
-    )
-)
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
-
-
 configuration = AzureAPIConfigurationPolicy()
 configuration.configuration_file_full_path = os.path.abspath(
     os.path.join(
