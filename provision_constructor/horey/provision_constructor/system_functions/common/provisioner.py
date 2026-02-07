@@ -32,6 +32,8 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
+        self.remoter = remoter
+        
         if self.action == "ls":
             return self.ls_remote(Path(self.kwargs["path"]))
 
