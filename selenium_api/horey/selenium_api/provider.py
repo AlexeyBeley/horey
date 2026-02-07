@@ -116,16 +116,24 @@ class Provider:
         for lot in lots:
             if lot.description is None:
                 breakpoint()
+            if lot.description is None:
+                breakpoint()
                 raise NotImplementedError("lot.description = lot.raw_text or self.name")
 
+            if not isinstance(lot.province, str) or lot.province.count(",") != 0:
+                breakpoint()
             if not isinstance(lot.province, str) or lot.province.count(",") != 0:
                 breakpoint()
                 raise NotImplementedError("lot.province")
 
             if not isinstance(lot.name, str):
                 breakpoint()
+            if not isinstance(lot.name, str):
+                breakpoint()
                 raise NotImplementedError("lot.name")
 
+            if not lot.current_max and not lot.starting_bid:
+                breakpoint()
             if not lot.current_max and not lot.starting_bid:
                 breakpoint()
                 raise NotImplementedError("lot.current_max lot.starting_bid")

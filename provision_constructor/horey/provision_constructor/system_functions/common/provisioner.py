@@ -33,8 +33,8 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.remoter = remoter
-        
+
         if self.action == "ls":
-            return self.ls_remote(Path(self.kwargs["path"]))
+            return self.ls_remote(Path(self.kwargs["path"]), sudo=self.kwargs.get("sudo"))
 
         raise NotImplementedError(self.action)

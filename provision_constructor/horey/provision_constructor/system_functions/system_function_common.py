@@ -1495,7 +1495,7 @@ class SystemFunctionCommon:
         :return:
         """
 
-        sudo_prefix = {'sudo ' if sudo else ''}
+        sudo_prefix = 'sudo ' if sudo else ''
         ret = self.remoter.execute(f"{sudo_prefix}ls -l {path}")
         lines = [line.strip("\n") for line in ret[0]]
         ret = []
