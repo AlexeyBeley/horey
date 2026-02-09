@@ -37,6 +37,8 @@ class Package:
         else:
             version = self.version
 
+        # todo:
+        # fix azure-mgmt-resource-locks 1.0.0b1
         self_int_version_lst = [int(sub_ver) if sub_ver.isdigit() else 0 for sub_ver in version.split(".")]
 
         return self.check_version_min_requirement(
