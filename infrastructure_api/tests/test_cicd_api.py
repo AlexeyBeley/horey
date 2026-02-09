@@ -48,6 +48,8 @@ class Configuration(ConfigurationPolicy):
         self._environment_api_mgmt_configuration_file_secret_name = None
         self._crowdstrike_falcon_sensor_cid = None
         self._bastion_chain = None
+        self._windows_ssh_key = None
+        self._windows_hostname = None
 
     @property
     def bastion_chain(self):
@@ -120,6 +122,22 @@ class Configuration(ConfigurationPolicy):
     @crowdstrike_falcon_sensor_cid.setter
     def crowdstrike_falcon_sensor_cid(self, value):
         self._crowdstrike_falcon_sensor_cid = value
+
+    @property
+    def windows_ssh_key(self):
+        return self._windows_ssh_key
+
+    @windows_ssh_key.setter
+    def windows_ssh_key(self, value):
+        self._windows_ssh_key = value
+
+    @property
+    def windows_hostname(self):
+        return self._windows_hostname
+
+    @windows_hostname.setter
+    def windows_hostname(self, value):
+        self._windows_hostname = value
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -450,7 +468,7 @@ def test_run_remote_deployer_deploy_targets_dns_set_dns_resolvers(cicd_api_integ
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_remote_deployer_deploy_targets_set_ntp_server(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
@@ -672,3 +690,23 @@ def test_run_remote_deployer_deploy_hardening(cicd_api_integration, ec2_api_mgmt
     for target in targets:
         target.append_remote_step("Test", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
+
+
+@pytest.mark.wip
+def test_run_remote_deployer_deploy_windows_target_raw(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+    targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.windows_hostname,
+                                                               bastions=ec2_instances)
+
+    def entrypoint():
+        cicd_api_integration.run_remote_provision_constructor(target,
+                                                              "raw",
+                                                              action="dir"
+                                                              )
+
+    for target in targets:
+        target.deployment_target_user_name= "Administrator"
+        target.append_remote_step("Test", entrypoint)
+    assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
+

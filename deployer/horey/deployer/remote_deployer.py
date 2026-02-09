@@ -1295,9 +1295,20 @@ class RemoteDeployer:
 
         ssh_client = self.get_deployment_target_ssh_client(target)
         channel = ssh_client.invoke_shell()
+        # todo: check this
+        channel.settimeout(120)
         stdin = channel.makefile("wb")
         stdout = channel.makefile("r")
         sftp_client = self.get_deployment_target_sftp_client(target)
+
+        stdin.write(f"echo 'SSHHoreyEOF'")
+        stdin.flush()
+
+
+        breakpoint()
+        if channel.recv_ready():
+            channel.recv(1024)
+
 
         def executor(command):
             """
