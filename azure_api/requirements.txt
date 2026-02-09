@@ -11,6 +11,7 @@ azure-mgmt-resource
 azure-mgmt-resource-locks
 
 azure-mgmt-network
+azure-mgmt-resource-locks
 azure-mgmt-compute
 azure-mgmt-subscription
 azure-identity
