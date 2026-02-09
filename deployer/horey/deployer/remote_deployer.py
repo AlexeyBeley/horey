@@ -14,6 +14,7 @@ import traceback
 
 from contextlib import contextmanager
 from pathlib import Path
+from random import betavariate
 from typing import List, Any, Tuple
 
 import paramiko
@@ -347,9 +348,7 @@ class RemoteDeployer:
         command = f"sudo rm -rf {target.remote_deployment_dir_path}"
         channel = ssh_client.invoke_shell()
 
-        stdin = channel.makefile('wb')
-        stdout = channel.makefile('r')
-        self.execute_remote_shell(stdin, stdout, command, target.deployment_target_address)
+        self.execute_remote_shell(channel, command, target.deployment_target_address)
 
         logger.info(
             f"sftp: mkdir {target.remote_deployment_dir_path}"
@@ -384,7 +383,7 @@ class RemoteDeployer:
         command = f"/bin/bash {remote_unzip_file_path}"
 
         try:
-            self.execute_remote_shell(stdin, stdout, command,
+            self.execute_remote_shell(channel, command,
                                       target.deployment_target_address)
             logger.info(
                 f"Successfully unzipped remote infrastructure {target.deployment_target_address}:{remote_zip_path}")
@@ -455,14 +454,12 @@ class RemoteDeployer:
                         )
 
         command = f"sudo chmod +x {remote_executor_path}"
-        stdin = channel.makefile('wb')
-        stdout = channel.makefile('r')
 
-        self.execute_remote_shell(stdin, stdout, command, target.deployment_target_address)
+        self.execute_remote_shell(channel, command, target.deployment_target_address)
 
         if target.linux_distro == "redhat":
             command = "sudo yum install screen -y"
-            self.execute_remote_shell(stdin, stdout, command, target.deployment_target_address)
+            self.execute_remote_shell(channel, command, target.deployment_target_address)
         target.remote_deployer_infrastructure_provisioning_succeeded = True
         logger.info(
             f"Finished provisioning deployer infrastructure at target {target.deployment_target_address}"
@@ -470,7 +467,62 @@ class RemoteDeployer:
         return True
 
     @staticmethod
-    def execute_remote_shell(stdin, stdout, cmd, remote_address, timeout=60):
+    def execute_remote_shell(channel: paramiko.Channel, cmd:str, remote_address:str, timeout=60):
+        """
+        Execute command using remote shell.
+
+        :param channel:
+        :param remote_address:
+        :param timeout: in minutes
+        :param cmd: the command to be executed on the remote computer
+        :examples:  execute('ls')
+                    execute('finger')
+                    execute('cd folder_name')
+        """
+
+        channel.setblocking(0)
+        stdin = channel.makefile("wb")
+
+        logger.info(f"[{remote_address} REMOTE->] {cmd}")
+        end_time = datetime.datetime.now() + datetime.timedelta(minutes=timeout)
+
+        cmd = cmd.strip('\n')
+        finish = 'end of stdOUT buffer. finished with exit status'
+        echo_cmd = f"echo {finish} $?"
+        stdin.write(f"{cmd} ; {echo_cmd}\n")
+        stdin.flush()
+
+        shout = []
+
+        while datetime.datetime.now() < end_time:
+            if channel.recv_ready():
+                data = channel.recv(4096).decode('utf-8')
+                for line in data.splitlines():
+                    while "\x08" in line:
+                        backspace_index = line.find("\x08")
+                        line = line[:backspace_index-1] + line[backspace_index+1:]
+                    line = (RemoteDeployer.REGEX_CLEANER.sub('', line).replace('\b', '').replace('\r', '').
+                            replace('\x1b8', "").
+                            replace('\x1b7', "").
+                            replace("\x1b>", "").
+                            replace("\x1b=", ""))
+
+                    logger.info(f"[{remote_address} REMOTE<-] {line}")
+                    if str(line).startswith(cmd) or str(line).startswith(echo_cmd):
+                        shout = []
+                    elif str(line).startswith(finish):
+                        exit_status = int(str(line).rsplit(maxsplit=1)[1])
+                        if exit_status:
+                            raise RemoteDeployer.DeployerError(f"{shout}: exit status: {exit_status}")
+                        return stdin, shout, [], exit_status
+                    else:
+                        shout.append(line)
+            time.sleep(0.01)
+        
+        raise RemoteDeployer.DeployerError(f"{remote_address} Reached timeout waiting: {timeout} minutes")
+
+    @staticmethod
+    def execute_windows(ssh_client:paramiko.SSHClient, cmd, remote_address, timeout=60):
         """
         Execute command using remote shell.
 
@@ -481,27 +533,55 @@ class RemoteDeployer:
                     execute('finger')
                     execute('cd folder_name')
         """
+        echo_cmd = f"echo HoreyReturnCode %ERRORLEVEL%"
+        stdin, stdout, stderr = ssh_client.exec_command(cmd + f" & {echo_cmd}", timeout=60)
+        stdout_ret = [line.strip("\r\n")for line in stdout.readlines()]
+        stderr_ret = [line.strip("\r\n")for line in stderr.readlines()]
+        if not stdout_ret[-1].startswith("HoreyReturnCode"):
+            raise ValueError(f"Could not find return code. stdout: {stdout_ret}")
+
+        exit_status = int(stdout_ret.pop(-1).split(" ")[-1])
+        return None, stdout_ret[:-1], stderr_ret, exit_status
+
+    @staticmethod
+    def execute_remote_shell_windows(channel: paramiko.Channel, cmd, remote_address, timeout=60):
+        """
+        todo:
+        """
+        stderr = channel.makefile_stderr('r')
+        stdin = channel.makefile_stdin("wb")
+        stdout = channel.makefile("r")
+        for _ in stdout:
+            break
 
         logger.info(f"[{remote_address} REMOTE->] {cmd}")
         end_time = datetime.datetime.now() + datetime.timedelta(minutes=timeout)
 
         cmd = cmd.strip('\n')
         finish = 'end of stdOUT buffer. finished with exit status'
-        echo_cmd = f"echo {finish} $?"
-        stdin.write(f"{cmd} ; {echo_cmd}\n")
-        shin = stdin
+        echo_cmd = f"echo {finish} %ERRORLEVEL%"
+        stdin.write(f"{cmd} & {echo_cmd}\r\n")
         stdin.flush()
 
         shout = []
-        sherr = []
         exit_status = 0
+
+        sleep_time_seconds = 0.01
+        counter = 0
+        max_counter = int(60 / sleep_time_seconds)
+        while not channel.recv_ready():
+            counter += 1
+            if counter >= max_counter:
+                raise RemoteDeployer.DeployerError(f"{remote_address} Reached timeout waiting: {timeout} minutes")
+            time.sleep(sleep_time_seconds)
+
         for line in stdout:
             # get rid of 'coloring and formatting' special characters
             # Faking SSH!!! It backspaces output:
 
             while "\x08" in line:
                 backspace_index = line.find("\x08")
-                line = line[:backspace_index-1] + line[backspace_index+1:]
+                line = line[:backspace_index - 1] + line[backspace_index + 1:]
             line = (RemoteDeployer.REGEX_CLEANER.sub('', line).replace('\b', '').replace('\r', '').
                     replace('\x1b8', "").
                     replace('\x1b7', "").
@@ -528,12 +608,12 @@ class RemoteDeployer:
             shout.pop()
         if shout and cmd in shout[0]:
             shout.pop(0)
-        if sherr and echo_cmd in sherr[-1]:
-            sherr.pop()
-        if sherr and cmd in sherr[0]:
-            sherr.pop(0)
 
-        return shin, shout, sherr, exit_status
+        sherr = []
+        if channel.recv_stderr_ready():
+            sherr = stderr.read().decode("utf-8")
+
+        return stdin, shout, sherr, exit_status
 
     def execute_remote_windows(self, deployment_target, command):
         """
@@ -650,9 +730,7 @@ class RemoteDeployer:
         ssh_client = self.get_deployment_target_ssh_client(target)
         channel = ssh_client.invoke_shell()
 
-        stdin = channel.makefile('wb')
-        stdout = channel.makefile('r')
-        return self.execute_remote_shell(stdin, stdout, command, target.deployment_target_address)
+        return self.execute_remote_shell(channel, command, target.deployment_target_address)
 
     @staticmethod
     def execute_remote(client, command):
@@ -1285,30 +1363,17 @@ class RemoteDeployer:
                 self.sftp_clients[key] = client
         return client
 
-    def get_remoter(self, target) -> SSHRemoter:
+    def get_remoter(self, target, windows=False) -> SSHRemoter:
         """
         Create remoter.
 
+        :param windows:
         :param target:
         :return:
         """
 
         ssh_client = self.get_deployment_target_ssh_client(target)
-        channel = ssh_client.invoke_shell()
-        # todo: check this
-        channel.settimeout(120)
-        stdin = channel.makefile("wb")
-        stdout = channel.makefile("r")
         sftp_client = self.get_deployment_target_sftp_client(target)
-
-        stdin.write(f"echo 'SSHHoreyEOF'")
-        stdin.flush()
-
-
-        breakpoint()
-        if channel.recv_ready():
-            channel.recv(1024)
-
 
         def executor(command):
             """
@@ -1317,7 +1382,13 @@ class RemoteDeployer:
             :param command:
             :return:
             """
-            return self.execute_remote_shell(stdin, stdout, command, target.deployment_target_address)
+
+            if windows:
+                return self.execute_windows(ssh_client, command, target.deployment_target_address)
+
+            channel = ssh_client.invoke_shell()
+            channel.settimeout(120)
+            return self.execute_remote_shell(channel, command, target.deployment_target_address)
 
 
         ret = SSHRemoter(executor, sftp_client,  target.remote_deployment_dir_path)

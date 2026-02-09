@@ -612,7 +612,7 @@ def test_run_remote_deployer_deploy_zabbix_agent(cicd_api_integration, ec2_api_m
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
 
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_run_remote_deployer_deploy_targets_docker_prune_old_images(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
@@ -692,7 +692,7 @@ def test_run_remote_deployer_deploy_hardening(cicd_api_integration, ec2_api_mgmt
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_remote_deployer_deploy_windows_target_raw(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
@@ -702,7 +702,8 @@ def test_run_remote_deployer_deploy_windows_target_raw(cicd_api_integration, ec2
     def entrypoint():
         cicd_api_integration.run_remote_provision_constructor(target,
                                                               "raw",
-                                                              action="dir"
+                                                              command="dir",
+                                                              windows=True
                                                               )
 
     for target in targets:

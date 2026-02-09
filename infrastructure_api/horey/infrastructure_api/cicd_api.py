@@ -667,8 +667,7 @@ class CICDAPI:
         except KeyError:
             storage_service = None
 
-        remoter = self.remote_deployer.get_remoter(target)
-        breakpoint()
+        remoter = self.remote_deployer.get_remoter(target, windows=kwargs.pop("windows", False))
         provision_constructor = ProvisionConstructor()
         provision_constructor.deployment_dir = target.local_deployment_dir_path
         return provision_constructor.provision_system_function_remote(remoter, function_name, storage_service=storage_service, **kwargs)
