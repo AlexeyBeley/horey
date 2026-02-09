@@ -5,13 +5,8 @@ horey.configuration_policy>=1.0.0
 horey.h_logger>=1.0.0
 horey.common_utils>=1.0.0
 horey.network>=1.0.0
-
-azure-mgmt-resource
-
 azure-mgmt-resource-locks
-
 azure-mgmt-network
-azure-mgmt-resource-locks
 azure-mgmt-compute
 azure-mgmt-subscription
 azure-identity
