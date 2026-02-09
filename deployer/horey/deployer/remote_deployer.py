@@ -150,15 +150,17 @@ class HoreySFTPClient(paramiko.SFTPClient):
         """
 
         self.mkdir(target, ignore_existing=True)
+        logger.info(f"Copying local directory '{source}' to remote {target}")
 
-        for item in os.listdir(source):
-            if os.path.isfile(os.path.join(source, item)):
+        for src in source.iterdir():
+            logger.info(f"SFTP Uploading '{src}'")
+            dst = target / src.name
+            if src.is_file():
                 self.put(
-                    str(source / item), str(target / item), confirm=True
+                    str(src), str(dst), confirm=True
                 )
             else:
-                self.mkdir(target / item, ignore_existing=True)
-                self.put_dir(source / item, target / item)
+                self.put_dir(src, dst)
         return True
 
     def mkdir(self, path: pathlib.Path, mode=511, ignore_existing=False):
@@ -171,7 +173,7 @@ class HoreySFTPClient(paramiko.SFTPClient):
 
         try:
             super().mkdir(str(path), mode)
-        except IOError:
+        except IOError as inst_err:
             if ignore_existing:
                 pass
             else:
