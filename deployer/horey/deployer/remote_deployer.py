@@ -536,7 +536,7 @@ class RemoteDeployer:
                     execute('cd folder_name')
         """
 
-        logger.info(f"[{remote_address} REMOTE->] {cmd}")
+        logger.info(f"[{remote_address} REMOTE->][timeout={timeout}] {cmd}")
         echo_cmd = f"echo HoreyReturnCode %ERRORLEVEL%"
         stdin, stdout, stderr = ssh_client.exec_command(cmd + f" & {echo_cmd}", timeout=timeout)
         stdout_ret = [line.strip("\r\n")for line in stdout.readlines()]
