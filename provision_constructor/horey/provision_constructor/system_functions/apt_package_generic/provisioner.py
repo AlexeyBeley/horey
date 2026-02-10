@@ -165,8 +165,7 @@ class Provisioner(SystemFunctionCommon):
         self.update_packages_remote()
         if not self.remoter.get_state()["APT_PACKAGES"]:
             stdout, stderr, errcode = self.remoter.execute("dpkg-query -W -f='${binary:Package}\\n'")
-            breakpoint()
-            lines = [line.strip("\n") for line in stdout]
+            lines = [line.strip("\n") for line in stdout if line]
             self.remoter.get_state()["APT_PACKAGES"] = self.init_apt_packages_from_output(lines)
 
     def update_packages_remote(self):
