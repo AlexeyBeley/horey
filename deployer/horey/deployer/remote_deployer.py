@@ -535,8 +535,9 @@ class RemoteDeployer:
                     execute('finger')
                     execute('cd folder_name')
         """
+
         echo_cmd = f"echo HoreyReturnCode %ERRORLEVEL%"
-        stdin, stdout, stderr = ssh_client.exec_command(cmd + f" & {echo_cmd}", timeout=60)
+        stdin, stdout, stderr = ssh_client.exec_command(cmd + f" & {echo_cmd}", timeout=timeout)
         stdout_ret = [line.strip("\r\n")for line in stdout.readlines()]
         stderr_ret = [line.strip("\r\n")for line in stderr.readlines()]
         if not stdout_ret[-1].startswith("HoreyReturnCode"):
@@ -1365,10 +1366,11 @@ class RemoteDeployer:
                 self.sftp_clients[key] = client
         return client
 
-    def get_remoter(self, target, windows=False) -> SSHRemoter:
+    def get_remoter(self, target, windows=False, timeout=60) -> SSHRemoter:
         """
         Create remoter.
 
+        :param timeout:
         :param windows:
         :param target:
         :return:
@@ -1386,7 +1388,7 @@ class RemoteDeployer:
             """
 
             if windows:
-                return self.execute_windows(ssh_client, command, target.deployment_target_address)
+                return self.execute_windows(ssh_client, command, target.deployment_target_address, timeout=timeout)
 
             channel = ssh_client.invoke_shell()
             channel.settimeout(120)
