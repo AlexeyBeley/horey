@@ -166,7 +166,10 @@ class Provisioner(SystemFunctionCommon):
         if not self.remoter.get_state()["APT_PACKAGES"]:
             stdout, stderr, errcode = self.remoter.execute("sudo apt list --installed")
             lines = [line.strip("\n") for line in stdout]
-            self.remoter.get_state()["APT_PACKAGES"] = self.init_apt_packages_from_output(lines)
+            try:
+                self.remoter.get_state()["APT_PACKAGES"] = self.init_apt_packages_from_output(lines)
+            except Exception as inst:
+                breakpoint()
 
     def update_packages_remote(self):
         """
