@@ -1479,12 +1479,16 @@ class SystemFunctionCommon:
         )
 
         if ret[0]:
-            pid = int(ret[0][-1].strip("\n"))
+            try:
+                pid = int(ret[0][-1].strip("\n"))
+            except ValueError:
+                return True
             self.remoter.execute(
                 f'sudo kill -s 9 {pid} || true'
             )
             # if "sudo dpkg --configure -a" in repr(inst_error):
             self.remoter.execute("yes n | sudo DEBIAN_FRONTEND=noninteractive dpkg --configure -a")
+        return True
 
     def ls_remote(self, path, sudo=False) -> List[Path]:
         """
