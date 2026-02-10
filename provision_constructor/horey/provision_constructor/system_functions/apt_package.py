@@ -43,4 +43,7 @@ class APTPackage:
 
         first_octet = str_src.split(" ")[0]
 
-        self.name, self.package_list_names = first_octet.split("/")
+        try:
+            self.name, self.package_list_names = first_octet.split("/")
+        except Exception as inst_err:
+            raise ValueError(f"Failed to parse apt package line: '{str_src}' Error: {inst_err}") from inst_err
