@@ -132,7 +132,8 @@ class SSHRemoter(Remoter):
         :return:
         """
 
-        return self.sftp_client.get(str(src), str(dst))
+        self.sftp_client.get(str(src), str(dst))
+        return True
 
 
 class HoreySFTPClient(paramiko.SFTPClient):
