@@ -1433,7 +1433,6 @@ class SystemFunctionCommon:
             )
             SystemFunctionCommon.check_file_exists_remote(remoter, file_path, sudo=sudo)
 
-        breakpoint()
         try:
             return SystemFunctionCommon.check_line_in_file_remote(remoter, line, file_path, sudo=sudo)
         except SystemFunctionCommon.FailedCheckError:
