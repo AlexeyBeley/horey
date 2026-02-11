@@ -125,7 +125,7 @@ class Provisioner(SystemFunctionCommon):
         elastic_file_name = f"elastic-{elastic_version}.list"
 
         for file_path in file_paths:
-            file_name = file_path.name.name
+            file_name = file_path.name
             if "elastic-" in file_name:
                 if file_name != elastic_file_name:
                     self.remove_file_remote(self.remoter, f"/etc/apt/sources.list.d/{file_name}", sudo=True)
