@@ -928,10 +928,9 @@ class RemoteDeployer:
             deployment_target.status = f"Unknown exception happened when deploying the step {step.name}. " \
                                        f"Error: {repr(error_instance)}"
 
-            traceback_str = "".join(
-                traceback.format_tb(error_instance.__traceback__)
-            )
-            logger.exception(traceback_str)
+            logger.error(error_instance)
+            for tb_line in traceback.format_tb(error_instance.__traceback__):
+                logger.error(tb_line.strip("\n"))
 
             raise RemoteDeployer.DeployerError(
                 repr(error_instance)
