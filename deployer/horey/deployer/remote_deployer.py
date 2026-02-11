@@ -496,6 +496,8 @@ class RemoteDeployer:
         stdin.flush()
 
         shout = []
+        if "docker.com/linux/ubuntu/gpg" in cmd:
+            breakpoint()
 
         while datetime.datetime.now() < end_time:
             if channel.recv_ready():
@@ -523,6 +525,7 @@ class RemoteDeployer:
 
                         if shout == [""]:
                             breakpoint()
+                            raise NotImplementedError("Should not be here")
                             shout = []
 
                         return stdin, shout, [], exit_status
