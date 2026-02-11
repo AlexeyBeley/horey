@@ -485,7 +485,6 @@ class RemoteDeployer:
 
         channel.setblocking(0)
         stdin = channel.makefile("wb")
-        stdout = channel.makefile("r")
 
         logger.info(f"[{remote_address} REMOTE->] {cmd}")
         end_time = datetime.datetime.now() + datetime.timedelta(minutes=timeout)
@@ -497,10 +496,24 @@ class RemoteDeployer:
         stdin.flush()
 
         shout = []
-
+        raw_data_aggregator = None
         while datetime.datetime.now() < end_time:
+
             if channel.recv_ready():
-                for line in stdout:
+                raw_data = channel.recv(4096)
+                if raw_data_aggregator is None:
+                    raw_data_aggregator = raw_data
+                else:
+                    raw_data_aggregator += raw_data
+                try:
+                    data = raw_data_aggregator.decode('utf-8')
+                    raw_data_aggregator = None
+                except Exception:
+                    logger.error(f"Could not decode: {raw_data}")
+                    time.sleep(5)
+                    continue
+
+                for line in data.splitlines():
                     while "\x08" in line:
                         backspace_index = line.find("\x08")
                         line = line[:backspace_index-1] + line[backspace_index+1:]
@@ -519,12 +532,6 @@ class RemoteDeployer:
                         exit_status = int(str(line).rsplit(maxsplit=1)[1])
                         if exit_status:
                             raise RemoteDeployer.DeployerError(f"{shout}: exit status: {exit_status}")
-
-                        # SSH is piece of shit
-                        if shout == [""]:
-                            breakpoint()
-                            shout = []
-
                         return stdin, shout, [], exit_status
                     else:
                         shout.append(line)
