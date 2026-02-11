@@ -504,7 +504,9 @@ class RemoteDeployer:
                     while "\x08" in line:
                         backspace_index = line.find("\x08")
                         line = line[:backspace_index-1] + line[backspace_index+1:]
-                    line = (RemoteDeployer.REGEX_CLEANER.sub('', line).replace('\b', '').replace('\r', '').
+                    line = (RemoteDeployer.REGEX_CLEANER.sub('', line).
+                            replace('\b', '').
+                            replace('\r', '').
                             replace('\x1b8', "").
                             replace('\x1b7', "").
                             replace("\x1b>", "").
@@ -517,6 +519,10 @@ class RemoteDeployer:
                         exit_status = int(str(line).rsplit(maxsplit=1)[1])
                         if exit_status:
                             raise RemoteDeployer.DeployerError(f"{shout}: exit status: {exit_status}")
+
+                        if shout == [""]:
+                            shout = []
+
                         return stdin, shout, [], exit_status
                     else:
                         shout.append(line)
