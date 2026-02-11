@@ -1421,6 +1421,7 @@ class SystemFunctionCommon:
         @return:
         """
 
+        breakpoint()
         if not isinstance(line, str):
             raise ValueError(line)
 

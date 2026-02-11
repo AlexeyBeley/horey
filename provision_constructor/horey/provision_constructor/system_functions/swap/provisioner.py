@@ -2,8 +2,7 @@
 Swap file provisioner.
 
 """
-import os
-import uuid
+
 from pathlib import Path
 
 from horey.common_utils.remoter import Remoter
@@ -11,6 +10,9 @@ from horey.provision_constructor.system_function_factory import SystemFunctionFa
 from horey.provision_constructor.system_functions.system_function_common import (
     SystemFunctionCommon,
 )
+from horey.h_logger import get_logger
+
+logger = get_logger()
 
 
 @SystemFunctionFactory.register
@@ -104,7 +106,13 @@ class Provisioner(SystemFunctionCommon):
             self.remoter.execute(f"total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{{print $2}}')")
             ret = self.remoter.execute('echo "${total_ram_kb}"')
 
-            in_kb = int(ret[0][0].strip("\n"))
+            try:
+                in_kb = int(ret[0][0].strip("\n"))
+            except ValueError:
+                ret = self.remoter.execute("cat /proc/meminfo")
+                logger.error(f"SWAP Memory calculation error: {ret=}")
+                raise ValueError("Was not able to find instance memory size")
+
             self.ram_size_in_gb = int(in_kb/1024/1024) + 1
             self.swap_size_in_gb = self.calc_swap_needed(self.ram_size_in_gb)
 

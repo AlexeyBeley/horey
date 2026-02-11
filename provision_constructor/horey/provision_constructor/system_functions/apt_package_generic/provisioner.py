@@ -151,6 +151,7 @@ class Provisioner(SystemFunctionCommon):
         @return:
         """
 
+        logger.info("Reiniting packages remote")
         self.remoter.get_state()["APT_PACKAGES"] = []
         self.remoter.get_state()["APT_PACKAGES_UPDATED"] = False
         self.init_apt_packages_remote()
@@ -178,6 +179,7 @@ class Provisioner(SystemFunctionCommon):
 
         if self.remoter.get_state().get("APT_PACKAGES_UPDATED"):
             if self.force:
+                logger.info("Force is True- calling reinit packages remote")
                 self.force = False
                 return self.reinit_apt_packages_remote()
             return True
