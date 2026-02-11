@@ -108,7 +108,7 @@ class Provisioner(SystemFunctionCommon):
 
             try:
                 in_kb = int(ret[0][0].strip("\n"))
-            except ValueError:
+            except Exception:
                 ret = self.remoter.execute("cat /proc/meminfo")
                 logger.error(f"SWAP Memory calculation error: {ret=}")
                 raise ValueError("Was not able to find instance memory size")
