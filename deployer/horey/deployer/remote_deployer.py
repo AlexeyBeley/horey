@@ -496,6 +496,8 @@ class RemoteDeployer:
         stdin.flush()
 
         shout = []
+        if "linux/ubuntu/gpg" in cmd:
+            breakpoint()
 
         while datetime.datetime.now() < end_time:
             if channel.recv_ready():
