@@ -504,6 +504,7 @@ class RemoteDeployer:
                 data = channel.recv(4096).decode('utf-8')
                 data = data.replace('\r', "")
                 for line in data.splitlines():
+                    line_base = line
                     while "\x08" in line:
                         backspace_index = line.find("\x08")
                         line = line[:backspace_index-1] + line[backspace_index+1:]
@@ -514,6 +515,8 @@ class RemoteDeployer:
                             replace('\x1b7', "").
                             replace("\x1b>", "").
                             replace("\x1b=", ""))
+                    if line == "":
+                        breakpoint()
 
                     logger.info(f"[{remote_address} REMOTE<-] {line}")
                     if str(line).startswith(cmd) or str(line).startswith(echo_cmd):
