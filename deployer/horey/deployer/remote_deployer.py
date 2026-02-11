@@ -496,12 +496,11 @@ class RemoteDeployer:
         stdin.flush()
 
         shout = []
-        if "linux/ubuntu/gpg" in cmd:
-            breakpoint()
 
         while datetime.datetime.now() < end_time:
             if channel.recv_ready():
                 data = channel.recv(4096).decode('utf-8')
+                data = data.replace('\r', "")
                 for line in data.splitlines():
                     while "\x08" in line:
                         backspace_index = line.find("\x08")
