@@ -103,8 +103,8 @@ class Provisioner(SystemFunctionCommon):
 
         self.remoter = remoter
         if not self.swap_size_in_gb:
-            self.remoter.execute(f"total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{{print $2}}')")
-            ret = self.remoter.execute('echo "${total_ram_kb}"')
+            self.remoter.execute("grep MemTotal /proc/meminfo | awk '{print $2}'")
+            ret = self.remoter.execute('')
 
             try:
                 in_kb = int(ret[0][0].strip("\n"))
