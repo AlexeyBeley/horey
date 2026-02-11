@@ -485,6 +485,7 @@ class RemoteDeployer:
 
         channel.setblocking(0)
         stdin = channel.makefile("wb")
+        stdout = channel.makefile("r")
 
         logger.info(f"[{remote_address} REMOTE->] {cmd}")
         end_time = datetime.datetime.now() + datetime.timedelta(minutes=timeout)
@@ -499,9 +500,7 @@ class RemoteDeployer:
 
         while datetime.datetime.now() < end_time:
             if channel.recv_ready():
-                data = channel.recv(4096).decode('utf-8')
-                data = data.replace('\r', "")
-                for line in data.splitlines():
+                for line in stdout:
                     while "\x08" in line:
                         backspace_index = line.find("\x08")
                         line = line[:backspace_index-1] + line[backspace_index+1:]
@@ -523,6 +522,7 @@ class RemoteDeployer:
 
                         # SSH is piece of shit
                         if shout == [""]:
+                            breakpoint()
                             shout = []
 
                         return stdin, shout, [], exit_status
