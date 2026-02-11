@@ -526,6 +526,7 @@ class RemoteDeployer:
                             replace("\x1b=", ""))
 
                     logger.info(f"[{remote_address} REMOTE<-] {line}")
+                    # sometimes the command sent over SSH is printed in stdout. We do need it.
                     if str(line).startswith(cmd) or str(line).startswith(echo_cmd):
                         shout = []
                     elif str(line).startswith(finish):
@@ -533,6 +534,9 @@ class RemoteDeployer:
                         if exit_status:
                             raise RemoteDeployer.DeployerError(f"{shout}: exit status: {exit_status}")
                         return stdin, shout, [], exit_status
+                    # empty line
+                    elif not line:
+                        continue
                     else:
                         shout.append(line)
             time.sleep(0.01)
