@@ -521,6 +521,7 @@ class RemoteDeployer:
                             raise RemoteDeployer.DeployerError(f"{shout}: exit status: {exit_status}")
 
                         if shout == [""]:
+                            breakpoint()
                             shout = []
 
                         return stdin, shout, [], exit_status
