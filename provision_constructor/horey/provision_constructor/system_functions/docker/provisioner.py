@@ -186,9 +186,9 @@ class Provisioner(SystemFunctionCommon):
         response = json.loads("".join(ret[0]))
         registry = f"{response['Account']}.dkr.ecr.{region}.amazonaws.com"
         if logout:
-            self.remoter.execute(f"docker logout {registry}", self.last_line_validator(f"Removing login credentials for {registry}\n"))
+            self.remoter.execute(f"docker logout {registry}", self.last_line_validator(f"Removing login credentials for {registry}"))
 
-        self.remoter.execute(f"aws ecr get-login-password --region {region} | docker login --username AWS --password-stdin {registry}", self.last_line_validator("Login Succeeded\n"))
+        self.remoter.execute(f"aws ecr get-login-password --region {region} | docker login --username AWS --password-stdin {registry}", self.last_line_validator("Login Succeeded"))
         ret = self.remoter.execute("cat ~/.docker/config.json && echo '\n'")
         output = "".join(ret[0])
         response= json.loads(output[output.find("{"):])
