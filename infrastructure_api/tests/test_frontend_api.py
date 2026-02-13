@@ -43,6 +43,7 @@ class Configuration(ConfigurationPolicy):
         self._s3_bucket_name = None
         self._s3_bucket_path = None
         self._environment_api_configuration_file_secret_name = None
+        self._dns_address = None
 
     @property
     def environment_api_configuration_file_secret_name(self):
@@ -68,6 +69,13 @@ class Configuration(ConfigurationPolicy):
     def s3_bucket_path(self, value):
         self._s3_bucket_path = value
 
+    @property
+    def dns_address(self):
+        return self._dns_address
+
+    @dns_address.setter
+    def dns_address(self, value):
+        self._dns_address = value
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -92,7 +100,8 @@ def fixture_frontend_api(env_api_integration):
     frontend_api_configuration = FrontendAPIConfigurationPolicy()
     yield infrastructure_api.get_frontend_api(frontend_api_configuration, env_api_integration)
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_provision_cloudfront(frontend_api):
-    db_test  = frontend_api.provision_cloudfront()
-    assert db_test
+    assert frontend_api.provision_cloudfront(Configuration.TEST_CONFIG.s3_bucket_name,
+                                             Configuration.TEST_CONFIG.s3_bucket_path,
+                                             Configuration.TEST_CONFIG.dns_address)

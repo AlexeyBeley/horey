@@ -28,8 +28,21 @@ class S3API:
 
         if bucket.region is None:
             bucket.region = self.environment_api.region
-
         return self.environment_api.aws_api.provision_s3_bucket(bucket)
+
+    def get_bucket(self, bucket_name: str):
+        """
+        Find the bucket by name
+
+        :return:
+        """
+
+        bucket = S3Bucket({"Name": bucket_name})
+
+        if self.environment_api.aws_api.s3_client.update_bucket_information(bucket):
+            return bucket
+
+        return None
 
     def add_bucket_notification_configuration_lambda(self, bucket: S3Bucket, aws_lambda: AWSLambda,
                                                       bucket_objects_filter=None):

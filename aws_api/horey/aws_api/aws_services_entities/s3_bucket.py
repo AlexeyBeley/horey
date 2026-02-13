@@ -25,12 +25,7 @@ class S3Bucket(AwsObject):
             self._init_bucket_from_cache(dict_src)
             return
 
-        init_options = {
-            "Name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "CreationDate": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def update_from_raw_response(self, dict_src):
         """
@@ -44,7 +39,8 @@ class S3Bucket(AwsObject):
             "Name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
             "CreationDate": self.init_default_attr,
             "BucketRegion": lambda x, y: self.init_default_attr(x, y, formatted_name="location"),
-            "AccessPointAlias": self.init_default_attr
+            "AccessPointAlias": self.init_default_attr,
+            "BucketArn": self.init_default_attr,
         }
 
         return self.init_attrs(dict_src, init_options)

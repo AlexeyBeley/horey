@@ -86,7 +86,7 @@ class DNSAPI:
 
         return hosted_zone
 
-    def find_appropriate_hosted_zone(self):
+    def find_appropriate_hosted_zone(self, dns_address=None):
         """
         Analyze the hosted zones and find the best matching.
 
@@ -94,7 +94,7 @@ class DNSAPI:
         """
 
         lst_ret = []
-        lst_dns = self.configuration.dns_address.split(".")
+        lst_dns = (dns_address or self.configuration.dns_address).split(".")
         for i in range(0, len(lst_dns)):
             hosted_zone = HostedZone({})
             hosted_zone.name = ".".join(lst_dns[i:])
@@ -103,3 +103,40 @@ class DNSAPI:
 
         logger.info(f"Found following hosted zones: {[_hz.name for _hz in lst_ret]}")
         return lst_ret[0]
+
+    def provision_record(self, dns_address, dns_target, hosted_zone):
+        """
+        Provision ECS infrastructure.
+
+        :return:
+        """
+
+        if "elb.amazonaws.com" in dns_target:
+            if hosted_zone.config["PrivateZone"]:
+                raise NotImplementedError(hosted_zone.config["PrivateZone"], dns_target)
+            dict_record = {
+                "Name": dns_address,
+                "Type": "A",
+                "AliasTarget":
+                    {"HostedZoneId": self.environment_api.aws_api.elbv2_client.HOSTED_ZONES[self.environment_api.configuration.region],
+                     "DNSName": f"dualstack.{dns_target}",
+                     "EvaluateTargetHealth": False
+                     }
+            }
+        else:
+            dict_record = {
+                "Name": dns_address,
+                "Type": "CNAME",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": dns_target
+                    }
+                ]}
+
+        record = HostedZone.Record(dict_record)
+        hosted_zone.records.append(record)
+        breakpoint()
+        self.environment_api.aws_api.route53_client.upsert_resource_record_sets(hosted_zone)
+
+        return True

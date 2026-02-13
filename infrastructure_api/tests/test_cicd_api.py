@@ -612,7 +612,7 @@ def test_run_remote_deployer_deploy_zabbix_agent(cicd_api_integration, ec2_api_m
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_remote_deployer_deploy_targets_docker_prune_old_images(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]

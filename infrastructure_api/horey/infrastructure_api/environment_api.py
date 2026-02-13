@@ -1100,22 +1100,54 @@ class EnvironmentAPI:
         self.aws_api.provision_cloudfront_origin_access_identity(cloudfront_origin_access_identity)
         return cloudfront_origin_access_identity
 
-    def provision_acm_certificate(self):
+    def provision_acm_certificate(self, dns_address=None, region=None,hosted_zone=None):
         """
         Provision certificate.
 
         :return:
         """
 
+        certificate = self.find_appropriate_certificate(dns_address, region=region)
+        if not certificate:
+            raise ValueError("No appropriate certificate found")
+
         cert = ACMCertificate({})
         cert.region = self.region
-        cert.domain_name = f"*.{self.configuration.public_hosted_zone_domain_name}"
+        cert.domain_name = dns_address or f"*.{self.configuration.public_hosted_zone_domain_name}"
         cert.validation_method = "DNS"
         cert.tags = self.get_tags_with_name(cert.domain_name.replace("*", "star"))
 
-        hosted_zone_name = self.configuration.public_hosted_zone_domain_name
+        hosted_zone_name = hosted_zone.name if hosted_zone else self.configuration.public_hosted_zone_domain_name
         self.aws_api.provision_acm_certificate(cert, hosted_zone_name)
         return cert
+
+    def find_appropriate_certificate(self, domain_name, region=None):
+        """
+        Find appropriate certificate in the region.
+
+        :param domain_name:
+        :param region:
+        :return:
+        """
+
+        cert = ACMCertificate({})
+        cert.region = region or self.region
+        cert.domain_name = "*" + domain_name[domain_name.find("."):]
+        cert.tags = [{"Key": "Name", "Value":  cert.domain_name.replace("*", "star")}]
+
+        if self.aws_api.acm_client.update_certificate_information(cert):
+            return cert
+
+        cert.domain_name = domain_name
+        cert.tags = [{"Key": "Name", "Value":  cert.domain_name}]
+
+
+        if self.aws_api.acm_client.update_certificate_information(cert):
+            return cert
+
+        return None
+
+
 
     def provision_response_headers_policy(self):
         """
