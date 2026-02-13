@@ -123,6 +123,16 @@ class DNSAPI:
                      "EvaluateTargetHealth": False
                      }
             }
+        elif "cloudfront.net" in dns_target:
+            dict_record = {
+                "Name": dns_address,
+                "Type": "A",
+                "AliasTarget":
+                    {"HostedZoneId": "Z2FDTNDATAQYW2",
+                     "DNSName": dns_target,
+                     "EvaluateTargetHealth": False
+                     }
+            }
         else:
             dict_record = {
                 "Name": dns_address,
@@ -136,7 +146,6 @@ class DNSAPI:
 
         record = HostedZone.Record(dict_record)
         hosted_zone.records.append(record)
-        breakpoint()
         self.environment_api.aws_api.route53_client.upsert_resource_record_sets(hosted_zone)
 
         return True

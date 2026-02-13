@@ -78,7 +78,7 @@ class FrontendAPI:
                                                                          certificate,
                                                                          s3_bucket, bucket_path, response_headers_policy)
 
-        self.dns_api.provision_record(self.configuration.dns_address, cloudfront_distribution.domain_name, hosted_zone)
+        self.dns_api.provision_record(dns_address, cloudfront_distribution.domain_name, hosted_zone)
         return self.update()
 
     def update(self):
