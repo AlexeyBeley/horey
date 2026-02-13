@@ -100,8 +100,12 @@ def fixture_frontend_api(env_api_integration):
     frontend_api_configuration = FrontendAPIConfigurationPolicy()
     yield infrastructure_api.get_frontend_api(frontend_api_configuration, env_api_integration)
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_provision_cloudfront(frontend_api):
     assert frontend_api.provision_cloudfront(Configuration.TEST_CONFIG.s3_bucket_name,
                                              Configuration.TEST_CONFIG.s3_bucket_path,
                                              Configuration.TEST_CONFIG.dns_address)
+
+@pytest.mark.wip
+def test_update_cloudfront(frontend_api):
+    assert frontend_api.update_cloudfront(Configuration.TEST_CONFIG.dns_address, [Path(__file__)])

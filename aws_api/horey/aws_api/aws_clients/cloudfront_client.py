@@ -160,40 +160,57 @@ class CloudfrontClient(Boto3Client):
         :param distribution:
         :return:
         """
+
+        if distribution.id is not None:
+            for update_info in self.execute(self.get_session_client().get_distribution, "Distribution",
+                                            filters_req={"Id": distribution.id}):
+                distribution.update_from_raw_response(update_info)
+                break
+            else:
+                return False
+
+        existing_distributions = []
+        if distribution.id is None:
+            for existing_distribution in self.yield_all_distributions(full_information=False):
+                if existing_distribution.comment:
+                    if existing_distribution.comment == distribution.comment:
+                        distribution.update_from_raw_response(existing_distribution.dict_src)
+                        break
+                existing_distributions.append(existing_distribution)
+
+
         if distribution.id is None:
             try:
                 distribution_aliases = distribution.distribution_config["Aliases"]["Items"]
             except KeyError:
                 distribution_aliases = []
 
-            for existing_distribution in self.yield_all_distributions(full_information=False):
-                if existing_distribution.comment:
-                    if existing_distribution.comment == distribution.comment:
-                        break
-                    continue
+            if not distribution_aliases:
+                try:
+                    distribution_aliases = distribution.aliases
+                except KeyError:
+                    distribution_aliases = []
 
-                self.update_distribution_full_information(existing_distribution)
-                if existing_distribution.get_tagname(ignore_missing_tag=True) == distribution.get_tagname():
-                    break
-
+            for existing_distribution in existing_distributions:
                 for existing_distro_alias in existing_distribution.aliases["Items"]:
                     if existing_distro_alias in distribution_aliases:
+                        distribution.update_from_raw_response(existing_distribution.dict_src)
                         break
                 else:
                     continue
                 break
-            else:
-                return False
 
-            update_info = existing_distribution.dict_src
-        else:
-            for update_info in self.execute(self.get_session_client().get_distribution, "Distribution",
-                                            filters_req={"Id": distribution.id}):
-                break
-            else:
-                return False
+        if distribution.id is None:
+            for existing_distribution in existing_distributions:
+                self.update_distribution_full_information(existing_distribution)
 
-        distribution.update_from_raw_response(update_info)
+                if existing_distribution.get_tagname(ignore_missing_tag=True) == distribution.get_tagname():
+                    distribution.update_from_raw_response(existing_distribution.dict_src)
+                    break
+
+        if distribution.id is None:
+            return False
+
         response = self.get_distribution_config_raw({"Id": distribution.id})
         del response["ResponseMetadata"]
         distribution.update_from_raw_response(response)

@@ -74,7 +74,11 @@ class Pennerauction(Provider):
                 lot.current_max = 0
                 lot.starting_bid = 0
                 return lot
-            raise ValueError(lot_element.text)
+
+            logger.error(f"Can not find high bid in {lot.url} text: {lot_element.text}")
+            lot.current_max = -1
+            lot.starting_bid = -1
+            return lot
 
         for line in lot_element.text.split("\n"):
             if "High Bid" in line:

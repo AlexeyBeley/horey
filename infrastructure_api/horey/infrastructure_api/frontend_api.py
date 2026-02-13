@@ -79,19 +79,14 @@ class FrontendAPI:
                                                                          s3_bucket, bucket_path, response_headers_policy)
 
         self.dns_api.provision_record(dns_address, cloudfront_distribution.domain_name, hosted_zone)
-        return self.update()
+        return True
 
     def update(self):
         """
 
         :return:
         """
-
-        self.environment_api.upload_to_s3(self.configuration.build_directory_path, self.configuration.bucket_name,
-                                          self.configuration.s3_key_path, tag_objects=True, keep_src_object_name=True)
-        root_path = self.configuration.s3_key_path.rstrip("/")
-        paths = [f"{root_path}/{os.path.basename(self.configuration.build_directory_path)}/*"]
-        return self.environment_api.create_invalidation(self.configuration.dns_address, paths)
+        raise DeprecationWarning("Use update_cloudfront")
 
     def get_s3_bucket_policy(self):
         """
@@ -221,6 +216,7 @@ class FrontendAPI:
         cloudfront_distribution.tags = self.environment_api.get_tags_with_name(aliases[0])
 
         s3_bucket_origin_id = f"s3-bucket-{s3_bucket.name}"
+
         cloudfront_distribution.distribution_config = {
             "Aliases": {
                 "Quantity": 1,
@@ -233,7 +229,6 @@ class FrontendAPI:
                     {
                         "Id": s3_bucket_origin_id,
                         "DomainName": f"{s3_bucket.name}.s3.amazonaws.com",
-                        "OriginPath": origin_path,
                         "S3OriginConfig": {
                             "OriginAccessIdentity": f"origin-access-identity/cloudfront/{cloudfront_origin_access_identity.id}"
                         },
@@ -346,6 +341,10 @@ class FrontendAPI:
         }
         if web_acl:
             cloudfront_distribution.distribution_config["WebACLId"] =  web_acl.arn
+
+        if origin_path and origin_path != "/":
+            cloudfront_distribution.distribution_config["Origins"]["Items"][0]["OriginPath"] = origin_path
+
         self.environment_api.aws_api.provision_cloudfront_distribution(cloudfront_distribution)
         return cloudfront_distribution
 
@@ -367,4 +366,37 @@ class FrontendAPI:
             raise ValueError(f"Was not able to find distribution by comment: {distribution_name}")
 
         return self.environment_api.aws_api.cloudfront_client.create_invalidation(distribution, paths)
+
+    def get_cloudfront_distribution(self, domain_name):
+        """
+        Find distribution
+
+        :param domain_name:
+        :return:
+        """
+
+        distribution = CloudfrontDistribution({})
+        distribution.comment = domain_name
+        distribution.aliases = [domain_name]
+        distribution.tags = self.environment_api.get_tags_with_name(distribution.aliases[0])
+
+        if not self.environment_api.aws_api.cloudfront_client.update_distribution_information(distribution):
+            return None
+
+        return distribution
+
+    def update_cloudfront(self, dns_address, local_paths):
+        """
+
+        :return:
+        """
+
+        distribution = self.get_cloudfront_distribution(domain_name=dns_address)
+        breakpoint()
+
+        self.environment_api.upload_to_s3(self.configuration.build_directory_path, self.configuration.bucket_name,
+                                          self.configuration.s3_key_path, tag_objects=True, keep_src_object_name=True)
+        root_path = self.configuration.s3_key_path.rstrip("/")
+        paths = [f"{root_path}/{os.path.basename(self.configuration.build_directory_path)}/*"]
+        return self.environment_api.create_invalidation(self.configuration.dns_address, paths)
 
