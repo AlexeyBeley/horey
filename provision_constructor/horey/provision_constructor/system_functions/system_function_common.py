@@ -1460,7 +1460,9 @@ class SystemFunctionCommon:
                 f"{sudo_prefix}grep -F '{line}' {file_path} || true"
             )
 
-        for line in response[0]:
+        logger.info(f"check_line_in_file_remote: {len(response)=} {response=}")
+        
+        for line in response[1]:
             if line != "":
                 logger.info(f"Found grep: {line=}")
                 return True
@@ -1471,10 +1473,6 @@ class SystemFunctionCommon:
         Force unlocking - kill processes using the lock.
         @return:
         """
-
-        self.remoter.execute(
-            "ls"
-        )
 
         ret = self.remoter.execute(
             "sudo lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}'"
