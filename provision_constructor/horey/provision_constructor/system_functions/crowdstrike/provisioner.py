@@ -124,7 +124,8 @@ class Provisioner(SystemFunctionCommon):
         """
 
         # todo: fix the login prompt
-        self.remoter.execute("ls")
+        ret = self.remoter.execute("ls")
+        breakpoint()
 
         cpu_data = "".join(self.remoter.execute("lscpu --json")[0])
         logger.info(f"Fetched {cpu_data=}")
