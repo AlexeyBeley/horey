@@ -492,7 +492,7 @@ class RemoteDeployer:
         end_time = datetime.datetime.now() + datetime.timedelta(minutes=timeout)
 
         cmd = cmd.strip('\n')
-        finish = 'end of stdOUT buffer. finished with exit status'
+        finish = 'endofstdOUTbuffer. exit status'
         echo_cmd = f"echo {finish} $?"
 
         stdin.write(f"{cmd} ; {echo_cmd}\n")
@@ -516,6 +516,7 @@ class RemoteDeployer:
                     time.sleep(5)
                     continue
 
+                prev_line = ""
                 for line in data.splitlines():
                     while "\x08" in line:
                         backspace_index = line.find("\x08")
@@ -532,9 +533,10 @@ class RemoteDeployer:
                     # sometimes the command sent over SSH is printed in stdout. We do need it.
                     if str(line).startswith(cmd) or str(line).startswith(echo_cmd):
                         shout = []
-                    elif str(line).startswith(finish):
+                    elif str(prev_line+line).startswith(finish):
+                        # It sporadically splits the output to 2 lines
                         exit_status = int(str(line).rsplit(maxsplit=1)[1])
-                        if exit_status:
+                        if exit_status != 0:
                             raise RemoteDeployer.DeployerError(f"{shout}: exit status: {exit_status}")
 
                         return stdin, shout, [], exit_status
@@ -543,6 +545,7 @@ class RemoteDeployer:
                         continue
                     else:
                         shout.append(line)
+                        prev_line = line
             time.sleep(0.01)
         
         raise RemoteDeployer.DeployerError(f"{remote_address} Reached timeout waiting: {timeout} minutes")

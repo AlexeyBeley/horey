@@ -37,6 +37,7 @@ class Mcsherryauction(Provider):
             lot.starting_bid = 1
             lot.description = lot_element.text
             link_element = lot_element.find_element(By.TAG_NAME, "a")
+            lot.url = link_element.get_attribute('href')
 
             if "No Bids Yet" in lot_element.text:
                 lot.current_max = 0
@@ -44,18 +45,20 @@ class Mcsherryauction(Provider):
                     for line in lot_element.text.split("\n"):
                         if "Start Price" in line:
                             lot.starting_bid = float(line.split(":")[1].strip())
+            elif "No Online Bidding For This Lot" in lot_element.text:
+                continue
             else:
                 try:
                     highbid_element = lot_element.find_element(By.CLASS_NAME, "gridView_highbid")
-                except Exception as inst:
-                    print(lot_element.text)
-                    break
+                except  NoSuchElementException as inst:
+                    logger.exception(inst)
+                    logger.info(f"{lot_element.text=}, {lot.url=}")
+                    breakpoint()
                 if "Current Bid: " not in highbid_element.text:
                     breakpoint()
                     raise ValueError("Current Bid does not present")
                 lot.current_max = float(highbid_element.text.split(" ")[-1].replace(",", ""))
 
-            lot.url = link_element.get_attribute('href')
             item_image_element = lot_element.find_element(By.TAG_NAME, "img")
             lot.image_url = item_image_element.get_attribute('src')
             element_title = lot_element.find_element(By.CLASS_NAME, "gridView_title")
@@ -182,7 +185,6 @@ class Mcsherryauction(Provider):
 
         logger.info(f"Starting initializing '{auction_event.id}' auction event lots")
         lots = []
-
         for page_counter in range(1, self.get_page_count(auction_event.url)+1):
             lots += self.load_page_lots(auction_event.url + f"_p{page_counter}?ps=100",
                                                       auction_event)
