@@ -470,10 +470,11 @@ class RemoteDeployer:
         return True
 
     @staticmethod
-    def execute_remote_shell(channel: paramiko.Channel, cmd:str, remote_address:str, timeout=60):
+    def execute_remote_shell(channel: paramiko.Channel, cmd:str, remote_address:str, timeout=60, stdin=None):
         """
         Execute command using remote shell.
 
+        :param stdin:
         :param channel:
         :param remote_address:
         :param timeout: in minutes
@@ -483,8 +484,9 @@ class RemoteDeployer:
                     execute('cd folder_name')
         """
 
-        channel.setblocking(0)
-        stdin = channel.makefile("wb")
+        if stdin is None:
+            channel.setblocking(0)
+            stdin = stdin or channel.makefile("wb")
 
         logger.info(f"[{remote_address} REMOTE->] {cmd}")
         end_time = datetime.datetime.now() + datetime.timedelta(minutes=timeout)
@@ -493,9 +495,7 @@ class RemoteDeployer:
         finish = 'end of stdOUT buffer. finished with exit status'
         echo_cmd = f"echo {finish} $?"
 
-        # This is a prefix line to eliminate the SSH command header output
-        echo_prefix = 'export PS1=""'
-        stdin.write(f"{echo_prefix} ; {cmd} ; {echo_cmd}\n")
+        stdin.write(f"{cmd} ; {echo_cmd}\n")
         stdin.flush()
 
         shout = []
@@ -1407,7 +1407,32 @@ class RemoteDeployer:
         ssh_client = self.get_deployment_target_ssh_client(target)
         sftp_client = self.get_deployment_target_sftp_client(target)
 
-        def executor(command):
+
+        def init_executor_linux():
+            """
+            Execute remotely
+
+            :return:
+            """
+
+            channel = ssh_client.invoke_shell()
+            channel.settimeout(120)
+            # This is a prefix line to eliminate the SSH command header output
+            silent_shell_command = 'export PS1=""'
+
+            stdin, shout, [], exit_status = self.execute_remote_shell(channel, silent_shell_command, target.deployment_target_address)
+            def executor(command):
+                """
+                Reuse channel
+
+                :param command:
+                :return:
+                """
+                return self.execute_remote_shell(channel, command, target.deployment_target_address, stdin=stdin)
+
+            return executor
+
+        def executor_windows(command):
             """
             Execute remotely
 
@@ -1415,14 +1440,9 @@ class RemoteDeployer:
             :return:
             """
 
-            if windows:
-                return self.execute_windows(ssh_client, command, target.deployment_target_address, timeout=timeout)
-
-            channel = ssh_client.invoke_shell()
-            channel.settimeout(120)
-            return self.execute_remote_shell(channel, command, target.deployment_target_address)
+            return self.execute_windows(ssh_client, command, target.deployment_target_address, timeout=timeout)
 
 
-        ret = SSHRemoter(executor, sftp_client,  target.remote_deployment_dir_path)
+        ret = SSHRemoter(executor_windows if windows else init_executor_linux(), sftp_client,  target.remote_deployment_dir_path)
 
         return ret

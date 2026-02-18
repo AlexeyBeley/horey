@@ -1461,8 +1461,8 @@ class SystemFunctionCommon:
             )
 
         logger.info(f"check_line_in_file_remote: {len(response)=} {response=}")
-        
-        for line in response[1]:
+
+        for line in response[0]:
             if line != "":
                 logger.info(f"Found grep: {line=}")
                 return True
