@@ -133,6 +133,7 @@ class Provisioner(SystemFunctionCommon):
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, True, self.upgrade,
                                                                           action="update_packages").provision_remote(
             remoter)
+        logger.info("Added docker source to apt list and updated packages")
 
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
                                                                           package_names=["docker-ce",
@@ -181,7 +182,6 @@ class Provisioner(SystemFunctionCommon):
         # True by default unless "false" explicitly set
         logout = str(logout).lower() != "false"
 
-        self.remoter.execute("ls")
         ret = self.remoter.execute("aws sts get-caller-identity")
         response = json.loads("".join(ret[0]))
         registry = f"{response['Account']}.dkr.ecr.{region}.amazonaws.com"

@@ -57,7 +57,6 @@ class Provisioner(SystemFunctionCommon):
                             self.last_line_validator(" saved "),
                               self.last_line_validator(zabbix_agent_version))
 
-        remoter.execute(f"ls -la {remote_deb_file_path}")
         remoter.execute(f"sudo dpkg -i {remote_deb_file_path}", self.last_line_validator("Setting up zabbix-release "))
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
                                                                           action="update_packages").provision_remote(

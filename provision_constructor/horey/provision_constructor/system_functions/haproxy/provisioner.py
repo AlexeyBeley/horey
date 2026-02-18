@@ -39,7 +39,6 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.remoter = remoter
-        self.remoter.execute("ls")
 
         if self.action == "check_backends":
             return self.check_backends_remote()
