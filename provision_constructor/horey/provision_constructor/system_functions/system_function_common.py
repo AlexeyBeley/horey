@@ -1460,8 +1460,9 @@ class SystemFunctionCommon:
                 f"{sudo_prefix}grep -F '{line}' {file_path} || true"
             )
 
-        if response[0]:
-            return True
+        for line in response[0]:
+            if line != "":
+                return True
         raise SystemFunctionCommon.FailedCheckError(f"Line: '{line}' was not found in the file: '{file_path}'")
 
     def unlock_dpckg_lock_remote(self):

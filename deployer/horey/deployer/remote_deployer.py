@@ -536,6 +536,7 @@ class RemoteDeployer:
                         exit_status = int(str(line).rsplit(maxsplit=1)[1])
                         if exit_status:
                             raise RemoteDeployer.DeployerError(f"{shout}: exit status: {exit_status}")
+
                         return stdin, shout, [], exit_status
                     # empty line
                     elif not line:
