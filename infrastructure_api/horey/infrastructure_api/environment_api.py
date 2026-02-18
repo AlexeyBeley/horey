@@ -1427,69 +1427,6 @@ class EnvironmentAPI:
 
         return self.aws_api.ec2_client.get_managed_prefix_list(self.region, name=pl_name)
 
-    # pylint: disable = (too-many-arguments
-    # pylint: disable = too-many-positional-arguments
-    def upload_to_s3(self, directory_path, bucket_name, key_path, tag_objects=True, keep_src_object_name=True):
-        """
-        Upload to S3.
-
-        :param directory_path:
-        :param bucket_name:
-        :param tag_objects:
-        :param keep_src_object_name:
-        :return:
-        """
-
-        def metadata_callback_func(file_path):
-            """
-            Add metadata according to file name.
-
-            :param file_path:
-            :return:
-            """
-
-            extensions_mapping = {"js": {"ContentType": "application/javascript"},
-                                  "json": {"ContentType": "application/json"},
-                                  "svg": {"ContentType": "image/svg+xml"},
-                                  "woff": {"ContentType": "font/woff"},
-                                  "woff2": {"ContentType": "font/woff2"},
-                                  "ttf": {"ContentType": "font/ttf"},
-                                  "html": {"ContentType": "text/html"},
-                                  "ico": {"ContentType": "image/vnd.microsoft.icon"},
-                                  "css": {"ContentType": "text/css"},
-                                  "eot": {"ContentType": "application/vnd.ms-fontobject"},
-                                  "png": {"ContentType": "image/png"},
-                                  "txt": {"ContentType": "text/plain"},
-                                  "exe": {"ContentType": "application/x-msdownload"}
-                                  }
-
-            _, extension_string = os.path.splitext(file_path)
-
-            try:
-                return extensions_mapping[extension_string.strip(".")]
-            except KeyError:
-                return {"ContentType": "text/plain"}
-
-        extra_args = {"CacheControl": "no-cache, no-store, must-revalidate",
-                      "Expires": "0"
-                      }
-        if tag_objects:
-            extra_args["Tagging"] = self.generate_artifact_tags()
-
-        return self.aws_api.s3_client.upload(bucket_name, directory_path, key_path,
-                                             keep_src_object_name=keep_src_object_name, extra_args=extra_args,
-                                             metadata_callback=metadata_callback_func)
-
-    def generate_artifact_tags(self):
-        """
-        Generate artifact tags.
-
-        :return:
-        """
-
-        return "&".join(
-            f'{tag["Key"]}={tag["Value"]}' for tag in self.configuration.tags) + f"&build={self.configuration.build_id}"
-
     def create_invalidation(self, distribution_name, paths):
         """
         Create distribution invalidations.

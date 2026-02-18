@@ -101,13 +101,6 @@ class Server:
         """
         Load report page.
 
-        <button onclick="fetchData('http://127.0.0.1:8000/auction_event_report?id=19')">31/12</button>
-        <button id="reload_19" onclick="updateInfo('http://127.0.0.1:8000/auction_event_reload?id=19')">Update Info</button>
-         ||
-        <button onclick="fetchData('http://127.0.0.1:8000/auction_event_report?id=4')">02/02</button>
-        <button id="reload_4" onclick="updateInfo('http://127.0.0.1:8000/auction_event_reload?id=4')">Update Info</button>
-
-
         :return:
         """
         provider_navigation_template = """
@@ -118,7 +111,7 @@ class Server:
 
         report_navigation_template = """
         <p style="padding: 15px; color: #777;">STRING_REPLACEMENT_LOAD_DATA_BTN_TXT</p>
-        <button onclick="fetchDataAndPopulateElement('http://127.0.0.1:8000/auction_event_report?id=STRING_REPLACEMENT_AUCTION_EVENT_ID', 'table-container', buildAuctionEventReport)">Load</button>
+        <button onclick="getAuctionEventLots('http://127.0.0.1:8000/auction_event_report?id=STRING_REPLACEMENT_AUCTION_EVENT_ID', 'STRING_REPLACEMENT_AUCTION_EVENT_ID', 'table-container', buildAuctionEventReport)">Load</button>
         <button onclick="updateInfo('http://127.0.0.1:8000/update_info?auction_event_id=STRING_REPLACEMENT_AUCTION_EVENT_ID')">Update Info</button>
         <hr>
         """

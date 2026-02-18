@@ -123,6 +123,9 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
+        # todo: fix the login prompt
+        self.remoter.execute("ls")
+
         cpu_data = "".join(self.remoter.execute("lscpu --json")[0])
         logger.info(f"Fetched {cpu_data=}")
         cpu_data = json.loads(cpu_data)

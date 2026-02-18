@@ -3,6 +3,9 @@ Standard frontend maintainer.
 
 """
 import os
+from pathlib import Path
+from typing import List
+
 from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity import CloudfrontOriginAccessIdentity
 from horey.aws_api.aws_services_entities.cloudfront_response_headers_policy import CloudfrontResponseHeadersPolicy
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
@@ -74,9 +77,11 @@ class FrontendAPI:
             ]
             self.s3_api.provision_bucket(s3_bucket)
         response_headers_policy = self.provision_response_headers_policy()
-        cloudfront_distribution = self.provision_cloudfront_distribution([dns_address], cloudfront_origin_access_identity,
+        cloudfront_distribution = self.provision_cloudfront_distribution([dns_address],
+                                                                         cloudfront_origin_access_identity,
                                                                          certificate,
-                                                                         s3_bucket, bucket_path, response_headers_policy)
+                                                                         s3_bucket, bucket_path,
+                                                                         response_headers_policy)
 
         self.dns_api.provision_record(dns_address, cloudfront_distribution.domain_name, hosted_zone)
         return True
@@ -340,7 +345,7 @@ class FrontendAPI:
             "IsIPV6Enabled": True,
         }
         if web_acl:
-            cloudfront_distribution.distribution_config["WebACLId"] =  web_acl.arn
+            cloudfront_distribution.distribution_config["WebACLId"] = web_acl.arn
 
         if origin_path and origin_path != "/":
             cloudfront_distribution.distribution_config["Origins"]["Items"][0]["OriginPath"] = origin_path
@@ -348,7 +353,7 @@ class FrontendAPI:
         self.environment_api.aws_api.provision_cloudfront_distribution(cloudfront_distribution)
         return cloudfront_distribution
 
-    def create_invalidation(self, distribution_name, paths):
+    def create_invalidation(self, paths, distribution=None, distribution_name=None):
         """
         Create distribution invalidations.
 
@@ -357,17 +362,19 @@ class FrontendAPI:
         :return:
         """
 
-        distribution = CloudfrontDistribution({})
-        distribution.comment = distribution_name
-        distribution.region = self.environment_api.region
-        distribution.tags = self.environment_api.get_tags_with_name(distribution_name)
+        if distribution is None:
+            if distribution_name is None:
+                ValueError("Either distribution or distribution_name must be provided")
+            distribution = CloudfrontDistribution({})
+            distribution.comment = distribution_name
+            distribution.tags = self.environment_api.get_tags_with_name(distribution_name)
 
         if not self.environment_api.aws_api.cloudfront_client.update_distribution_information(distribution):
             raise ValueError(f"Was not able to find distribution by comment: {distribution_name}")
 
         return self.environment_api.aws_api.cloudfront_client.create_invalidation(distribution, paths)
 
-    def get_cloudfront_distribution(self, domain_name):
+    def get_cloudfront_distribution(self, domain_name) -> CloudfrontDistribution:
         """
         Find distribution
 
@@ -385,18 +392,30 @@ class FrontendAPI:
 
         return distribution
 
-    def update_cloudfront(self, dns_address, local_paths):
+    def update_cloudfront(self, dns_address: str, local_paths: List[Path], bucket_path=None):
         """
 
         :return:
         """
 
         distribution = self.get_cloudfront_distribution(domain_name=dns_address)
+        bucket_name = distribution.origins["Items"][0]["DomainName"].replace(".s3.amazonaws.com", "")
+        if bucket_path is None:
+            bucket_path = distribution.origins["Items"][0].get("OriginPath") or "/"
+
+        if len(local_paths) != 1:
+            raise NotImplementedError("Only one path is supported for now")
+
+        file_path = local_paths[0]
         breakpoint()
+        if file_path.is_file():
+            self.s3_api.upload_to_s3(file_path,
+                                              bucket_name,
+                                              bucket_path,
+                                              tag_objects=True,
+                                              keep_src_object_name=True)
+        else:
+            raise NotImplementedError("Only file upload is supported for now")
 
-        self.environment_api.upload_to_s3(self.configuration.build_directory_path, self.configuration.bucket_name,
-                                          self.configuration.s3_key_path, tag_objects=True, keep_src_object_name=True)
-        root_path = self.configuration.s3_key_path.rstrip("/")
-        paths = [f"{root_path}/{os.path.basename(self.configuration.build_directory_path)}/*"]
-        return self.environment_api.create_invalidation(self.configuration.dns_address, paths)
-
+        paths = [f"{bucket_path.rstrip('/')}/*"]
+        return self.create_invalidation(distribution, paths)

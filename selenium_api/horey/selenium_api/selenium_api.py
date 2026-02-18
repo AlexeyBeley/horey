@@ -1,5 +1,7 @@
 import os
 import time
+from pathlib import Path
+
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
@@ -19,6 +21,10 @@ logger = get_logger()
 
 class SeleniumAPI:
     driver = None
+    def __init__(self, store_data=False):
+        self.data_dir = Path("/opt/horey/selenium")
+        self.store_data = store_data
+
 
     def wait_for_page_load(self, timeout=10):
         """Waits for the page to be fully loaded based on document.readyState.
@@ -52,6 +58,10 @@ class SeleniumAPI:
         chrome_flags = os.getenv("CHROME_OPTIONS", options)
         for flag in chrome_flags.split():
             chrome_options.add_argument(flag)
+        if self.store_data:
+            chrome_options.add_argument(f"--user-data-dir={self.data_dir / 'chrome-profile'}")
+            chrome_options.add_argument(f"--profile-directory=Profile1")
+
         SeleniumAPI.driver = webdriver.Chrome(service=cService, options=chrome_options)
         # self.driver.maximize_window()
         SeleniumAPI.driver.set_window_size(1440, 900)
@@ -242,3 +252,13 @@ class SeleniumAPI:
         logger.info("Sending command+r after reloading")
         ActionChains(self.driver).key_down(Keys.COMMAND).send_keys("r").key_up(Keys.COMMAND).perform()
         self.wait_for_page_load()
+
+    @staticmethod
+    def get_image_element_href(image: WebElement) -> str:
+        """
+
+        :param image:
+        :return:
+        """
+
+        return image.get_attribute("src")
