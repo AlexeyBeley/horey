@@ -1462,6 +1462,7 @@ class SystemFunctionCommon:
 
         for line in response[0]:
             if line != "":
+                logger.info(f"Found grep: {line=}")
                 return True
         raise SystemFunctionCommon.FailedCheckError(f"Line: '{line}' was not found in the file: '{file_path}'")
 
