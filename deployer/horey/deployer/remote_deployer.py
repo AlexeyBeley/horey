@@ -492,6 +492,8 @@ class RemoteDeployer:
         cmd = cmd.strip('\n')
         finish = 'end of stdOUT buffer. finished with exit status'
         echo_cmd = f"echo {finish} $?"
+
+        # This is a prefix line to eliminate the SSH command header output
         echo_prefix = "echo '' >/dev/null $2>1"
         stdin.write(f"{echo_prefix} ; {cmd} ; {echo_cmd}\n")
         stdin.flush()
