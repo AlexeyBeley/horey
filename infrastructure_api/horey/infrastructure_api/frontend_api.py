@@ -353,10 +353,11 @@ class FrontendAPI:
         self.environment_api.aws_api.provision_cloudfront_distribution(cloudfront_distribution)
         return cloudfront_distribution
 
-    def create_invalidation(self, paths, distribution=None, distribution_name=None):
+    def create_invalidation(self, distribution, paths, distribution_name=None):
         """
         Create distribution invalidations.
 
+        :param distribution:
         :param distribution_name:
         :param paths:
         :return:
@@ -371,7 +372,6 @@ class FrontendAPI:
 
         if not self.environment_api.aws_api.cloudfront_client.update_distribution_information(distribution):
             raise ValueError(f"Was not able to find distribution by comment: {distribution_name}")
-
         return self.environment_api.aws_api.cloudfront_client.create_invalidation(distribution, paths)
 
     def get_cloudfront_distribution(self, domain_name) -> CloudfrontDistribution:
@@ -407,7 +407,6 @@ class FrontendAPI:
             raise NotImplementedError("Only one path is supported for now")
 
         file_path = local_paths[0]
-        breakpoint()
         if file_path.is_file():
             self.s3_api.upload_to_s3(file_path,
                                               bucket_name,
