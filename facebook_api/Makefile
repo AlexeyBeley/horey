@@ -6,12 +6,14 @@ BUILD_DIR := ${HOREY_DIR_PATH}/build
 BUILD_TMP_DIR := ${BUILD_DIR}/_build
 VENV_DIR := $(realpath ${BUILD_TMP_DIR}/_venv)
 
-.PHONY: build_ng
-build_ng:
+PROJECT_BUILD_DIR := ${BUILD_TMP_DIR}/fb_api
+
+
+prepare_build_dir:
+    mkdir -p ${PROJECT_BUILD_DIR} &&\
+    python ${HOREY_DIR_PATH/pip_api/horey/pip_api/pip_api_make.py --copy_horey_dependencies --horey_dir_path ${HOREY_DIR_PATH} --dst_dir_path ${PROJECT_BUILD_DIR} --package_name facebook_api
+
+
+.PHONY: build
+build: prepare_dir
 	python ${HOREY_DIR_PATH}/pip_api/horey/pip_api/pip_api_make.py --install horey.selenium_api --force_reinstall --pip_api_configuration ${HOREY_DIR_PATH}/pip_api_configuration.py
-
-
-start_server: build_ng
-	source ${VENV_DIR}/bin/activate &&\
-	cd ${HOREY_DIR_PATH}/selenium_api/horey/selenium_api &&\
-	python server_actor.py --action start

@@ -106,6 +106,6 @@ def test_provision_cloudfront(frontend_api):
                                              Configuration.TEST_CONFIG.s3_bucket_path,
                                              Configuration.TEST_CONFIG.dns_address)
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_update_cloudfront(frontend_api):
     assert frontend_api.update_cloudfront(Configuration.TEST_CONFIG.dns_address, [Path(__file__)])

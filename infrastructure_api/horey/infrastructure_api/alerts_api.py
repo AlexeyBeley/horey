@@ -17,6 +17,8 @@ from horey.alert_system.lambda_package.notification import Notification
 from horey.alert_system.postgres.postgres_alert_builder import \
     PostgresAlertBuilder
 from horey.alert_system.elb_alert_builder import ELBAlertBuilder
+from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
+from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 
 from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPI, AWSLambdaAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI, CloudwatchAPIConfigurationPolicy
@@ -445,11 +447,11 @@ class AlertsAPI:
                 f"Unhandled situation when more then one metric transformation {metric_filter.metric_transformations}")
         return metric_filter
 
-    def provision_scheduled_lambda_cloudwatch_log_alarm(self, log_group_name, period):
+    def provision_scheduled_lambda_executions_alarm(self, monitored_lambda: AWSLambda, period: int) -> CloudWatchAlarm:
         """
         Schedule alarm - makes sure the lambda is triggered correctly
 
-        :param log_group_name:
+        :param monitored_lambda:
         :param period:
         :return:
         """
@@ -459,33 +461,26 @@ class AlertsAPI:
         except self.configuration.UndefinedValueError:
             self.configuration.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
 
-        filter_text = '"REPORT RequestId"'
-
-        metric_name = f"has3-metric-filter-{log_group_name}-REPORT_RequestId"
-
-        metric_filter = self.provision_cloudwatch_log_group_metric(log_group_name, metric_name, filter_text)
-
-        alarm_description = self.alert_system.generate_alarm_description(log_group_name, filter_text, self.configuration.routing_tags)
-        aws_lambda = self.aws_lambda_api.get_lambda(name = self.configuration.lambda_name)
-        breakpoint()
-
-        alarm = self.cloudwatch_api.provision_alarm(name=f"has3-alarm-{log_group_name}-REPORT_RequestId",
-                                                    alarm_description=json.dumps(alarm_description),
-                                                    metric_name=metric_filter.metric_transformations[0]["metricName"],
-                                                    namespace=log_group_name,
-                                                    statistic="Sum",
-                                                    period=period,
-                                                    evaluation_periods=1,
-                                                    datapoints_to_alarm=1,
-                                                    threshold=1,
-                                                    alarm_actions=[aws_lambda.arn],
-                                                    ok_actions=[aws_lambda.arn],
-                                                    comparison_operator="LessThanThreshold",
-                                                    treat_missing_data="notBreaching"
-                                                    )
-        self.environment_api.aws_api.cloud_watch_client.set_alarm_ok(alarm)
+        alarm_description = {"routing_tags": [self.configuration.routing_tags],
+                             "lambda_name": monitored_lambda.name
+                            }
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3-alarm-{monitored_lambda.name}-scheduled-executions",
+            alarm_description=json.dumps(alarm_description),
+            metric_name="Invocations",
+            namespace="AWS/Lambda",
+            statistic="Sum",
+            period=period,
+            evaluation_periods=10,
+            datapoints_to_alarm=10,
+            threshold=9.0,
+            comparison_operator="LessThanThreshold",
+            treat_missing_data="breaching",
+            dimensions=[
+                {"Name": "FunctionName", "Value": monitored_lambda.name}
+            ]
+        )
         return alarm
-
 
     # pylint: disable = too-many-arguments
     def provision_cloudwatch_alarm(self, name=None,

@@ -158,7 +158,8 @@ def test_update_instance_stopper_lambda(aws_lambda_api_stopper):
 def test_get_alarm_period_and_threshold(aws_lambda_api_stopper):
     assert aws_lambda_api_stopper.get_alarm_period()
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_provision_instance_stopper_monitoring(aws_lambda_api_stopper, alerts_api):
     aws_lambda = aws_lambda_api_stopper.get_lambda(aws_lambda_api_stopper.configuration.lambda_name)
     assert aws_lambda_api_stopper.provision_monitoring(alerts_api, aws_lambda)
+

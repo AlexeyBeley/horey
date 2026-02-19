@@ -408,7 +408,7 @@ class AWSLambdaAPI:
                                                    )
         if self.configuration.schedule_expression:
             period = self.get_alarm_period()
-            alerts_api.provision_scheduled_lambda_cloudwatch_log_alarm(log_group_name, period)
+            alerts_api.provision_scheduled_lambda_executions_alarm(aws_lambda, period)
         return True
 
     def get_alarm_period(self) -> int:
