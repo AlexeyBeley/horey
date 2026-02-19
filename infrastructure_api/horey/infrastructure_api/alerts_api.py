@@ -479,7 +479,7 @@ class AlertsAPI:
             period=period*10,
             evaluation_periods=1,
             datapoints_to_alarm=1,
-            threshold=9.0,
+            threshold=10.0,
             comparison_operator="LessThanThreshold",
             treat_missing_data="breaching",
             dimensions=[
