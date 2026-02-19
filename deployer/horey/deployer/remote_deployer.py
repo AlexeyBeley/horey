@@ -533,7 +533,7 @@ class RemoteDeployer:
                     # sometimes the command sent over SSH is printed in stdout. We do need it.
                     if str(line).startswith(cmd) or str(line).startswith(echo_cmd):
                         shout = []
-                    elif str(prev_line+line).startswith(finish):
+                    elif str(line).startswith(finish) or str(prev_line+line).startswith(finish):
                         # It sporadically splits the output to 2 lines
                         exit_status = int(str(line).rsplit(maxsplit=1)[1])
                         if exit_status != 0:
