@@ -451,6 +451,11 @@ class AlertsAPI:
         """
         Schedule alarm - makes sure the lambda is triggered correctly
 
+        ret = list(self.environment_api.aws_api.cloud_watch_client.yield_client_metrics(monitored_lambda.region, filters_req={"Dimensions": [
+                {"Name": "FunctionName", "Value": monitored_lambda.name,
+                 }
+            ]}))
+
         :param monitored_lambda:
         :param period:
         :return:
@@ -464,20 +469,22 @@ class AlertsAPI:
         alarm_description = {"routing_tags": [self.configuration.routing_tags],
                              "lambda_name": monitored_lambda.name
                             }
+
         alarm = self.provision_cloudwatch_alarm(
             name=f"has3-alarm-{monitored_lambda.name}-scheduled-executions",
             alarm_description=json.dumps(alarm_description),
             metric_name="Invocations",
             namespace="AWS/Lambda",
             statistic="Sum",
-            period=period,
-            evaluation_periods=10,
-            datapoints_to_alarm=10,
+            period=period*10,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
             threshold=9.0,
             comparison_operator="LessThanThreshold",
             treat_missing_data="breaching",
             dimensions=[
-                {"Name": "FunctionName", "Value": monitored_lambda.name}
+                {"Name": "FunctionName", "Value": monitored_lambda.name
+                 }
             ]
         )
         return alarm
