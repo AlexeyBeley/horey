@@ -182,3 +182,32 @@ class S3API:
 
         return base_tags
 
+    def copy(self, src_bucket=None, src_path=None, dst_bucket_name=None, dst_path=None, tagging=None):
+        """
+        Copy object.
+
+        :param tagging:
+        :param src_bucket:
+        :param src_path:
+        :param dst_bucket_name:
+        :param dst_path:
+        :return:
+        """
+
+        if src_path.split("/")[-1] != dst_path.split("/")[-1]:
+            raise NotImplementedError()
+
+        request_dict = {"Bucket": dst_bucket_name,
+                        "CopySource": {"Bucket": src_bucket.name,
+                                       "Key": src_path},
+                        "MetadataDirective": "COPY",
+                        "Key": dst_path}
+
+        if tagging:
+            request_dict["TaggingDirective"] = "COPY"
+        else:
+            request_dict["TaggingDirective"] = "REPLACE"
+            request_dict["Tagging"] = tagging
+
+
+        self.environment_api.aws_api.s3_client.copy_object_raw(request_dict)
