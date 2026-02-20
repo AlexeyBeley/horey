@@ -28,6 +28,7 @@ class CloudfrontDistribution(AwsObject):
         self.aliases = None
         self.status = None
         self.e_tag = None
+        self.origins = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)

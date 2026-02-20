@@ -403,19 +403,19 @@ class FrontendAPI:
         if bucket_path is None:
             bucket_path = distribution.origins["Items"][0].get("OriginPath") or "/"
 
-        if len(local_paths) != 1:
+        if len(local_paths) > 1:
             raise NotImplementedError("Only one path is supported for now")
 
-        file_path = local_paths[0]
-        if file_path.is_file():
-            self.s3_api.upload_to_s3(file_path,
-                                              bucket_name,
-                                              bucket_path,
-                                              tag_objects=True,
-                                              keep_src_object_name=True,
-                                     custom_tags=custom_artifact_tags)
-        else:
-            raise NotImplementedError("Only file upload is supported for now")
+        for file_path in local_paths:
+            if file_path.is_file():
+                self.s3_api.upload_to_s3(file_path,
+                                                  bucket_name,
+                                                  bucket_path,
+                                                  tag_objects=True,
+                                                  keep_src_object_name=True,
+                                         custom_tags=custom_artifact_tags)
+            else:
+                raise NotImplementedError("Only file upload is supported for now")
 
         paths = [f"{bucket_path.rstrip('/')}/*"]
         return self.create_invalidation(distribution, paths)
