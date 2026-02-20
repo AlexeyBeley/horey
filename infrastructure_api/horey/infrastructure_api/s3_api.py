@@ -111,7 +111,7 @@ class S3API:
                                                                                                   dict_configuration)
     # pylint: disable = (too-many-arguments
     # pylint: disable = too-many-positional-arguments
-    def upload_to_s3(self, directory_path, bucket_name, key_path, tag_objects=True, keep_src_object_name=True):
+    def upload_to_s3(self, directory_path, bucket_name, key_path, tag_objects=True, keep_src_object_name=True, custom_tags=None):
         """
         Upload to S3.
 
@@ -156,7 +156,7 @@ class S3API:
                       "Expires": "0"
                       }
         if tag_objects:
-            extra_args["Tagging"] = self.generate_artifact_tags()
+            extra_args["Tagging"] = self.generate_artifact_tags(custom_tags=custom_tags)
 
         return self.environment_api.aws_api.s3_client.upload(bucket_name, directory_path, key_path,
                                              keep_src_object_name=keep_src_object_name, extra_args=extra_args,
@@ -165,6 +165,7 @@ class S3API:
     def generate_artifact_tags(self, custom_tags=None):
         """
         Generate artifact tags.
+        custom_tags = [{"Key":"branch", "Value": "horey"}]
 
         build_id example: f"&build={build_id}"
 

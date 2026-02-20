@@ -392,7 +392,7 @@ class FrontendAPI:
 
         return distribution
 
-    def update_cloudfront(self, dns_address: str, local_paths: List[Path], bucket_path=None):
+    def update_cloudfront(self, dns_address: str, local_paths: List[Path], bucket_path=None, custom_artifact_tags=None):
         """
 
         :return:
@@ -412,7 +412,8 @@ class FrontendAPI:
                                               bucket_name,
                                               bucket_path,
                                               tag_objects=True,
-                                              keep_src_object_name=True)
+                                              keep_src_object_name=True,
+                                     custom_tags=custom_artifact_tags)
         else:
             raise NotImplementedError("Only file upload is supported for now")
 
