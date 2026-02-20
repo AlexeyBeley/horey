@@ -2,7 +2,6 @@
 Standard frontend maintainer.
 
 """
-import os
 from pathlib import Path
 from typing import List
 
@@ -14,6 +13,9 @@ from horey.infrastructure_api.frontend_api_configuration_policy import FrontendA
 from horey.infrastructure_api.dns_api import DNSAPI, DNSAPIConfigurationPolicy
 from horey.infrastructure_api.s3_api import S3API, S3APIConfigurationPolicy
 from horey.aws_api.aws_services_entities.cloudfront_distribution import CloudfrontDistribution
+from horey.h_logger import get_logger
+
+logger = get_logger()
 
 
 class FrontendAPI:
@@ -418,4 +420,9 @@ class FrontendAPI:
                 raise NotImplementedError("Only file upload is supported for now")
 
         paths = [f"{bucket_path.rstrip('/')}/*"]
-        return self.create_invalidation(distribution, paths)
+        ret = self.create_invalidation(distribution, paths)
+        if local_paths:
+            logger.info(f"File at: {dns_address}/{bucket_path}/{local_paths[0].name}")
+        else:
+            logger.info(f"Files at: {dns_address}/{bucket_path}")
+        return ret
