@@ -3,7 +3,6 @@ Standard Load balancing maintainer.
 
 """
 from pathlib import Path
-import shutil
 import time
 import getpass
 from typing import List
@@ -22,7 +21,7 @@ from horey.infrastructure_api.dns_api import DNSAPIConfigurationPolicy
 from horey.git_api.git_api import GitAPI, GitAPIConfigurationPolicy
 from horey.aws_api.aws_clients.efs_client import EFSFileSystem, EFSAccessPoint, EFSMountTarget
 from horey.deployer.remote_deployer import DeploymentTarget, RemoteDeployer
-from horey.pip_api.pip_api import PipAPI
+from horey.pip_api.pip_api import StandaloneMethods
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 
 from horey.h_logger import get_logger
@@ -625,7 +624,7 @@ class CICDAPI:
                                                           step.configuration.data_dir_name /
                                                           step.configuration.script_configuration_file_name)
         if horey_repo_path:
-            PipAPI.copy_horey_package_required_packages_to_build_dir("provision_constructor", step.configuration.local_deployment_dir_path, horey_repo_path)
+            StandaloneMethods.copy_horey_package_required_packages_to_build_dir("provision_constructor", step.configuration.local_deployment_dir_path, horey_repo_path)
         target.add_step(step)
         return True
 

@@ -466,7 +466,7 @@ class AlertsAPI:
         except self.configuration.UndefinedValueError:
             self.configuration.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
 
-        alarm_description = {"routing_tags": [self.configuration.routing_tags],
+        alarm_description = {"routing_tags": self.configuration.routing_tags,
                              "lambda_name": monitored_lambda.name
                             }
 

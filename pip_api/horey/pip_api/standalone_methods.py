@@ -9,7 +9,7 @@ import subprocess
 import sys
 import shutil
 import platform
-
+from pathlib import Path
 
 this_dir_name = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, this_dir_name)
@@ -608,7 +608,7 @@ class StandaloneMethods:
         self.logger.info(f"Was not able to find installed package for requirement '{requirement.name=}'")
         return False
 
-    def create_wheel(self, source_code_path, package_upper_dir_name, build_dir_path, branch_name=None):
+    def create_wheel(self, source_code_path, package_upper_dir_name, build_dir_path):
         """
         Create wheel.
 
@@ -624,10 +624,6 @@ class StandaloneMethods:
             shutil.rmtree(build_dir_path)
         except FileNotFoundError:
             pass
-
-        if branch_name:
-            os.chdir(source_code_path)
-            self.checkout_branch(branch_name)
 
         shutil.copytree(os.path.join(source_code_path, package_upper_dir_name), os.path.join(build_dir_path, package_upper_dir_name))
         for file_name in ["LICENSE", "README.md", "setup.py"]:
@@ -762,15 +758,6 @@ class StandaloneMethods:
                             timeout=timeout,
                             debug=debug)
 
-    @staticmethod
-    def checkout_branch(branch_name):
-        """
-        Checkout branch.
-
-        :param branch_name:
-        :return:
-        """
-
     def download_https_file_requests(self, local_file_path, url):
         """
         Download file from url.
@@ -802,3 +789,39 @@ class StandaloneMethods:
             os.remove(tmp_file_name)
 
         return local_file_path
+
+    @staticmethod
+    def copy_horey_package_required_packages_to_build_dir(package_raw_name: str, build_dir_path: Path, horey_repo_path: Path):
+        """
+        Copy all needed directories and files.
+
+        :param horey_repo_path:
+        :param package_raw_name:
+        :param build_dir_path:
+        :return:
+        """
+
+        base_names = ["pip_api", "build", "Makefile", "pip_api_docker_configuration.py", "pip_api_configuration.py"]
+
+        build_horey_dir_path = build_dir_path / "horey"
+        build_horey_dir_path.mkdir(exist_ok=True)
+
+        requirement = Requirement(None, f"horey.{package_raw_name}")
+        venv_dir_path = build_horey_dir_path / "build" / "_build" / "_venv"
+        multi_package_repo_to_prefix_map = {"horey.": horey_repo_path}
+        requirements_aggregator = {}
+        StandaloneMethods(venv_dir_path, multi_package_repo_to_prefix_map).compose_requirements_recursive([requirement],
+                                                                                                          requirements_aggregator)
+        recursively_found_horey_directories = [requirement_name.split(".")[1] for requirement_name in requirements_aggregator if requirement_name.startswith("horey")]
+
+        def ignore_build(_, file_names):
+            return ["_build"] if "_build" in file_names else []
+
+        for obj_name in list(set(base_names + recursively_found_horey_directories)):
+            obj_path = horey_repo_path / obj_name
+            if obj_path.is_dir():
+                if not (build_horey_dir_path / obj_name).exists():
+                    shutil.copytree(obj_path, build_horey_dir_path / obj_name, ignore=ignore_build)
+            else:
+                shutil.copy(obj_path, build_horey_dir_path / obj_name)
+        return build_horey_dir_path

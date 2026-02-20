@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 
 from horey.common_utils.remoter import Remoter
-from horey.pip_api.pip_api import PipAPI
+from horey.pip_api.pip_api import StandaloneMethods
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 from horey.provision_constructor.system_functions.system_function_common import (
@@ -106,7 +106,7 @@ class Provisioner(SystemFunctionCommon):
             if deployment_horey_dir.is_dir():
                 shutil.rmtree(deployment_horey_dir)
             for package_name in self.package_names:
-                PipAPI.copy_horey_package_required_packages_to_build_dir(package_name,
+                StandaloneMethods.copy_horey_package_required_packages_to_build_dir(package_name,
                                                                          self.deployment_dir,
                                                                      self.local_horey_repo_path,
                                                                      )

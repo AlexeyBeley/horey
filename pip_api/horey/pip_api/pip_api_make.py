@@ -13,6 +13,7 @@ import sys
 import logging
 import urllib.request
 import zipfile
+from pathlib import Path
 from time import perf_counter
 
 handler = logging.StreamHandler()
@@ -81,6 +82,9 @@ def init_configuration():
     parser.add_argument("--install", type=str)
     parser.add_argument("--bootstrap",  action=argparse.BooleanOptionalAction)
     parser.add_argument("--force_reinstall", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--copy_horey_dependencies",  action=argparse.BooleanOptionalAction)
+    parser.add_argument("--dst_dir_path", type=str)
+    parser.add_argument("--package_name", type=str)
     arguments = parser.parse_args()
 
     if arguments.pip_api_configuration is not None:
@@ -457,6 +461,20 @@ def install(configs):
 
     raise ValueError(f"Parameter 'install' must be valid: {configs}")
 
+def copy_horey_dependencies(configs):
+    """
+    Copy horey package dependencies.
+
+    :param configs:
+    :return:
+    """
+
+    horey_dir_path = Path(configs.get("horey_parent_dir_path")) / "horey"
+    dst_dir_path = Path(configs.get("dst_dir_path"))
+    package_name = configs.get("package_name")
+    StandaloneMethods = get_standalone_methods(configs)
+    StandaloneMethods.copy_horey_package_required_packages_to_build_dir(package_name, dst_dir_path, horey_dir_path)
+
 
 def main():
     """
@@ -466,6 +484,8 @@ def main():
     """
 
     configs = init_configuration()
+    if configs.get("copy_horey_dependencies"):
+        return copy_horey_dependencies(configs)
     if configs.get("bootstrap"):
         return bootstrap(configs)
 
