@@ -379,10 +379,12 @@ class S3Client(Boto3Client):
             if value > max_value:
                 raise ValueError(f"{value} > {max_value}")
 
-    def yield_bucket_objects(self, bucket, custom_filters=None, bucket_name=None):
+    def yield_bucket_objects(self, bucket, custom_filters=None, bucket_name=None, get_tags=False):
         """
         Yield over specific bucket keys in order to handle OOM issue.
 
+        :param get_tags:
+        :param custom_filters:
         :param bucket_name:
         :param bucket:
         :return:
@@ -413,6 +415,8 @@ class S3Client(Boto3Client):
                     bucket_object = None
                     for object_info in response["Contents"]:
                         bucket_object = S3Bucket.BucketObject(object_info)
+                        if get_tags:
+                            bucket_object.tags = self.get_object_tagging_raw(bucket.region, {"Bucket": bucket.name, "Key": bucket_object.key})
                         yield bucket_object
                     start_after = bucket_object.key if counter == max_keys else None
 
