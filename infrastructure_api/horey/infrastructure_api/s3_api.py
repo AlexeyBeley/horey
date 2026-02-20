@@ -203,7 +203,7 @@ class S3API:
                         "MetadataDirective": "COPY",
                         "Key": dst_path}
 
-        if tagging:
+        if tagging is None:
             request_dict["TaggingDirective"] = "COPY"
         else:
             request_dict["TaggingDirective"] = "REPLACE"
