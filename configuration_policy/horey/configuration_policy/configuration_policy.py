@@ -166,7 +166,7 @@ class ConfigurationPolicy:
 
                 self._set_attribute_value(key, value)
 
-    def init_from_file(self):
+    def init_from_file(self, file_path=None):
         """
         Load attributes values from file.
 
@@ -174,7 +174,9 @@ class ConfigurationPolicy:
         """
 
         if self.configuration_file_full_path is None:
-            raise ValueError("Configuration file was not set")
+            if file_path is None:
+                raise ValueError("Configuration file was not set")
+            self.configuration_file_full_path = file_path
 
         if self.configuration_file_full_path.endswith(".py"):
             return self.init_from_python_file()

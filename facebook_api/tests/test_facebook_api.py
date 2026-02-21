@@ -15,7 +15,7 @@ config.init_from_file()
 # pylint: disable= missing-function-docstring
 
 
-@pytest.mark.wip
-def test_load_free():
+@pytest.mark.unit
+def test_get_free_items():
     facebook_api = FacebookAPI(config)
-    assert facebook_api.load_free()
+    assert facebook_api.get_free_items()

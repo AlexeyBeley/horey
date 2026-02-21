@@ -14,6 +14,7 @@ from horey.h_logger import get_logger
 from horey.aws_api.base_entities.region import Region
 from horey.infrastructure_api.build_api_configuration_policy import BuildAPIConfigurationPolicy
 from horey.git_api.git_api import GitAPIConfigurationPolicy, GitAPI
+from horey.pip_api.standalone_methods import StandaloneMethods
 
 logger = get_logger()
 
@@ -138,6 +139,33 @@ class BuildAPI:
 
         shutil.copytree(str(source_code_directory_path), str(self.docker_build_directory), ignore=ignore_git)
 
+        build_dir_path = self.prepare_docker_image_build_directory_callback(self.docker_build_directory)
+
+        self.add_build_metadata_file(build_dir_path, build_number)
+
+        logger.info(f"Prepared docker build directory. Took {time.perf_counter() - perf_counter_start}")
+
+        return build_dir_path
+
+    def prepare_docker_image_horey_package_build_directory(self, source_code_directory_path, package_raw_name, build_number):
+        """
+        Copy source code to tmp dir.
+
+        :param build_number:
+        :param source_code_directory_path:
+        :return:
+        """
+
+
+        logger.info(
+            f"Preparing horey.{source_code_directory_path} docker build directory' {source_code_directory_path}' to '{self.docker_build_directory}'")
+        perf_counter_start = time.perf_counter()
+        horey_build_dir = self.docker_build_directory / "horey"
+        horey_build_dir.mkdir(parents=True, exist_ok=True)
+
+        StandaloneMethods.copy_horey_package_required_packages_to_build_dir(package_raw_name, horey_build_dir , source_code_directory_path)
+
+        breakpoint()
         build_dir_path = self.prepare_docker_image_build_directory_callback(self.docker_build_directory)
 
         self.add_build_metadata_file(build_dir_path, build_number)

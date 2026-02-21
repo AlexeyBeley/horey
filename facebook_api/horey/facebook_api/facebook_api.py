@@ -6,7 +6,7 @@ from horey.facebook_api.facebook_api_configuration_policy import FacebookAPIConf
 from horey.selenium_api.selenium_api import SeleniumAPI
 from collections import defaultdict
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException, ElementNotInteractableException
+from selenium.common.exceptions import NoSuchElementException, ElementNotInteractableException, StaleElementReferenceException
 from horey.h_logger import get_logger
 from horey.common_utils.common_utils import CommonUtils
 from horey.common_utils.free_item import FreeItem
@@ -14,20 +14,23 @@ from horey.common_utils.free_item import FreeItem
 logger = get_logger()
 
 class FacebookAPI:
-    def __init__(self, configuration:FacebookAPIConfigurationPolicy):
+    def __init__(self, configuration: FacebookAPIConfigurationPolicy = None):
         self._selenium_api = None
         self.configuration = configuration
 
     @property
     def selenium_api(self):
         if self._selenium_api is None:
-            self._selenium_api = SeleniumAPI(store_data=True)
+            self._selenium_api = SeleniumAPI(store_data=False)
         return self._selenium_api
 
     def reload_elements(self):
-
+        """
+        Using dynamic loading
+        
+        :return: 
+        """
         main = CommonUtils.load_object_from_module_raw("/Users/alexeybeley/git/horey/facebook_api/horey/facebook_api/dynamic.py", "main")
-        breakpoint()
         free_items = main(self.selenium_api)
 
     def main(self):
@@ -43,7 +46,7 @@ class FacebookAPI:
             time.sleep(2)
 
             try:
-                free_items = self.get_free_items()
+                free_items = self.fetch_free_items_from_page()
             except Exception as inst_error:
                 logger.exception(inst_error)
                 breakpoint()
@@ -56,8 +59,23 @@ class FacebookAPI:
         return free_items
 
 
+    def get_free_items(self):
+        """
+        Load all free items.
 
-    def load_free(self):
+        :return:
+        """
+
+        self.selenium_api.connect(options="--no-sandbox --disable-gpu --disable-dev-shm-usage")
+
+        self.selenium_api.get("https://www.facebook.com/marketplace/winnipeg/free/?exact=false")
+        self.selenium_api.wait_for_page_load()
+        self.close_popup()
+        self.selenium_api.scroll_to_bottom()
+        ret = self.fetch_free_items_from_page()
+        return ret
+
+    def load_free_logged_in(self):
         """
         Load free items.
 
@@ -83,14 +101,14 @@ class FacebookAPI:
             logger.info(f"Going to sleep {i}/{count}")
             time.sleep(2)
 
-            item_elements = self.get_free_items()
+            item_elements = self.fetch_free_items_from_page()
             if len(item_elements) > 230:
                 break
 
         breakpoint()
 
 
-    def get_free_items(self):
+    def fetch_free_items_from_page(self):
         """
         Fetch elements
 
@@ -98,10 +116,16 @@ class FacebookAPI:
         """
 
         lst_ret = []
-        divs = self.selenium_api.get_elements_by_tagname("div")
-        by_class = defaultdict(list)
-        for div in divs:
-            by_class[div.get_attribute("class")].append(div)
+        for i in range(5):
+            by_class = defaultdict(list)
+            try:
+                divs = self.selenium_api.get_elements_by_tagname("div")
+                for div in divs:
+                    by_class[div.get_attribute("class")].append(div)
+                break
+            except StaleElementReferenceException:
+                logger.error("StaleElementReferenceException. Going to sleep")
+            time.sleep(1)
 
         candidate_batches_with_13_tokens = [values for class_name, values in by_class.items() if len(class_name.split(" ")) == 13]
         # The biggest number of divs with the same 13 tokens in class name are the item list
@@ -137,18 +161,31 @@ class FacebookAPI:
 
         unique_lines = {line for text_block in item_text_blocks for line in text_block.text.split("\n")}
         lines = []
-        name = None
         for line in unique_lines:
             if not line:
                 continue
             if line.replace("!", "").lower() == "free":
                 continue
             lines.append(line)
-            if not name and not line.lower().replace("ca$", "").isdigit():
-                name = line
 
         description = "\n".join(lines)
-        return FreeItem(name, url, image_url=image_url, description=description)
+        return FreeItem("Facebook", url, image_url=image_url, description=description)
+
+    def close_popup(self):
+        """
+        Close the popup that asks to login
+
+        :return:
+        """
+
+        div_elements = self.selenium_api.get_elements(By.TAG_NAME, "div")
+        for div_close in div_elements:
+            try:
+                if div_close.get_attribute("aria-label") == "Close":
+                    div_close.click()
+                    break
+            except Exception:
+                pass
 
     def login(self):
         """
