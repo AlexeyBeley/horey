@@ -108,6 +108,9 @@ class CloudfrontDistribution(AwsObject):
             if required_attr not in request["DistributionConfig"]:
                 request["DistributionConfig"][required_attr] = self.distribution_config[required_attr]
 
+        for origin in request["DistributionConfig"]["Origins"]["Items"]:
+            if origin.get("OriginPath") is None:
+                origin["OriginPath"] = ""
         return request
 
     def update_from_raw_create(self, dict_src):

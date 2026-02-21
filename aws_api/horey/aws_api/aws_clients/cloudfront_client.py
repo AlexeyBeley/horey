@@ -238,13 +238,17 @@ class CloudfrontClient(Boto3Client):
         :param request_dict:
         :return:
         """
+
         logger.info(f"updating distribution {request_dict}")
+
         for response in self.execute(
                 self.get_session_client().update_distribution,
                 "Distribution",
                 filters_req=request_dict,
         ):
             return response
+
+        return True
 
     def get_all_origin_access_identities(self, full_information=True):
         """
