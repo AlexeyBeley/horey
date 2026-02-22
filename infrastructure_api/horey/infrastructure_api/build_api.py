@@ -101,7 +101,6 @@ class BuildAPI:
 
         logger.info(f"Preparing source code directory, {branch_name=}")
         perf_counter_start = time.perf_counter()
-
         self.git_api.update_local_source_code(branch_name)
         self.commit_id = self.git_api.get_commit_id()
 
@@ -160,12 +159,9 @@ class BuildAPI:
         logger.info(
             f"Preparing horey.{source_code_directory_path} docker build directory' {source_code_directory_path}' to '{self.docker_build_directory}'")
         perf_counter_start = time.perf_counter()
-        horey_build_dir = self.docker_build_directory / "horey"
-        horey_build_dir.mkdir(parents=True, exist_ok=True)
+        self.docker_build_directory.mkdir(parents=True, exist_ok=True)
+        StandaloneMethods.copy_horey_package_required_packages_to_build_dir(package_raw_name, self.docker_build_directory , source_code_directory_path)
 
-        StandaloneMethods.copy_horey_package_required_packages_to_build_dir(package_raw_name, horey_build_dir , source_code_directory_path)
-
-        breakpoint()
         build_dir_path = self.prepare_docker_image_build_directory_callback(self.docker_build_directory)
 
         self.add_build_metadata_file(build_dir_path, build_number)

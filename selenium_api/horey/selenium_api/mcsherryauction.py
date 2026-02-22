@@ -3,10 +3,8 @@ import datetime
 import time
 from pathlib import Path
 
-from horey.selenium_api.selenium_api import SeleniumAPI
 from selenium.webdriver.common.by import By
 from horey.h_logger import get_logger
-from horey.common_utils.common_utils import CommonUtils
 from horey.selenium_api.lot import Lot
 from horey.selenium_api.provider import Provider
 from horey.selenium_api.auction_event import AuctionEvent

@@ -1,3 +1,5 @@
+import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -11,13 +13,15 @@ from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPIConfigurationPol
 from horey.infrastructure_api.db_api import DBAPI
 from horey.infrastructure_api.db_api_configuration_policy import DBAPIConfigurationPolicy
 from horey.infrastructure_api.environment_api import EnvironmentAPIConfigurationPolicy, EnvironmentAPI
+from horey.selenium_api.selenium_api import SeleniumAPI
 
 logger = get_logger()
 
 class FreeStuffAPI:
     def __init__(self, configuration: FreeStuffAPIConfigurationPolicy = None):
         self.configuration = configuration
-        self.platform_apis = [FacebookAPI()]
+
+        self.platform_apis = [FacebookAPI(selenium_api=SeleniumAPI(chromedriver_path=Path("/opt/chromedriver-linux64/chromedriver"), chrome_path=Path("/opt/chrome-linux64/chrome")))]
         self._db_api = None
         self._environment_api = None
         self._aws_lambda_api = None
@@ -61,12 +65,28 @@ class FreeStuffAPI:
             configuration = AWSLambdaAPIConfigurationPolicy()
             # todo: rename
             configuration.lambda_name = "test_selenium"
+            configuration.lambda_timeout = 600
+            configuration.lambda_memory_size = 2048
             self._aws_lambda_api = AWSLambdaAPI(configuration, self.environment_api)
-
+            self._aws_lambda_api.build_api.horey_git_api.configuration.git_directory_path = self.configuration.horey_directory_path.parent
             self._aws_lambda_api.build_api.prepare_docker_image_build_directory = lambda x, y: self._aws_lambda_api.build_api.prepare_docker_image_horey_package_build_directory(x, "free_stuff_api", y)
+            self._aws_lambda_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_docker_image_build_directory_callback
 
         return self._aws_lambda_api
 
+    def prepare_docker_image_build_directory_callback(self, docker_build_directory):
+        """
+        Prepare the dir.
+
+        :param docker_build_directory:
+        :return:
+        """
+
+        shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "build" / "lambda_handler.py",
+                    docker_build_directory)
+        shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "build" / "Dockerfile" , docker_build_directory)
+        self.configuration.generate_configuration_file_ng(docker_build_directory/ "frs_api_configuration.json")
+        return docker_build_directory
 
     def main(self):
         """
@@ -94,7 +114,32 @@ class FreeStuffAPI:
         """
 
         #self.db_api.provision_dynamo_table(self.configuration.dynamo_table_name)
-        self.aws_lambda_api.provision_docker_lambda()
+        return self.aws_lambda_api.provision_docker_lambda()
+
+    def update(self):
+        """
+        Provision code.
+
+        :return:
+        """
+
+        return self.aws_lambda_api.update_docker_lambda()
+
+    def trigger(self):
+        """
+        Trigger lambda
+
+        :return:
+        """
+
+        res = self.aws_lambda_api.trigger_lambda()
+
+        breakpoint()
+        date_str = res["ResponseMetadata"]["HTTPHeaders"]["date"]
+        dt = datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S %Z').replace(tzinfo=timezone.utc)
+        ret = list(self.aws_lambda_api.yield_logs(start_time=dt))
+        breakpoint()
+
 
     def dispose_infra(self):
         # self.db_api.dispose_dynamo_table(self.configuration.dynamo_table_name)

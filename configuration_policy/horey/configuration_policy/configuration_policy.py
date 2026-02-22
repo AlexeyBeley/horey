@@ -284,6 +284,10 @@ class ConfigurationPolicy:
         """
 
         dict_values = self.convert_to_dict()
+        try:
+            del dict_values["configuration_file_full_path"]
+        except KeyError:
+            pass
 
         with open(output_file_name, "w+", encoding="utf-8") as file_handler:
             json.dump(dict_values, file_handler, indent=4)
@@ -298,8 +302,10 @@ class ConfigurationPolicy:
 
         dict_ret = {attr_name[1:]: getattr(self, attr_name) for attr_name in self.__dict__ if attr_name.startswith("_")}
 
-        if not dict_ret["configuration_file_full_path"]:
+        try:
             del dict_ret["configuration_file_full_path"]
+        except KeyError:
+            pass
 
         dict_values = CommonUtils.convert_to_dict(dict_ret)
 

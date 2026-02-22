@@ -14,14 +14,14 @@ from horey.common_utils.free_item import FreeItem
 logger = get_logger()
 
 class FacebookAPI:
-    def __init__(self, configuration: FacebookAPIConfigurationPolicy = None):
-        self._selenium_api = None
+    def __init__(self, configuration: FacebookAPIConfigurationPolicy = None, selenium_api=None):
+        self._selenium_api = selenium_api
         self.configuration = configuration
 
     @property
     def selenium_api(self):
         if self._selenium_api is None:
-            self._selenium_api = SeleniumAPI(store_data=False)
+            self._selenium_api = SeleniumAPI()
         return self._selenium_api
 
     def reload_elements(self):
@@ -66,7 +66,7 @@ class FacebookAPI:
         :return:
         """
 
-        self.selenium_api.connect(options="--no-sandbox --disable-gpu --disable-dev-shm-usage")
+        self.selenium_api.connect()
 
         self.selenium_api.get("https://www.facebook.com/marketplace/winnipeg/free/?exact=false")
         self.selenium_api.wait_for_page_load()
@@ -82,7 +82,7 @@ class FacebookAPI:
         :return:
         """
 
-        self.selenium_api.connect(options="--no-sandbox --disable-gpu --disable-dev-shm-usage")
+        self.selenium_api.connect()
 
         self.selenium_api.get("https://www.facebook.com/marketplace/winnipeg/free/?exact=false")
         self.selenium_api.wait_for_page_load()
@@ -130,11 +130,13 @@ class FacebookAPI:
         candidate_batches_with_13_tokens = [values for class_name, values in by_class.items() if len(class_name.split(" ")) == 13]
         # The biggest number of divs with the same 13 tokens in class name are the item list
         candidate_item_elements = max(candidate_batches_with_13_tokens, key=lambda x: len(x))
+        logger.info(f"Fetched {len(by_class)=}")
 
         for item_element in candidate_item_elements:
             item = self.generate_free_item(item_element)
             if item:
                 lst_ret.append(item)
+        logger.info(f"Initialized {len(lst_ret)} free items")
         return lst_ret
 
 

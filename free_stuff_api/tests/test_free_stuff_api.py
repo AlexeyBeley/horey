@@ -10,6 +10,7 @@ from horey.common_utils.free_item import FreeItem
 
 config = FreeStuffAPIConfigurationPolicy()
 config.configuration_file_full_path = Path(__file__).parent.parent.parent.parent / "ignore" / "test_frs_api_configuration.py"
+config.horey_directory_path =  Path(__file__).parent.parent.parent
 config.init_from_file()
 
 
@@ -39,7 +40,19 @@ def test_notify_about_new_item():
                           'description': 'Steinbach, MB\nQueen frame'}
     assert free_stuff_api.notify_about_new_item(free_item)
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_provision_infra():
     free_stuff_api = FreeStuffAPI(config)
     assert free_stuff_api.provision_infra()
+
+
+@pytest.mark.unit
+def test_update():
+    free_stuff_api = FreeStuffAPI(config)
+    assert free_stuff_api.update()
+
+
+@pytest.mark.wip
+def test_trigger():
+    free_stuff_api = FreeStuffAPI(config)
+    assert free_stuff_api.trigger()

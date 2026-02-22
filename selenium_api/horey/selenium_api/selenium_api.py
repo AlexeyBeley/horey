@@ -21,9 +21,10 @@ logger = get_logger()
 
 class SeleniumAPI:
     driver = None
-    def __init__(self, store_data=False):
-        self.data_dir = Path("/opt/horey/selenium")
-        self.store_data = store_data
+    def __init__(self, data_dir:Path=None, chromedriver_path:Path=None, chrome_path:Path=None):
+        self.data_dir = data_dir
+        self.chromedriver_path = chromedriver_path
+        self.chrome_path = chrome_path
 
 
     def wait_for_page_load(self, timeout=10):
@@ -43,26 +44,45 @@ class SeleniumAPI:
         except:
             return False
 
-    def connect(self, options="--no-sandbox --headless --disable-gpu --disable-dev-shm-usage"):
+    def connect(self):
         """
         Connect to the chrome driver.
 
-        :param options:
+        :param:
         :return:
         """
         if SeleniumAPI.driver is not None:
             return SeleniumAPI.driver
+
         logger.info("Connecting diver in SeleniumAPI")
-        cService = Service(ChromeDriverManager().install())
+
         chrome_options = Options()
-        chrome_flags = os.getenv("CHROME_OPTIONS", options)
-        for flag in chrome_flags.split():
-            chrome_options.add_argument(flag)
-        if self.store_data:
+        
+        if self.chrome_path:
+            chrome_options.binary_location = str(self.chrome_path)
+        #elif os.path.exists("/opt/chrome-linux64/chrome"):
+        #    chrome_options.binary_location = "/opt/chrome-linux64/chrome"
+        if self.chromedriver_path:
+            service = Service(executable_path=str(self.chromedriver_path))
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--disable-software-rasterizer")
+            chrome_options.add_argument("--disable-dev-tools")
+            chrome_options.add_argument("--no-zygote")
+            chrome_options.add_argument("--disable-setuid-sandbox")
+            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--single-process")
+            chrome_options.add_argument("--disable-gp")
+            SeleniumAPI.driver = webdriver.Chrome(service=service, options=chrome_options)
+        else:
+            SeleniumAPI.driver = webdriver.Chrome()
+
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-gp")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        if self.data_dir:
             chrome_options.add_argument(f"--user-data-dir={self.data_dir / 'chrome-profile'}")
             chrome_options.add_argument(f"--profile-directory=Profile1")
 
-        SeleniumAPI.driver = webdriver.Chrome(service=cService, options=chrome_options)
         # self.driver.maximize_window()
         SeleniumAPI.driver.set_window_size(1440, 900)
         SeleniumAPI.driver.set_window_position(0, 0)

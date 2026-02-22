@@ -404,6 +404,26 @@ class LambdaClient(Boto3Client):
                 self.get_session_client(region=region).invoke, None, raw_data=True, filters_req=request_dict
         ):
             return response
+        return None
+
+    def invoke_with_response_stream_raw(self, region, request_dict):
+        """
+        Standard
+        request = {"FunctionName": lambda_name, "InvocationType": "DryRun"}
+
+        @param request_dict:
+        @return:
+        :param region:
+        """
+
+        logger.info(f"Invoking lambda with response stream: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).invoke_with_response_stream, None, raw_data=True, filters_req=request_dict
+        ):
+            return response
+
+        return None
 
     # pylint: disable= too-many-arguments
     def yield_event_source_mappings(self, region=None, update_info=False, filters_req=None):

@@ -496,12 +496,20 @@ class AWSLambdaAPI:
             image_registry_reference = self.ecs_api.generate_image_registry_reference(image_tag_raw)
         else:
             build_number = self.ecs_api.get_next_build_number()
-
             image = self.build_api.run_build_image_routine(branch_name, build_number)
 
             image_registry_reference = image.tags[0]
 
         return self.deploy_lambda(image_registry_reference)
+
+    def trigger_lambda(self):
+        """
+        Trigger the lambda
+
+        :return:
+        """
+
+        return self.environment_api.aws_api.lambda_client.invoke_raw(self.environment_api.region, {"FunctionName": self.configuration.lambda_name})
 
     def get_latest_build_number(self):
         """
@@ -830,3 +838,12 @@ class AWSLambdaAPI:
                      "Resource": None,
                      "Condition": {"ArnLike": {
                          "AWS:SourceArn": bucket.arn}}}
+
+    def yield_logs(self, start_time=None):
+        """
+        Get lambda logs.
+
+        :return:
+        """
+
+        return self.cloudwatch_api.yield_logs(self.log_group_name, start_time=start_time)

@@ -105,3 +105,25 @@ class CloudwatchAPI:
         self.environment_api.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
 
         return alarm
+
+    def yield_logs(self, log_group_name, start_time=None):
+        """
+        Get logs from the group.
+
+        :param log_group_name:
+        :param start_time:
+        :return:
+        """
+
+        log_group = self.get_cloudwatch_log_group(log_group_name)
+        # LogStreamName'|'LastEventTime
+        filters_req = {"orderBy": "LastEventTime", "descending": True}
+
+        for stream in self.environment_api.aws_api.cloud_watch_logs_client.yield_log_group_streams(log_group, filters_req=filters_req):
+            breakpoint()
+            if stream.get_last_event_timestamp() < start_time:
+                continue
+            breakpoint()
+            logger.info(f"Stream: {stream.name}")
+
+            self.environment_api.aws_api.cloud_watch_logs_client.yield_log_events(log_group, stream, filters_req=None)

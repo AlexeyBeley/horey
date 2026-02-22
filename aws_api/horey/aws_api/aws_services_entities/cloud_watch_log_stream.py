@@ -9,6 +9,9 @@ class CloudWatchLogStream(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         self.statements = []
+        self.last_event_timestamp = None
+        self.last_ingestion_time = None
+        self.first_event_timestamp = None
 
         super(CloudWatchLogStream, self).__init__(dict_src, from_cache=from_cache)
 
@@ -43,3 +46,12 @@ class CloudWatchLogStream(AwsObject):
         options = {}
 
         self._init_from_cache(dict_src, options)
+
+    def get_last_event_timestamp(self):
+        """
+        Get last event timestamp.
+        :return:
+        """
+
+        return CommonUtils.timestamp_to_datetime(
+            self.last_event_timestamp / 1000.0)

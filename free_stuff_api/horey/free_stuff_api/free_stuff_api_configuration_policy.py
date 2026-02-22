@@ -1,6 +1,7 @@
 """
 FB configuration policy
 """
+from pathlib import Path
 
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
@@ -17,6 +18,15 @@ class FreeStuffAPIConfigurationPolicy(ConfigurationPolicy):
         self._telegram_bot_token = None
         self._telegram_chat_id = None
         self._region = None
+        self._horey_directory_path = None
+
+    @property
+    def horey_directory_path(self):
+        return self._horey_directory_path
+
+    @horey_directory_path.setter
+    def horey_directory_path(self, value: Path):
+        self._horey_directory_path = value
 
     @property
     def region(self):

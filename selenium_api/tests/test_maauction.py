@@ -60,7 +60,7 @@ def test_init_lot_from_url():
     assert ret
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_init_auction_events_from_internal_url():
     provider = MAauction()
     provider.connect()
