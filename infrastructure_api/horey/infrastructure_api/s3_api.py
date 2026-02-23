@@ -142,7 +142,8 @@ class S3API:
                                   "eot": {"ContentType": "application/vnd.ms-fontobject"},
                                   "png": {"ContentType": "image/png"},
                                   "txt": {"ContentType": "text/plain"},
-                                  "exe": {"ContentType": "application/x-msdownload"}
+                                  "exe": {"ContentType": "application/x-msdownload"},
+                                  "zip": {"ContentType": "application/zip"}
                                   }
 
             _, extension_string = os.path.splitext(file_path)
