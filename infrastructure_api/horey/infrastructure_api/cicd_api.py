@@ -12,6 +12,7 @@ from horey.common_utils.storage_service import StorageService
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
+from horey.infrastructure_api.ec2_api import EC2API, EC2APIConfigurationPolicy
 from horey.infrastructure_api.ecs_api import ECSAPI, ECSAPIConfigurationPolicy
 from horey.infrastructure_api.cicd_api_configuration_policy import CICDAPIConfigurationPolicy
 from horey.infrastructure_api.environment_api import EnvironmentAPI
@@ -41,6 +42,7 @@ class CICDAPI:
         self.environment_api = environment_api
         self._cloudwatch_api = None
         self.ecs_api = None
+        self._ec2_api = None
         self._dns_api = None
         self._remote_deployer = None
 
@@ -69,6 +71,19 @@ class CICDAPI:
             self._cloudwatch_api = CloudwatchAPI(configuration=config, environment_api=self.environment_api)
             self.init_clouwatch_api_defaults()
         return self._cloudwatch_api
+    
+    @property
+    def ec2_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        if self._ec2_api is None:
+            config = EC2APIConfigurationPolicy()
+            self._ec2_api = EC2API(configuration=config, environment_api=self.environment_api)
+        return self._ec2_api
 
     def set_api(self, ecs_api=None, cloudwatch_api=None, dns_api=None):
         """
