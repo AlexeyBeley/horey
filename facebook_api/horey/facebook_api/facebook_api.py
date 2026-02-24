@@ -115,29 +115,68 @@ class FacebookAPI:
         :return:
         """
 
-        lst_ret = []
-        for i in range(5):
+        count = 10
+        for i in range(count):
             by_class = defaultdict(list)
             try:
                 divs = self.selenium_api.get_elements_by_tagname("div")
                 for div in divs:
                     by_class[div.get_attribute("class")].append(div)
-                break
+
+                logger.info(f"Fetched {len(by_class)=}")
+                return self.get_free_items_from_elements_by_class_id(by_class)
             except StaleElementReferenceException:
-                logger.error("StaleElementReferenceException. Going to sleep")
+                logger.error(f"StaleElementReferenceException. Going to sleep {i}/{count}")
             time.sleep(1)
 
-        candidate_batches_with_13_tokens = [values for class_name, values in by_class.items() if len(class_name.split(" ")) == 13]
-        # The biggest number of divs with the same 13 tokens in class name are the item list
-        candidate_item_elements = max(candidate_batches_with_13_tokens, key=lambda x: len(x))
-        logger.info(f"Fetched {len(by_class)=}")
+        raise TimeoutError("Was not able to fetch free items")
 
-        for item_element in candidate_item_elements:
-            item = self.generate_free_item(item_element)
-            if item:
-                lst_ret.append(item)
-        logger.info(f"Initialized {len(lst_ret)} free items")
-        return lst_ret
+    def get_free_items_from_elements_by_class_id(self, by_class):
+        """
+        Get item elements from class dict
+
+        :param by_class:
+        :return:
+        """
+
+        for class_id, values in by_class.items():
+            if len(values) < 10:
+                continue
+            if len(values) > 100:
+                continue
+            logger.info(f"Initializing item elements by class ID: {class_id}")
+            free_items = self.get_free_items_by_class_id(values)
+            logger.info(f"found: {len(free_items)=}")
+            if len(free_items) < 10:
+                continue
+            
+            return free_items
+        else:
+            raise ValueError("Was not able to find item elements")
+
+
+    def get_free_items_by_class_id(self, elements):
+        """
+        Magic happens here
+
+        :param elements:
+        :return:
+        """
+
+        lst_ret = []
+        urls = []
+        for element in elements:
+            free_item = self.generate_free_item(element)
+            if free_item is None:
+                continue
+            if free_item.url in urls:
+                continue
+            urls.append(free_item.url)
+            lst_ret.append(free_item)
+
+        if len(lst_ret) > 10:
+            return lst_ret
+        return []
 
 
     def generate_free_item(self, item_element: selenium.webdriver.remote.webelement.WebElement)->FreeItem:

@@ -1,4 +1,5 @@
 import shutil
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -132,11 +133,14 @@ class FreeStuffAPI:
         :return:
         """
 
+        dt = datetime.now(tz=timezone.utc)
         res = self.aws_lambda_api.trigger_lambda()
-
-        breakpoint()
-        date_str = res["ResponseMetadata"]["HTTPHeaders"]["date"]
-        dt = datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S %Z').replace(tzinfo=timezone.utc)
+        logger.info(f"Triggered lambda {res=}")
+        # date_str = res["ResponseMetadata"]["HTTPHeaders"]["date"]
+        # dt = datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S %Z').replace(tzinfo=timezone.utc)
+        ret = list(self.aws_lambda_api.yield_logs(start_time=dt))
+        if not ret:
+            time.sleep(10)
         ret = list(self.aws_lambda_api.yield_logs(start_time=dt))
         breakpoint()
 

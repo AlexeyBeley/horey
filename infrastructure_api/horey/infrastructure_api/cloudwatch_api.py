@@ -2,6 +2,7 @@
 Standard Cloudwatch maintainer.
 
 """
+from pygments.styles.dracula import yellow
 
 from horey.h_logger import get_logger
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
@@ -120,10 +121,9 @@ class CloudwatchAPI:
         filters_req = {"orderBy": "LastEventTime", "descending": True}
 
         for stream in self.environment_api.aws_api.cloud_watch_logs_client.yield_log_group_streams(log_group, filters_req=filters_req):
-            breakpoint()
             if stream.get_last_event_timestamp() < start_time:
                 continue
-            breakpoint()
             logger.info(f"Stream: {stream.name}")
 
-            self.environment_api.aws_api.cloud_watch_logs_client.yield_log_events(log_group, stream, filters_req=None)
+            for event in self.environment_api.aws_api.cloud_watch_logs_client.yield_log_events(log_group, stream, filters_req=None):
+                yield event

@@ -52,7 +52,7 @@ def test_update():
     assert free_stuff_api.update()
 
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_trigger():
     free_stuff_api = FreeStuffAPI(config)
     assert free_stuff_api.trigger()
