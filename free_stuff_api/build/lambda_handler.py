@@ -33,3 +33,5 @@ def handler(event, _):
     # return {"statusCode": 404, "body": json.dumps({"repr": repr(error_inst), "traceback": traceback_str})}
 
     return {"statusCode": 200, "body": json.dumps("Hello from Horey FRee Stuff!")}
+
+# handler(1,1)

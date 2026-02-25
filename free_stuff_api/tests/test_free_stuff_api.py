@@ -46,7 +46,7 @@ def test_provision_infra():
     assert free_stuff_api.provision_infra()
 
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_update():
     free_stuff_api = FreeStuffAPI(config)
     assert free_stuff_api.update()

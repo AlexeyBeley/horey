@@ -34,6 +34,7 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
         self._reserved_concurrent_executions = None
         self._lambda_name_slug = None
         self._build_image = None
+        self._architecture = None
 
     @property
     def build_image(self):
@@ -208,3 +209,15 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
     @lambda_name.setter
     def lambda_name(self, value):
         self._lambda_name = value
+
+    @property
+    def architecture(self):
+        if self._architecture is None:
+            return "x86_64"
+        return self._architecture
+
+    @architecture.setter
+    def architecture(self, value):
+        if value not in ["x86_64", "arm64"]:
+            raise ValueError(f"Unsupported architecture: {value}")
+        self._architecture = value

@@ -22,7 +22,8 @@ class FreeStuffAPI:
     def __init__(self, configuration: FreeStuffAPIConfigurationPolicy = None):
         self.configuration = configuration
 
-        self.platform_apis = [FacebookAPI(selenium_api=SeleniumAPI(chromedriver_path=Path("/opt/chromedriver-linux64/chromedriver"), chrome_path=Path("/opt/chrome-linux64/chrome")))]
+        self.platform_apis = [FacebookAPI(selenium_api=SeleniumAPI(chromedriver_path=Path("/opt/chrome-driver/chromedriver-linux64/chromedriver"),
+                                                                   chrome_path=Path("/opt/chrome/chrome-linux64/chrome")))]
         self._db_api = None
         self._environment_api = None
         self._aws_lambda_api = None
@@ -68,6 +69,7 @@ class FreeStuffAPI:
             configuration.lambda_name = "test_selenium"
             configuration.lambda_timeout = 600
             configuration.lambda_memory_size = 2048
+            # todo: configuration.architecture = "arm64"
             self._aws_lambda_api = AWSLambdaAPI(configuration, self.environment_api)
             self._aws_lambda_api.build_api.horey_git_api.configuration.git_directory_path = self.configuration.horey_directory_path.parent
             self._aws_lambda_api.build_api.prepare_docker_image_build_directory = lambda x, y: self._aws_lambda_api.build_api.prepare_docker_image_horey_package_build_directory(x, "free_stuff_api", y)
@@ -86,6 +88,7 @@ class FreeStuffAPI:
         shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "build" / "lambda_handler.py",
                     docker_build_directory)
         shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "build" / "Dockerfile" , docker_build_directory)
+        shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "build" / "chrome-installer.sh" , docker_build_directory)
         self.configuration.generate_configuration_file_ng(docker_build_directory/ "frs_api_configuration.json")
         return docker_build_directory
 
@@ -97,7 +100,14 @@ class FreeStuffAPI:
         """
 
         for platform_api in self.platform_apis:
-            free_items = platform_api.get_free_items()
+            try:
+                free_items = platform_api.get_free_items()
+            except Exception as inst:
+                logger.exception(inst)
+                file_path = platform_api.selenium_api.get_screenshot()
+                self.send_telegram_screenshot(file_path)
+                raise
+
             for free_item in free_items:
                 if self.add_free_item_to_db(free_item):
                     self.notify_about_new_item(free_item)
@@ -142,6 +152,8 @@ class FreeStuffAPI:
         if not ret:
             time.sleep(10)
         ret = list(self.aws_lambda_api.yield_logs(start_time=dt))
+        for event in ret:
+            print(event["message"].strip())
         breakpoint()
 
 
@@ -178,6 +190,36 @@ class FreeStuffAPI:
             "chat_id": self.configuration.telegram_chat_id,
             "text": free_item.generate_message(),
             "parse_mode": "HTML"
+        }
+        try:
+            response = requests.post(api_url, params=params)
+            response.raise_for_status()  # Raise an exception for bad status codes
+            return True
+        except requests.exceptions.RequestException as e:
+            logger.exception(e)
+            return False
+
+    def send_telegram_screenshot(self, img_path):
+        """
+             Sends a message to a Telegram chat using a bot.
+
+             Args:
+                 bot_token (str): The API token of your Telegram bot.
+                 chat_id (str or int): The chat ID of the recipient (user or group).
+                 message (str): The text of the message to send.
+
+             Returns:
+                 bool: True if the message was sent successfully, False otherwise.
+                 :param free_item:
+             """
+
+        logger.info(f"Sending screenshot: {img_path}")
+
+        api_url = f"https://api.telegram.org/bot{self.configuration.telegram_bot_token}/sendPhoto"
+        params = {
+            "chat_id": self.configuration.telegram_chat_id,
+            "photo": str(img_path),
+            "caption": "HTML"
         }
         try:
             response = requests.post(api_url, params=params)

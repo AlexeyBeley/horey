@@ -2,7 +2,7 @@ import time
 
 import selenium.webdriver.remote.webelement
 
-from horey.facebook_api.facebook_api_configuration_policy import FacebookAPIConfigurationPolicy
+from horey.karrot_api.karrot_api_configuration_policy import KarrotAPIConfigurationPolicy
 from horey.selenium_api.selenium_api import SeleniumAPI
 from collections import defaultdict
 from selenium.webdriver.common.by import By
@@ -13,8 +13,8 @@ from horey.common_utils.free_item import FreeItem
 
 logger = get_logger()
 
-class FacebookAPI:
-    def __init__(self, configuration: FacebookAPIConfigurationPolicy = None, selenium_api=None):
+class KarrotAPI:
+    def __init__(self, configuration: KarrotAPIConfigurationPolicy = None, selenium_api=None):
         self._selenium_api = selenium_api
         self.configuration = configuration
 
@@ -30,7 +30,7 @@ class FacebookAPI:
         
         :return: 
         """
-        main = CommonUtils.load_object_from_module_raw("/Users/alexeybeley/git/horey/facebook_api/horey/facebook_api/dynamic.py", "main")
+        main = CommonUtils.load_object_from_module_raw("/Users/alexeybeley/git/horey/karrot_api/horey/karrot_api/dynamic.py", "main")
         free_items = main(self.selenium_api)
 
     def main(self):

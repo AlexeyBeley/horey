@@ -211,7 +211,6 @@ class BuildAPI:
         :param tags:
         :return:
         """
-
         for _ in range(120):
             try:
                 logger.info(f"Building docker image with arguments: {self.configuration.docker_build_arguments}")

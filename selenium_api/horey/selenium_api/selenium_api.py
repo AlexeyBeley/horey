@@ -1,5 +1,6 @@
 import os
 import time
+import traceback
 from pathlib import Path
 
 from selenium import webdriver
@@ -59,22 +60,9 @@ class SeleniumAPI:
         chrome_options = Options()
         
         if self.chrome_path:
-            chrome_options.binary_location = str(self.chrome_path)
-        #elif os.path.exists("/opt/chrome-linux64/chrome"):
-        #    chrome_options.binary_location = "/opt/chrome-linux64/chrome"
-        if self.chromedriver_path:
-            service = Service(executable_path=str(self.chromedriver_path))
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--disable-software-rasterizer")
-            chrome_options.add_argument("--disable-dev-tools")
-            chrome_options.add_argument("--no-zygote")
-            chrome_options.add_argument("--disable-setuid-sandbox")
-            chrome_options.add_argument("--headless")
-            chrome_options.add_argument("--single-process")
-            chrome_options.add_argument("--disable-gp")
-            SeleniumAPI.driver = webdriver.Chrome(service=service, options=chrome_options)
-        else:
-            SeleniumAPI.driver = webdriver.Chrome()
+            return self.connect_from_chromedriver_file()
+
+        service = Service()
 
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-gp")
@@ -83,9 +71,47 @@ class SeleniumAPI:
             chrome_options.add_argument(f"--user-data-dir={self.data_dir / 'chrome-profile'}")
             chrome_options.add_argument(f"--profile-directory=Profile1")
 
+        SeleniumAPI.driver = webdriver.Chrome(service=service, options=chrome_options)
         # self.driver.maximize_window()
         SeleniumAPI.driver.set_window_size(1440, 900)
         SeleniumAPI.driver.set_window_position(0, 0)
+
+    def connect_from_chromedriver_file(self):
+        """
+        Files were downloaded.
+
+        :return:
+        """
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--disable-dev-tools")
+        chrome_options.add_argument("--no-zygote")
+        chrome_options.add_argument("--single-process")
+        # chrome_options.add_argument(f"--user-data-dir={mkdtemp()}")
+        # chrome_options.add_argument(f"--data-path={mkdtemp()}")
+        # chrome_options.add_argument(f"--disk-cache-dir={mkdtemp()}")
+        chrome_options.add_argument("--remote-debugging-pipe")
+        chrome_options.add_argument("--verbose")
+        chrome_options.add_argument("--log-path=/tmp")
+        chrome_options.binary_location = str(self.chrome_path)
+
+        service = Service(
+            executable_path=str(self.chromedriver_path),
+            service_log_path="/tmp/chromedriver.log"
+        )
+
+        driver = webdriver.Chrome(
+            service=service,
+            options=chrome_options
+        )
+        SeleniumAPI.driver = driver
+        SeleniumAPI.driver.set_window_size(1440, 900)
+        SeleniumAPI.driver.set_window_position(0, 0)
+        return True
+
 
     @staticmethod
     def disconnect():
@@ -282,3 +308,17 @@ class SeleniumAPI:
         """
 
         return image.get_attribute("src")
+
+    def get_screenshot(self)-> Path:
+        """
+        Save screenshot to file.
+
+        :return:
+        """
+
+        path = Path("/tmp/screenshot.png")
+        if SeleniumAPI.driver is None:
+            traceback.print_exc()
+
+        SeleniumAPI.driver.save_screenshot(str(path))
+        return path

@@ -47,7 +47,7 @@ class BuildAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def docker_build_arguments(self):
         if self._docker_build_arguments is None:
-            return {"platform": "linux/amd64"}
+            self._docker_build_arguments = {"platform": "linux/amd64"}
 
         return self._docker_build_arguments
 

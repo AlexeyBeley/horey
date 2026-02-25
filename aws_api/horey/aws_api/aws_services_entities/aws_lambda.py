@@ -37,6 +37,7 @@ class AWSLambda(AwsObject):
         self.reserved_concurrent_executions = None
         self.package_type = None
         self.file_system_configs = None
+        self.architectures = None
         self.request_key_to_attribute_mapping = {"FunctionArn": "arn", "FunctionName": "name"}
 
         if from_cache:
@@ -224,7 +225,7 @@ class AWSLambda(AwsObject):
         request = self.generate_request(["Code", "FunctionName", "Role", "Tags"],
                                      optional=["Tags", "Runtime", "Handler", "PackageType", "Timeout",
                                                "MemorySize", "EphemeralStorage", "VpcConfig", "Environment",
-                                               "FileSystemConfigs"],
+                                               "FileSystemConfigs", "Architectures"],
                                      request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
 
         if self.code.get("ImageUri") is not None:

@@ -496,6 +496,13 @@ class AWSLambdaAPI:
             image_registry_reference = self.ecs_api.generate_image_registry_reference(image_tag_raw)
         else:
             build_number = self.ecs_api.get_next_build_number()
+
+            if self.configuration.architecture == "x86_64":
+                self.build_api.configuration.docker_build_arguments["platform"] = "linux/amd64"
+            elif self.configuration.architecture == "arm64":
+                self.build_api.configuration.docker_build_arguments["platform"] = "linux/arm64"
+            else:
+                raise ValueError(f"architecture must be x86_64 or arm64, got {self.configuration.architecture}")
             image = self.build_api.run_build_image_routine(branch_name, build_number)
 
             image_registry_reference = image.tags[0]
@@ -559,6 +566,7 @@ class AWSLambdaAPI:
             }
         aws_lambda.timeout = self.configuration.lambda_timeout
         aws_lambda.memory_size = self.configuration.lambda_memory_size
+        aws_lambda.architectures = [self.configuration.architecture]
         if self.configuration.reserved_concurrent_executions:
             aws_lambda.reserved_concurrent_executions = self.configuration.reserved_concurrent_executions
 

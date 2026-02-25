@@ -295,7 +295,7 @@ class Route53Client(Boto3Client):
         for response in self.execute(
                 self.get_session_client().change_resource_record_sets,
                 "ChangeInfo",
-                filters_req=request_dict
+                filters_req=request_dict, exception_ignore_callback=lambda exception: "was not found" in repr(exception).lower()
         ):
             self.clear_cache(HostedZone)
             return response
