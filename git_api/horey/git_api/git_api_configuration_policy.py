@@ -21,7 +21,25 @@ class GitAPIConfigurationPolicy(ConfigurationPolicy):
         self._git_directory_path = None
         self._main_branch = None
         self._main_branch_name = None
+        self._pat = None
+        self._user = None
 
+    @property
+    def user(self):
+        return self._user
+
+    @user.setter
+    def user(self, value):
+        self._user = value
+
+    @property
+    def pat(self):
+        return self._pat
+
+    @pat.setter
+    def pat(self, value):
+        self._pat = value
+        
     @property
     def main_branch_name(self):
         if self._main_branch_name is None:

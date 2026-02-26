@@ -20,9 +20,6 @@ from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api import AWSAPI
 
-tests_mock_values_file_path = Path(__file__).parent.parent.parent.parent / "ignore" / "tests_mock.py"
-tests_mock_values = CommonUtils.load_module(tests_mock_values_file_path)
-
 test_mock_values_file_path = Path(__file__).parent.parent.parent.parent / "ignore" / "test_github_api_mocks.py"
 test_mock_values = CommonUtils.load_module(test_mock_values_file_path)
 
@@ -80,7 +77,7 @@ def init_from_secrets_api(configuration_class: type[T], secret_name: str) -> T:
     """Download secret to temporary file and return file path."""
     aws_api = AWSAPI()
     data_directory_path.mkdir(exist_ok=True, parents=True)
-    file_path = aws_api.get_secret_file(secret_name, data_directory_path, region = Region.get_region(tests_mock_values.region))
+    file_path = aws_api.get_secret_file(secret_name, data_directory_path, region = Region.get_region(test_mock_values.region))
 
     configuration = configuration_class()
     configuration.configuration_file_full_path = file_path
@@ -120,7 +117,7 @@ def test_create_repository(github_api):
     assert github_api.create_repository("test_repo_name")
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_copy_repository_permissions(github_api, tests_config):
     assert github_api.copy_repository_permissions(tests_config.src_repo_name, tests_config.dst_repo_name)
 

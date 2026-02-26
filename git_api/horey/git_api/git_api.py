@@ -31,6 +31,11 @@ class GitAPI:
         options = "-o User=git " if "github" in self.configuration.remote else ""
         self.ssh_base_command = f'GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o IdentitiesOnly=yes {options}-i {self.configuration.ssh_key_file_path}"'
 
+        if configuration.user and configuration.pat:
+            if "https" not in configuration.remote:
+                raise ValueError("Both 'user' and 'pat' were specified but the repo is not https")
+            configuration.remote = configuration.remote.replace("https://", f"https://{configuration.user}:{configuration.pat}@")
+
     def clone(self):
         """
         Clone from remote to local.
