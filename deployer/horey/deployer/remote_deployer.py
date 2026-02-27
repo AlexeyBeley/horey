@@ -522,15 +522,15 @@ class RemoteDeployer:
                 # sometimes the command sent over SSH is printed in stdout. We do not need it.
                 if str(line).startswith(cmd) or str(line).startswith(echo_cmd):
                     shout = []
-                elif str(line).startswith(finish) or ( shout and
-                        str(shout[-1]+line).startswith(finish)):
-                    # It sporadically splits the output to 2 lines
-                    exit_status = int(str(line).rsplit(maxsplit=1)[1])
-                    if exit_status != 0:
-                        raise RemoteDeployer.DeployerError(f"{shout}: exit status: {exit_status}")
-
-                    return stdin, shout, [], exit_status
-                    # empty line
+                elif str(line).startswith(finish):
+                    exit_code = RemoteDeployer.extract_ssh_command_exit_code_from_finish_line(line)
+                    return stdin, shout, [], exit_code
+                # It sporadically splits the output to 2 lines
+                elif shout and str(shout[-1]+line).startswith(finish):
+                    status_line = str(shout.pop(-1)+line)
+                    exit_code =  RemoteDeployer.extract_ssh_command_exit_code_from_finish_line(status_line)
+                    return stdin, shout, [], exit_code
+                # empty line
                 elif not line:
                     continue
                 else:
@@ -558,6 +558,21 @@ class RemoteDeployer:
                 replace("\x1b>", "").
                 replace("\x1b=", ""))
         return line
+
+    @staticmethod
+    def extract_ssh_command_exit_code_from_finish_line(finish_line):
+        """
+        Extract return code from finish line
+
+        :param finish_line:
+        :return:
+        """
+
+        exit_code = int(str(finish_line).rsplit(maxsplit=1)[1])
+        if exit_code != 0:
+            raise RemoteDeployer.DeployerError(f"Exit Code: {exit_code}")
+
+        return exit_code
 
     @staticmethod
     def execute_windows(ssh_client:paramiko.SSHClient, cmd, remote_address, timeout=60):
