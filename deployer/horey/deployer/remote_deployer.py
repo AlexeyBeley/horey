@@ -518,7 +518,7 @@ class RemoteDeployer:
 
             for line in data.splitlines():
                 line = RemoteDeployer.clean_line(line)
-                logger.info(f"[{remote_address} REMOTE<-] {line}")
+                logger.info(f"[{remote_address} REMOTE<-] '{line}'")
                 # sometimes the command sent over SSH is printed in stdout. We do not need it.
                 if str(line).startswith(cmd) or str(line).startswith(echo_cmd):
                     shout = []
@@ -529,7 +529,7 @@ class RemoteDeployer:
                     if exit_status != 0:
                         raise RemoteDeployer.DeployerError(f"{shout}: exit status: {exit_status}")
 
-                        return stdin, shout, [], exit_status
+                    return stdin, shout, [], exit_status
                     # empty line
                 elif not line:
                     continue
