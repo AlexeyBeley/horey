@@ -17,7 +17,7 @@ def test_init_auction_events():
 
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_init_auction_event():
     auction = Pennerauction()
     auction_event = AuctionEvent()

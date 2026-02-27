@@ -14,7 +14,6 @@ import traceback
 
 from contextlib import contextmanager
 from pathlib import Path
-from random import betavariate
 from typing import List, Any, Tuple
 
 import paramiko
@@ -492,7 +491,7 @@ class RemoteDeployer:
         end_time = datetime.datetime.now() + datetime.timedelta(minutes=timeout)
 
         cmd = cmd.strip('\n')
-        finish = 'endofstdOUTbuffer. exit status'
+        finish = 'eNdofstdOUTbuffer. exit status'
         echo_cmd = f"echo {finish} $?"
 
         stdin.write(f"{cmd} ; {echo_cmd}\n")
@@ -501,54 +500,64 @@ class RemoteDeployer:
         shout = []
         raw_data_aggregator = None
         while datetime.datetime.now() < end_time:
+            if not channel.recv_ready():
+                time.sleep(0.01)
+                continue
+            raw_data = channel.recv(4096)
+            if raw_data_aggregator is None:
+                raw_data_aggregator = raw_data
+            else:
+                raw_data_aggregator += raw_data
+            try:
+                data = raw_data_aggregator.decode('utf-8')
+                raw_data_aggregator = None
+            except Exception:
+                logger.error(f"Could not decode: {raw_data}")
+                time.sleep(5)
+                continue
 
-            if channel.recv_ready():
-                raw_data = channel.recv(4096)
-                if raw_data_aggregator is None:
-                    raw_data_aggregator = raw_data
-                else:
-                    raw_data_aggregator += raw_data
-                try:
-                    data = raw_data_aggregator.decode('utf-8')
-                    raw_data_aggregator = None
-                except Exception:
-                    logger.error(f"Could not decode: {raw_data}")
-                    time.sleep(5)
-                    continue
-
-                prev_line = ""
-                for line in data.splitlines():
-                    while "\x08" in line:
-                        backspace_index = line.find("\x08")
-                        line = line[:backspace_index-1] + line[backspace_index+1:]
-                    line = (RemoteDeployer.REGEX_CLEANER.sub('', line).
-                            replace('\b', '').
-                            replace('\r', '').
-                            replace('\x1b8', "").
-                            replace('\x1b7', "").
-                            replace("\x1b>", "").
-                            replace("\x1b=", ""))
-
-                    logger.info(f"[{remote_address} REMOTE<-] {line}")
-                    # sometimes the command sent over SSH is printed in stdout. We do need it.
-                    if str(line).startswith(cmd) or str(line).startswith(echo_cmd):
-                        shout = []
-                    elif str(line).startswith(finish) or str(prev_line+line).startswith(finish):
-                        # It sporadically splits the output to 2 lines
-                        exit_status = int(str(line).rsplit(maxsplit=1)[1])
-                        if exit_status != 0:
-                            raise RemoteDeployer.DeployerError(f"{shout}: exit status: {exit_status}")
+            for line in data.splitlines():
+                line = RemoteDeployer.clean_line(line)
+                logger.info(f"[{remote_address} REMOTE<-] {line}")
+                # sometimes the command sent over SSH is printed in stdout. We do not need it.
+                if str(line).startswith(cmd) or str(line).startswith(echo_cmd):
+                    shout = []
+                elif str(line).startswith(finish) or ( shout and
+                        str(shout[-1]+line).startswith(finish)):
+                    # It sporadically splits the output to 2 lines
+                    exit_status = int(str(line).rsplit(maxsplit=1)[1])
+                    if exit_status != 0:
+                        raise RemoteDeployer.DeployerError(f"{shout}: exit status: {exit_status}")
 
                         return stdin, shout, [], exit_status
                     # empty line
-                    elif not line:
-                        continue
-                    else:
-                        shout.append(line)
-                        prev_line = line
-            time.sleep(0.01)
-        
+                elif not line:
+                    continue
+                else:
+                    shout.append(line)
+
         raise RemoteDeployer.DeployerError(f"{remote_address} Reached timeout waiting: {timeout} minutes")
+
+    @staticmethod
+    def clean_line(line:str) -> str:
+        """
+        Remove garbage from line.
+
+        :param line:
+        :return:
+        """
+
+        while "\x08" in line:
+            backspace_index = line.find("\x08")
+            line = line[:backspace_index - 1] + line[backspace_index + 1:]
+        line = (RemoteDeployer.REGEX_CLEANER.sub('', line).
+                replace('\b', '').
+                replace('\r', '').
+                replace('\x1b8', "").
+                replace('\x1b7', "").
+                replace("\x1b>", "").
+                replace("\x1b=", ""))
+        return line
 
     @staticmethod
     def execute_windows(ssh_client:paramiko.SSHClient, cmd, remote_address, timeout=60):

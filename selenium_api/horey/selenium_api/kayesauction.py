@@ -195,10 +195,11 @@ class Kayesauction(Provider):
 
         self.selenium_api.get(self.main_page + "/current-auctions")
         self.selenium_api.wait_for_page_load()
-
-        auctions_elements_lists = self.selenium_api.get_elements(By.CSS_SELECTOR, "div.hRdzm4[role='list']")
-        auctions_elements_list = auctions_elements_lists[1]
-        auctions_elements = auctions_elements_list.find_elements(By.CSS_SELECTOR, "div.T7n0L6[role='listitem']")
+        all_divs = self.selenium_api.get_elements(By.TAG_NAME, "div")
+        auctions_elements = []
+        for div in all_divs:
+            if div.get_attribute("role") == "listitem":
+                auctions_elements.append(div)
         if not auctions_elements:
             breakpoint()
             raise NotImplementedError("Can not find listings")

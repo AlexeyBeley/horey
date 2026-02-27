@@ -133,7 +133,7 @@ class SeleniumAPI:
 
         if by == By.CSS_SELECTOR:
             # Use WebDriverWait to ensure the elements are present before attempting to find them.
-            WebDriverWait(self.driver, 10).until(
+            WebDriverWait(self.driver, 30).until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, value))
             )
 

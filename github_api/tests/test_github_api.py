@@ -117,7 +117,7 @@ def test_create_repository(github_api):
     assert github_api.create_repository("test_repo_name")
 
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_copy_repository_permissions(github_api, tests_config):
     assert github_api.copy_repository_permissions(tests_config.src_repo_name, tests_config.dst_repo_name)
 
