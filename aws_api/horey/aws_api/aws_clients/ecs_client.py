@@ -1085,7 +1085,7 @@ class ECSClient(Boto3Client):
             "capacityProviders": capacity_provider_names,
             "defaultCapacityProviderStrategy": default_capacity_provider_strategy,
         }
-        self.attach_capacity_providers_to_ecs_cluster_raw(ecs_cluster.region, request_dict)
+        return self.attach_capacity_providers_to_ecs_cluster_raw(ecs_cluster.region, request_dict)
 
     def attach_capacity_providers_to_ecs_cluster_raw(self, region, request_dict):
         """
@@ -1096,6 +1096,7 @@ class ECSClient(Boto3Client):
         """
 
         logger.info(f"Attaching capacity provider to ecs cluster: {request_dict}")
+
         for response in self.execute(
                 self.get_session_client(region=region).put_cluster_capacity_providers,
                 "cluster",
@@ -1104,6 +1105,7 @@ class ECSClient(Boto3Client):
             self.clear_cache(ECSCapacityProvider)
             self.clear_cache(ECSCluster)
             return response
+        return None
 
     def update_cluster_information(self, cluster: ECSCluster):
         """

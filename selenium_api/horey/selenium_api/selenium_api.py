@@ -26,6 +26,7 @@ class SeleniumAPI:
         self.data_dir = data_dir
         self.chromedriver_path = chromedriver_path
         self.chrome_path = chrome_path
+        self.proxy = None
 
 
     def wait_for_page_load(self, timeout=10):
@@ -58,7 +59,10 @@ class SeleniumAPI:
         logger.info("Connecting diver in SeleniumAPI")
 
         chrome_options = Options()
-        
+        if self.proxy:
+            #chrome_options.add_argument(f"--proxy-server=http://{self.proxy}")
+            chrome_options.add_argument(f"--proxy-server={self.proxy}")
+
         if self.chrome_path:
             return self.connect_from_chromedriver_file()
 
@@ -82,6 +86,9 @@ class SeleniumAPI:
 
         :return:
         """
+
+        logger.info(f"Options from chrome file: {self.chrome_path}")
+
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--no-sandbox")
@@ -98,6 +105,7 @@ class SeleniumAPI:
         chrome_options.add_argument("--log-path=/tmp")
         chrome_options.binary_location = str(self.chrome_path)
 
+        logger.info(f"Connecting from chromedriver file: {self.chromedriver_path}")
         service = Service(
             executable_path=str(self.chromedriver_path),
             service_log_path="/tmp/chromedriver.log"

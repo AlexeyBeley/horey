@@ -2,6 +2,7 @@ import shutil
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+import zipfile
 
 import requests
 from horey.free_stuff_api.free_stuff_api_configuration_policy import FreeStuffAPIConfigurationPolicy
@@ -22,8 +23,8 @@ class FreeStuffAPI:
     def __init__(self, configuration: FreeStuffAPIConfigurationPolicy = None):
         self.configuration = configuration
 
-        self.platform_apis = [FacebookAPI(selenium_api=SeleniumAPI(chromedriver_path=Path("/opt/chrome-driver/chromedriver-linux64/chromedriver"),
-                                                                   chrome_path=Path("/opt/chrome/chrome-linux64/chrome")))]
+        self.platform_apis = [FacebookAPI(selenium_api=SeleniumAPI(chromedriver_path=Path("/opt/chrome-driver/chromedriver"),
+                                                                   chrome_path=Path("/opt/chrome/chrome")))]
         self._db_api = None
         self._environment_api = None
         self._aws_lambda_api = None
@@ -69,7 +70,7 @@ class FreeStuffAPI:
             configuration.lambda_name = "test_selenium"
             configuration.lambda_timeout = 600
             configuration.lambda_memory_size = 2048
-            # todo: configuration.architecture = "arm64"
+            # configuration.architecture = "arm64"
             self._aws_lambda_api = AWSLambdaAPI(configuration, self.environment_api)
             self._aws_lambda_api.build_api.horey_git_api.configuration.git_directory_path = self.configuration.horey_directory_path.parent
             self._aws_lambda_api.build_api.prepare_docker_image_build_directory = lambda x, y: self._aws_lambda_api.build_api.prepare_docker_image_horey_package_build_directory(x, "free_stuff_api", y)
@@ -85,12 +86,84 @@ class FreeStuffAPI:
         :return:
         """
 
+        response = requests.get("https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json")
+        dict_data = response.json()
+        # Determine platform based on architecture
+        if self.aws_lambda_api.configuration.architecture == "x86_64":
+            platform = "linux64"
+            docker_platform = "linux/amd64"
+        else:
+            platform = "linux-arm64"
+            docker_platform = "linux/arm64"
+        
+        # Store docker platform for build process
+        self.aws_lambda_api.build_api.configuration.docker_build_arguments = {
+            "platform": docker_platform
+        }
+        downloads_dir = self.environment_api.configuration.data_directory_path / dict_data["channels"]["Stable"]["version"] / platform
+        # /opt/hfrs/146.0.7680.31/linux64
+        downloads_dir.mkdir(exist_ok=True, parents=True)
+        chrome_directory = downloads_dir / "chrome"
+        if not chrome_directory.exists():
+            for chrome_dict in dict_data["channels"]["Stable"]["downloads"]["chrome"]:
+                if chrome_dict["platform"] == platform:
+                    download_chrome_url = chrome_dict["url"]
+                    self.download_file(download_chrome_url, chrome_directory)
+                    break
+
+        chromedriver_directory = downloads_dir / "chromedriver"
+        if not chromedriver_directory.exists():
+            for chrome_dict in dict_data["channels"]["Stable"]["downloads"]["chromedriver"]:
+                if chrome_dict["platform"] == platform:
+                    download_chromedriver_url = chrome_dict["url"]
+                    self.download_file(download_chromedriver_url, chromedriver_directory)
+                    break
+
+        shutil.copytree(chrome_directory, docker_build_directory/ "chrome")
+        shutil.copytree(chromedriver_directory, docker_build_directory/"chromedriver")
+
+
         shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "build" / "lambda_handler.py",
                     docker_build_directory)
         shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "build" / "Dockerfile" , docker_build_directory)
-        shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "build" / "chrome-installer.sh" , docker_build_directory)
         self.configuration.generate_configuration_file_ng(docker_build_directory/ "frs_api_configuration.json")
+
         return docker_build_directory
+
+    @staticmethod
+    def download_file(url: str, dst_dir_path: Path):
+        """
+        Download a file from a URL and save it locally.
+
+        :param url:
+        :param dst_dir_path:
+        :return:
+        """
+
+        tmp_dir_path = dst_dir_path.parent / "tmp"
+
+        file_name = url.split("/")[-1]
+        logger.info(f"Downloading: {url} to {tmp_dir_path}")
+        tmp_dir_path.mkdir(exist_ok=True, parents=True)
+        file_path = tmp_dir_path / file_name
+        # Use 'with' to ensure the connection is closed automatically
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()  # Check for HTTP errors (404, 500, etc.)
+            with open(file_path, 'wb') as f:
+                # Iterate in chunks of 8KB
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:  # Filter out keep-alive new chunks
+                        f.write(chunk)
+
+        # Open the ZIP file in read mode ('r') and extract all contents
+        with zipfile.ZipFile(file_path, 'r') as zip_ref:
+            zip_ref.extractall(tmp_dir_path)
+            file_path.unlink()
+        dirs = list(tmp_dir_path.iterdir())
+        if len(dirs) != 1:
+            raise NotImplementedError(dirs)
+        dirs[0].move(dst_dir_path)
+        shutil.rmtree(tmp_dir_path)
 
     def main(self):
         """
@@ -143,19 +216,12 @@ class FreeStuffAPI:
         :return:
         """
 
-        dt = datetime.now(tz=timezone.utc)
         res = self.aws_lambda_api.trigger_lambda()
         logger.info(f"Triggered lambda {res=}")
-        # date_str = res["ResponseMetadata"]["HTTPHeaders"]["date"]
-        # dt = datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S %Z').replace(tzinfo=timezone.utc)
-        ret = list(self.aws_lambda_api.yield_logs(start_time=dt))
-        if not ret:
-            time.sleep(10)
-        ret = list(self.aws_lambda_api.yield_logs(start_time=dt))
-        for event in ret:
-            print(event["message"].strip())
-        breakpoint()
 
+        self.aws_lambda_api.print_recent_execution_logs()
+        breakpoint()
+        return True
 
     def dispose_infra(self):
         # self.db_api.dispose_dynamo_table(self.configuration.dynamo_table_name)
@@ -216,15 +282,18 @@ class FreeStuffAPI:
         logger.info(f"Sending screenshot: {img_path}")
 
         api_url = f"https://api.telegram.org/bot{self.configuration.telegram_bot_token}/sendPhoto"
-        params = {
+
+        with open(img_path, 'rb') as photo_file:
+            files = {"photo": photo_file}
+
+            params = {
             "chat_id": self.configuration.telegram_chat_id,
-            "photo": str(img_path),
-            "caption": "HTML"
-        }
-        try:
-            response = requests.post(api_url, params=params)
-            response.raise_for_status()  # Raise an exception for bad status codes
-            return True
-        except requests.exceptions.RequestException as e:
-            logger.exception(e)
-            return False
+            "caption": "Screenshot from automation'"
+            }
+            try:
+                response = requests.post(api_url, params=params, files=files)
+                response.raise_for_status()  # Raise an exception for bad status codes
+                return True
+            except requests.exceptions.RequestException as e:
+                logger.exception(e)
+                return False

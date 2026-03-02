@@ -2,6 +2,7 @@
 Standard Load balancing maintainer.
 
 """
+import json
 from pathlib import Path
 import time
 import getpass
@@ -10,6 +11,7 @@ from typing import List
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.common_utils.storage_service import StorageService
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
+from horey.infrastructure_api.aws_iam_api import AWSIAMAPI, AWSIAMAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
 from horey.infrastructure_api.ec2_api import EC2API, EC2APIConfigurationPolicy
@@ -31,6 +33,61 @@ from horey.provision_constructor.provision_constructor import ProvisionConstruct
 logger = get_logger()
 
 
+class S3StorageService(StorageService):
+    """
+    Accessing S3 files
+    """
+
+    def __init__(self, aws_api, s3_deployment_uri: str):
+        """
+
+
+        :param aws_api:
+        :param s3_deployment_uri: s3://bucket_name/base_path
+        """
+
+        bucket_name, base_path = s3_deployment_uri.split("s3://")[1].split("/", 1)
+        bucket = S3Bucket({"Name": bucket_name})
+        self.aws_api = aws_api
+        self.bucket = bucket
+        self.base_path = base_path
+
+    def upload(self, local_path: Path, remote_path: str):
+        """
+        Upload file to S3.
+
+        :param local_path:
+        :param remote_path:
+        :return:
+        """
+
+        raise NotImplementedError(f"{local_path=}, {remote_path=}")
+
+    def list(self) -> List[str]:
+        """
+        List all files in the bucket.
+
+        :return:
+        """
+
+        return [obj.key for obj in self.aws_api.s3_client.yield_bucket_objects(None,
+                                                                               bucket_name=self.bucket.name,
+                                                                               custom_filters={
+                                                                                   "Prefix": self.base_path})]
+
+    def download(self, remote_path: str, local_path: Path):
+        """
+        Download file from S3.
+
+        :param remote_path:
+        :param local_path:
+        :return:
+        """
+
+        return self.aws_api.s3_client.get_bucket_object_file(self.bucket, S3Bucket.BucketObject({"Key": remote_path}),
+                                                             local_path)
+
+
 class CICDAPI:
     """
     Manage ECS.
@@ -41,10 +98,11 @@ class CICDAPI:
         self.configuration = configuration
         self.environment_api = environment_api
         self._cloudwatch_api = None
-        self.ecs_api = None
+        self._ecs_api = None
         self._ec2_api = None
         self._dns_api = None
         self._remote_deployer = None
+        self._iam_api = None
 
     @property
     def remote_deployer(self):
@@ -71,7 +129,7 @@ class CICDAPI:
             self._cloudwatch_api = CloudwatchAPI(configuration=config, environment_api=self.environment_api)
             self.init_clouwatch_api_defaults()
         return self._cloudwatch_api
-    
+
     @property
     def ec2_api(self):
         """
@@ -122,46 +180,85 @@ class CICDAPI:
         except self._cloudwatch_api.configuration.UndefinedValueError:
             self.cloudwatch_api.configuration.log_group_name = self.ecs_api.configuration.cloudwatch_log_group_name
 
-    def provision(self):
+    def provision_jenkins_master(self):
         """
         Provision CICD infrastructure.
 
         :return:
         """
 
-        self.provision_master_infrastructure()
+        self.provision_jenkins_master_infrastructure()
         self.ecs_api.provision_ecs_task_definition(self.ecs_api.ecr_repo_uri + ":latest")
         self.cloudwatch_api.provision()
 
-    def provision_master_infrastructure(self):
+    def provision_jenkins_master_infrastructure(self):
         """
         Jenkins Master infra
 
         :return:
         """
 
-        self.configuration._efs_master_security_group_name = f"sg_{self.environment_api.configuration.environment_level}" \
-                                                             f"-{self.environment_api.configuration.environment_name}" \
-                                                             f"-jenkins"
+        master_service_security_group = self.ec2_api.provision_security_group(f"sg_{self.environment_api.configuration.environment_level}-jenkins-master-service")
+        load_balancer_security_group = self.ec2_api.provision_internal_alb_security_group()
+        self.ec2_api.security_group_add_rule(master_service_security_group, source_group=load_balancer_security_group, port_range=(8080, 8080))
 
-        self.configuration._master_efs_access_point_name = f"acp_{self.environment_api.configuration.environment_level}" \
-                                                             f"-{self.environment_api.configuration.environment_name}" \
-                                                             f"-jenkins"
 
-        self.configuration._master_file_system_name = f"fs_{self.environment_api.configuration.environment_level}" \
-                                                             f"-{self.environment_api.configuration.environment_name}" \
-                                                             f"-jenkins"
+        efs_master_security_group_name = f"sg_{self.environment_api.configuration.environment_level}" \
+                                                             f"-jenkins-master"
 
-        self.ecs_api = self.generate_ecs_api()
+        efs_master_access_point_name = f"acp_{self.environment_api.configuration.environment_level}" \
+                                                           f"-jenkins-master"
 
-        # provision_lb_security_groups used for lb_facing_security_group creation.
-        self.ecs_api.provision_lb_security_groups()
-        # provision_lb_facing_security_group used for efs SG creation.
-        self.ecs_api.provision_lb_facing_security_group()
-        self.provision_efs()
+        efs_master_file_system_name = f"fs_{self.environment_api.configuration.environment_level}" \
+                                                      f"-jenkins-master"
 
-        self.ecs_api.task_role_inline_policies_callback = self.task_role_inline_policies_callback
-        self.ecs_api.provision()
+        self.provision_efs(efs_master_security_group_name,
+                           efs_master_access_point_name,
+                           efs_master_file_system_name)
+        self.ec2_api.security_group_add_rule(self.ec2_api.get_security_group(efs_master_security_group_name), source_group=master_service_security_group, port_range=(2049, 2049))
+        assume_role_policy_document = json.dumps({
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "ecs-tasks.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        })
+
+        task_role = self.iam_api.provision_role(role_name=self.get_task_role_name("jenkins-master"),
+                                                policies=self.task_role_inline_policies_callback(),
+                                                assume_role_policy=assume_role_policy_document)
+
+        exec_role = self.iam_api.provision_role(role_name=self.get_task_role_name("jenkins-master-exec"),
+                                                assume_role_policy=assume_role_policy_document)
+
+
+        policy_text = self.iam_api.generate_ecr_repository_policy(ecs_task_execution_role=exec_role)
+        repo_name = f"repo_{self.environment_api.configuration.environment_level}_jenkins_master"
+        self.ecs_api.provision_ecr_repository(repository_name = repo_name, repository_policy=policy_text)
+
+        cluster_name = (f"{self.environment_api.configuration.project_name_abbr}-"
+                f"{self.environment_api.configuration.environment_level}-"
+                f"management")
+
+        cluster = self.ecs_api.provision_cluster(cluster_name=cluster_name)
+        self.ecs_api.provision_service_log_group(cluster_name, "jenkins")
+        self.ecs_api.provision_ecs_autoscaling_group_capacity_provider(cluster, "management")
+
+    def get_task_role_name(self, slug):
+        """
+        Generate task role name.
+
+        :param slug:
+        :return:
+        """
+
+        return f"role_{self.environment_api.configuration.environment_level}_{slug}"
 
     def task_role_inline_policies_callback(self):
         """
@@ -268,7 +365,7 @@ class CICDAPI:
                         "iam:ListInstanceProfiles",
                         "iam:ListRoles"
                     ],
-                    "Resource":"*"
+                    "Resource": "*"
                 },
                 {
                     "Effect": "Allow",
@@ -301,10 +398,12 @@ class CICDAPI:
 
         task = self.ecs_api.start_task(overrides=overrides)
         response = self.ecs_api.wait_for_task_to_finish(task)
-        logger.info(f"Time took from triggering task to its completion: {time.perf_counter()-perf_counter_start}")
+        logger.info(f"Time took from triggering task to its completion: {time.perf_counter() - perf_counter_start}")
         return response
 
-    def provision_efs(self):
+    def provision_efs(self, security_group_name,
+                           access_point_name,
+                           file_system_name):
         """
         Standard.
         --volume jenkins-data:/var/jenkins_home
@@ -312,14 +411,13 @@ class CICDAPI:
         :return:
         """
 
-        efs_security_group = self.provision_efs_security_group()
-        master_efs = self.provision_master_efs_file_system()
-        pgadmin_access_point = self.provision_master_efs_access_point(master_efs.id)
+        efs_security_group = self.ec2_api.provision_security_group(name=security_group_name)
+        master_efs = self.provision_master_efs_file_system(file_system_name)
+        pgadmin_access_point = self.provision_master_efs_access_point(master_efs.id, access_point_name)
         self.provision_efs_mount_targets(master_efs.id, efs_security_group.id)
-        volumes, mount_points = self.generate_volume_and_mount_configuration(master_efs, pgadmin_access_point,
+        volume, mount_point = self.generate_volume_and_mount_configuration(master_efs, pgadmin_access_point,
                                                                              "/var/jenkins_home")
-        self.ecs_api.configuration.task_definition_volumes = volumes
-        self.ecs_api.configuration.task_definition_mount_points = mount_points
+        return volume, mount_point
 
     @staticmethod
     def generate_volume_and_mount_configuration(efs, access_point, container_path):
@@ -354,39 +452,7 @@ class CICDAPI:
 
         return volumes, mount_points
 
-    def provision_efs_security_group(self):
-        """
-        Provision pgadmin efs  security group.
-
-        :return:
-        """
-
-        jenkins_master = self.environment_api.get_security_groups([self.ecs_api.configuration.lb_facing_security_group_name], single=True)
-
-        ip_permissions = [
-            {
-                "IpProtocol": "tcp",
-                "FromPort": 2049,
-                "ToPort": 2049,
-                "IpRanges": [],
-                "Ipv6Ranges": [],
-                "PrefixListIds": [],
-                "UserIdGroupPairs": [
-                    {
-                        "GroupId": jenkins_master.id,
-                        "UserId": self.environment_api.aws_api.ec2_client.account_id,
-                        "Description": "Jenkins Master Service"
-                    },
-                ]
-            }
-        ]
-
-        security_group = self.environment_api.provision_security_group(self.configuration.efs_master_security_group_name,
-                                                      ip_permissions=ip_permissions,
-                                                      description=f"Jenkins EFS security group {self.environment_api.configuration.environment_name}")
-        return security_group
-
-    def provision_master_efs_access_point(self, efs_id):
+    def provision_master_efs_access_point(self, efs_id, access_point_name):
         """
         Provisions an EFS access point.
 
@@ -398,7 +464,7 @@ class CICDAPI:
         efs_access_point = EFSAccessPoint({})
         efs_access_point.region = self.environment_api.region
         efs_access_point.file_system_id = efs_id
-        efs_access_point.posix_user = {"Uid": 0, "Gid": 0}
+        efs_access_point.posix_user = {"Uid": 1000, "Gid": 1000}
         efs_access_point.root_directory = {
             "Path": "/",
             "CreationInfo": {
@@ -408,11 +474,11 @@ class CICDAPI:
             }
         }
         efs_access_point.tags = self.environment_api.configuration.tags
-        efs_access_point.tags = [{"Key": "Name", "Value": self.configuration.master_efs_access_point_name}]
+        efs_access_point.tags = [{"Key": "Name", "Value": access_point_name}]
         self.environment_api.aws_api.efs_client.provision_access_point(efs_access_point)
         return efs_access_point
 
-    def provision_master_efs_file_system(self):
+    def provision_master_efs_file_system(self, file_system_name):
         """
         Provisions master efs.
 
@@ -420,7 +486,7 @@ class CICDAPI:
         file_system = EFSFileSystem({})
         file_system.region = self.environment_api.region
         file_system.tags = self.environment_api.configuration.tags
-        file_system.tags = [{"Key": "Name", "Value": self.configuration.master_file_system_name}]
+        file_system.tags = [{"Key": "Name", "Value": file_system_name}]
         file_system.encrypted = True
         self.environment_api.aws_api.efs_client.provision_file_system(file_system)
         return file_system
@@ -438,7 +504,6 @@ class CICDAPI:
             mount_target.subnet_id = subnet.id
             mount_target.security_groups = [security_group_id]
             mount_target.region = self.environment_api.region
-
             self.environment_api.aws_api.efs_client.provision_mount_target(mount_target)
             logger.info(f"Provisioned mount target in subnet {subnet.id} for file system {efs_id}")
             mount_group.append(mount_target)
@@ -469,46 +534,60 @@ class CICDAPI:
             return InfrastructureAPI.get_dns_api(configuration, self.environment_api)
         return self._dns_api
 
-    def generate_ecs_api(self):
+    @property
+    def iam_api(self):
         """
         Generate environment config
 
         :return:
         """
 
-        ecs_api_configuration = ECSAPIConfigurationPolicy()
-        ecs_api_configuration.service_name = "jenkins"
-        ecs_api = ECSAPI(ecs_api_configuration, self.environment_api)
+        if self._iam_api is None:
 
-        ecs_api_configuration.ecs_task_definition_cpu_reservation = 1024
-        ecs_api_configuration.ecs_task_definition_memory_reservation = 2048
-        ecs_api_configuration.autoscaling_max_capacity = 1
-        ecs_api_configuration.network_mode = "awsvpc"
+            self._iam_api = AWSIAMAPI(AWSIAMAPIConfigurationPolicy(), self.environment_api)
 
-        ecs_api_configuration._container_definition_port_mappings = [
-                {
-                    "containerPort": 8080,
-                    "hostPort": 8080,
-                    "protocol": "tcp",
-                },
+        return self._iam_api
+
+    @property
+    def ecs_api(self):
+        """
+        Generate environment config
+
+        :return:
+        """
+        if self._ecs_api is None:
+            ecs_api_configuration = ECSAPIConfigurationPolicy()
+            ecs_api_configuration.service_name = "jenkins"
+            ecs_api = ECSAPI(ecs_api_configuration, self.environment_api)
+
+            ecs_api_configuration.ecs_task_definition_cpu_reservation = 1024
+            ecs_api_configuration.ecs_task_definition_memory_reservation = 2048
+            ecs_api_configuration.autoscaling_max_capacity = 1
+            ecs_api_configuration.network_mode = "awsvpc"
+
+            ecs_api_configuration._container_definition_port_mappings = [
+            {
+                "containerPort": 8080,
+                "hostPort": 8080,
+                "protocol": "tcp",
+            },
             ]
 
-        ecs_api_configuration.task_definition_desired_count = 1
-        ecs_api_configuration.launch_type = "FARGATE"
-        ecs_api_configuration.kill_old_containers = False
+            ecs_api_configuration.task_definition_desired_count = 1
+            ecs_api_configuration.launch_type = "FARGATE"
+            ecs_api_configuration.kill_old_containers = False
 
-        ecs_api.set_api(loadbalancer_api=self.loadbalancer_api)
-        ecs_api.set_api(dns_api=self.dns_api)
-        if self.environment_api.git_api is None:
-            configuration = GitAPIConfigurationPolicy()
-            configuration.remote = "git@github.com:AlexeyBeley/horey.git"
-            configuration.ssh_key_file_path = f"/Users/{getpass.getuser()}/.ssh/github_key"
-            configuration.git_directory_path = "/opt/git/"
-            configuration.branch_name = "main"
-            self.environment_api.git_api = GitAPI(configuration)
+            if self.environment_api.git_api is None:
+                configuration = GitAPIConfigurationPolicy()
+                configuration.remote = "git@github.com:AlexeyBeley/horey.git"
+                configuration.ssh_key_file_path = f"/Users/{getpass.getuser()}/.ssh/github_key"
+                configuration.git_directory_path = "/opt/git/"
+                configuration.branch_name = "main"
+                self.environment_api.git_api = GitAPI(configuration)
 
-        ecs_api.prepare_container_build_directory_callback = self.prepare_container_build_directory_callback
-        return ecs_api
+            ecs_api.prepare_container_build_directory_callback = self.prepare_container_build_directory_callback
+            self._ecs_api = ecs_api
+        return self._ecs_api
 
     def prepare_container_build_directory_callback(self, dir_path: Path):
         """
@@ -534,9 +613,10 @@ class CICDAPI:
 
         ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]})
         return self.init_deployment_target(ec2_instance, target_ssh_key_secret_name=target_ssh_key_secret_name,
-                                                   bastions=bastions)
+                                           bastions=bastions)
 
-    def generate_deployment_targets(self, name=None, target_ssh_key_secret_name:str=None, bastions=None) -> List[DeploymentTarget]:
+    def generate_deployment_targets(self, name=None, target_ssh_key_secret_name: str = None, bastions=None) -> List[
+        DeploymentTarget]:
         """
         Generate targets
 
@@ -552,10 +632,13 @@ class CICDAPI:
         ec2_instances = self.environment_api.get_ec2_instances(tags_dict={"Name": [name]})
         targets = []
         for ec2_instance in ec2_instances:
-            targets.append(self.init_deployment_target(ec2_instance, target_ssh_key_secret_name=target_ssh_key_secret_name, bastions=bastions))
+            targets.append(
+                self.init_deployment_target(ec2_instance, target_ssh_key_secret_name=target_ssh_key_secret_name,
+                                            bastions=bastions))
         return targets
 
-    def init_deployment_target(self, ec2_instance: EC2Instance, target_ssh_key_secret_name:str=None, bastions: List[EC2Instance]=None) -> DeploymentTarget:
+    def init_deployment_target(self, ec2_instance: EC2Instance, target_ssh_key_secret_name: str = None,
+                               bastions: List[EC2Instance] = None) -> DeploymentTarget:
         """
         Init single target from ec2 Instance
 
@@ -639,7 +722,9 @@ class CICDAPI:
                                                           step.configuration.data_dir_name /
                                                           step.configuration.script_configuration_file_name)
         if horey_repo_path:
-            StandaloneMethods.copy_horey_package_required_packages_to_build_dir("provision_constructor", step.configuration.local_deployment_dir_path, horey_repo_path)
+            StandaloneMethods.copy_horey_package_required_packages_to_build_dir("provision_constructor",
+                                                                                step.configuration.local_deployment_dir_path,
+                                                                                horey_repo_path)
         target.add_step(step)
         return True
 
@@ -664,7 +749,8 @@ class CICDAPI:
         :return:
         """
 
-        ProvisionConstructor.generate_provision_constructor_apply_scripts(target.local_deployment_dir_path, provision_script_generator, target=target)
+        ProvisionConstructor.generate_provision_constructor_apply_scripts(target.local_deployment_dir_path,
+                                                                          provision_script_generator, target=target)
         raise NotImplementedError("Not implemented")
 
     def run_remote_provision_constructor(self, target, function_name, windows=False, timeout=60, **kwargs):
@@ -685,7 +771,8 @@ class CICDAPI:
         remoter = self.remote_deployer.get_remoter(target, windows=windows, timeout=timeout)
         provision_constructor = ProvisionConstructor()
         provision_constructor.deployment_dir = target.local_deployment_dir_path
-        return provision_constructor.provision_system_function_remote(remoter, function_name, storage_service=storage_service, **kwargs)
+        return provision_constructor.provision_system_function_remote(remoter, function_name,
+                                                                      storage_service=storage_service, **kwargs)
 
     def run_remote_deployer_deploy_targets(self, targets, asynchronous=True):
         """
@@ -698,54 +785,28 @@ class CICDAPI:
 
         return self.remote_deployer.deploy_targets(targets, asynchronous=asynchronous)
 
-class S3StorageService(StorageService):
-    """
-    Accessing S3 files
-    """
-    def __init__(self, aws_api, s3_deployment_uri: str):
+    def provision_jenkins_triggering_github_runner(self, jenkins_address, github_api, bastions: List[EC2Instance] = None, ):
         """
-
-
-        :param aws_api:
-        :param s3_deployment_uri: s3://bucket_name/base_path
-        """
-
-        bucket_name, base_path = s3_deployment_uri.split("s3://")[1].split("/", 1)
-        bucket =  S3Bucket({"Name": bucket_name})
-        self.aws_api = aws_api
-        self.bucket = bucket
-        self.base_path = base_path
-
-    def upload(self, local_path: Path, remote_path: str):
-        """
-        Upload file to S3.
-
-        :param local_path:
-        :param remote_path:
-        :return:
-        """
-
-        raise NotImplementedError(f"{local_path=}, {remote_path=}")
-
-
-    def list(self) -> List[str]:
-        """
-        List all files in the bucket.
+        Provision jenkins triggering github runner
 
         :return:
         """
 
-        return [obj.key for obj in self.aws_api.s3_client.yield_bucket_objects(None,
-                                                                bucket_name=self.bucket.name,
-                                                                custom_filters={"Prefix": self.base_path})]
+        sec_group = self.ec2_api.provision_security_group()
 
-    def download(self, remote_path: str, local_path: Path):
-        """
-        Download file from S3.
+        ec2_instance = self.ec2_api.provision_ubuntu_24_04_instance(
+            name=f"{self.environment_api.configuration.environment_level}-github-runner",
+            security_groups=[sec_group.id],
+            volume_size=30,
+            instance_type="t3a.small")
 
-        :param remote_path:
-        :param local_path:
-        :return:
-        """
+        target = self.init_deployment_target(ec2_instance, bastions=bastions)
 
-        return self.aws_api.s3_client.get_bucket_object_file(self.bucket, S3Bucket.BucketObject({"Key": remote_path}), local_path)
+        def entrypoint():
+            self.run_remote_provision_constructor(target,
+                                                  "github_agent",
+                                                  token=github_token,
+                                                  )
+
+        target.append_remote_step("ProvisionGithub", entrypoint)
+        assert self.run_remote_deployer_deploy_targets([target], asynchronous=False)

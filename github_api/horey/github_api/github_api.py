@@ -208,3 +208,95 @@ class GithubAPI:
                 pass
 
         return direct_teams
+
+    def init_self_hosted_runners(self):
+        """
+        Initialize self-hosted runners.
+
+        :return:
+        """
+
+        runners = []
+        page = 1
+        while True:
+            response = self.get(
+                f"orgs/{self.configuration.owner}/actions/runners?per_page=100&page={page}"
+            )
+            logger.info(f"Page: {page}, Items: {len(response)}")
+            if not response:
+                break
+            runners.extend(response)
+            page += 1
+        logger.info(f"Total runners: {len(runners)}")
+        return runners
+
+    def init_github_hosted_runners(self):
+        """
+        Initialize github-hosted runners.
+
+        :return:
+        """
+
+        runners = []
+        page = 1
+        while True:
+            response = self.get(
+                f"orgs/{self.configuration.owner}/actions/hosted-runners?per_page=100&page={page}"
+            )
+            logger.info(f"Page: {page}, Items: {len(response)}")
+            if not response:
+                break
+            runners.extend(response)
+            page += 1
+        logger.info(f"Total runners: {len(runners)}")
+        return runners
+
+    def init_repository_self_hosted_runners(self, repo_name):
+        """
+        Initialize self-hosted runners for a specific repository.
+
+        :param repo_name: Name of the repository
+        :return:
+        """
+
+        runners = []
+        page = 1
+        while True:
+            response = self.get(
+                f"repos/{self.configuration.owner}/{repo_name}/actions/runners?per_page=100&page={page}"
+            )
+            if response["total_count"] == 0:
+                break
+            page_runners = response["runners"]
+            logger.info(f"Page: {page}, Items: {len(page_runners)}")
+            runners.extend(page_runners)
+            page += 1
+        logger.info(f"Total runners: {len(runners)}")
+        return runners
+
+    def request_runner_registration_token(self, name):
+        """
+        https://api.github.com<OWNER>/<REPO>/actions/runners/registration-token
+
+        :return:
+        """
+        data = {"name": name}
+        response = self.post(
+            f"orgs/{self.configuration.owner}/actions/runners/registration-token", data
+        )
+        return response
+
+    def request_repository_runner_registration_token(self, repository_name: str):
+        """
+        Request a runner registration token for a repository.
+
+        :param repository_name: Name of the repository
+        :param token_name: Name of the token
+        :return:
+        """
+
+        response = self.post(
+            f"repos/{self.configuration.owner}/{repository_name}/actions/runners/registration-token",{}
+        )
+
+        return response

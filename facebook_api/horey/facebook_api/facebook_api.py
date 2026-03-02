@@ -22,6 +22,7 @@ class FacebookAPI:
     def selenium_api(self):
         if self._selenium_api is None:
             self._selenium_api = SeleniumAPI()
+            self._selenium_api.proxy = "85.208.108.43:10808"
         return self._selenium_api
 
     def reload_elements(self):
@@ -66,12 +67,15 @@ class FacebookAPI:
         """
 
         self.selenium_api.connect()
+        address = "https://www.facebook.com/marketplace/winnipeg/free/?exact=false"
+        address = "https://www.facebook.com/marketplace/winnipeg/free?exact=false&radius_in_km=20"
 
-        self.selenium_api.get("https://www.facebook.com/marketplace/winnipeg/free/?exact=false")
+        self.selenium_api.get(address)
         self.selenium_api.wait_for_page_load()
         self.close_popup()
         self.selenium_api.scroll_to_bottom()
         ret = self.fetch_free_items_from_page()
+        breakpoint()
         logger.info(f"Total fetched free items from Facebook: {len(ret)}")
         return ret
 
@@ -83,8 +87,10 @@ class FacebookAPI:
         """
 
         self.selenium_api.connect()
+        #address = "https://www.facebook.com/marketplace/winnipeg/free/?exact=false"
+        address = "https://www.facebook.com/marketplace/winnipeg/free?exact=false&radius_in_km=20"
+        self.selenium_api.get(address)
 
-        self.selenium_api.get("https://www.facebook.com/marketplace/winnipeg/free/?exact=false")
         self.selenium_api.wait_for_page_load()
         login = False
         breakpoint()
@@ -152,6 +158,7 @@ class FacebookAPI:
             
             return free_items
         else:
+            breakpoint()
             raise ValueError("Initializing free items")
 
 

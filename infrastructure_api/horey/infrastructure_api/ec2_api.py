@@ -55,18 +55,22 @@ class EC2API:
 
         self.provision_security_group()
 
-    def provision_security_group(self):
+    def provision_security_group(self, name=None, description=None):
         """
         Provision log group.
 
+        :param description:
         :param name:
         :return:
         """
 
+        if not name:
+            logger.error("Security group Name was not set, this is old style code")
+
         security_group = EC2SecurityGroup({})
         security_group.vpc_id = self.environment_api.vpc.id
-        security_group.name = self.configuration.name
-        security_group.description = security_group.name
+        security_group.name = name or self.configuration.name
+        security_group.description = description or security_group.name
         security_group.region = self.environment_api.region
         security_group.tags = self.environment_api.configuration.tags
         security_group.tags.append({
@@ -74,12 +78,27 @@ class EC2API:
             "Value": security_group.name
         })
 
-        if self.configuration.ip_permissions is not None:
-            security_group.ip_permissions = self.configuration.ip_permissions
-
-        self.environment_api.aws_api.provision_security_group(security_group, provision_rules=bool(self.configuration.ip_permissions))
+        self.environment_api.aws_api.provision_security_group(security_group, provision_rules=False)
 
         return security_group
+
+    def get_security_group(self, name=None):
+        """
+        Get security group.
+
+        :param name:
+        :return:
+        """
+
+        filters = {"Filters": [
+            {"Name": "vpc-id", "Values": [self.environment_api.vpc.id]},
+            {"Name": "group-name", "Values": [name]}
+        ]}
+        security_groups = self.environment_api.aws_api.ec2_client.get_region_security_groups(self.environment_api.region,
+                                                                                             filters=filters)
+        if len(security_groups) != 1:
+            raise RuntimeError(f"Expected to find single security group, found: {len(security_groups)}")
+        return security_groups[0]
 
     def get_ubuntu24_04_image(self):
         """
@@ -174,3 +193,51 @@ class EC2API:
         if not ec2_instance:
             raise ValueError(f"Was not able to find instance by {name=}")
         self.environment_api.aws_api.ec2_client.stop_instance(ec2_instance)
+
+    def provision_internal_alb_security_group(self):
+        """
+        Provision internal ALB security group.
+
+        :return:
+        """
+
+        return self.provision_security_group(f"sg_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-internal-alb",
+                                      "Internal ALB security group")
+
+    def security_group_add_rule(self, destination_group: EC2SecurityGroup, source_group:EC2SecurityGroup=None, port_range=None):
+        """
+        Add rule to security group.
+        :param destination_group:
+        :param source_group:
+        :param port_range:
+        :return:
+        """
+
+        if not self.environment_api.aws_api.ec2_client.update_security_group_information(destination_group):
+            raise RuntimeError("Failed to update security group information")
+
+        if not port_range:
+            raise NotImplementedError("port_range was not set")
+
+        if not source_group:
+            raise NotImplementedError("source_group was not set")
+
+        desired_permission = {
+            "IpProtocol": "tcp",
+            "FromPort": port_range[0],
+            "ToPort": port_range[1],
+            "UserIdGroupPairs": [
+                {
+                    "GroupId": source_group.id,
+                }
+            ],
+        }
+
+        for permission in destination_group.ip_permissions:
+            if permission.get("FromPort") == port_range[0] and \
+                permission.get("ToPort") == port_range[1] and \
+                permission.get("UserIdGroupPairs")[0].get("GroupId") == source_group.id:
+                return True
+        destination_group.ip_permissions.append(desired_permission)
+        return self.environment_api.aws_api.ec2_client.provision_security_group(destination_group)
+

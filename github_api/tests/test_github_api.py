@@ -2,6 +2,7 @@
 Testing github api functionality.
 
 """
+import json
 
 import pytest
 
@@ -37,6 +38,7 @@ class TestConfigs(ConfigurationPolicy):
         super().__init__()
         self._src_repo_name = None
         self._dst_repo_name = None
+        self._dst_repo_names = None
         self._pat = None
         self._owner = None
 
@@ -63,6 +65,14 @@ class TestConfigs(ConfigurationPolicy):
     @dst_repo_name.setter
     def dst_repo_name(self, value):
         self._dst_repo_name = value
+    
+    @property
+    def dst_repo_names(self):
+        return self._dst_repo_names
+
+    @dst_repo_names.setter
+    def dst_repo_names(self, value):
+        self._dst_repo_names = value
 
     @property
     def src_repo_name(self):
@@ -117,9 +127,39 @@ def test_create_repository(github_api):
     assert github_api.create_repository("test_repo_name")
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_copy_repository_permissions(github_api, tests_config):
     assert github_api.copy_repository_permissions(tests_config.src_repo_name, tests_config.dst_repo_name)
+
+@pytest.mark.unit
+def test_copy_repositories_permissions(github_api, tests_config):
+    for dst_repo_name in json.loads(tests_config.dst_repo_names):
+        assert github_api.copy_repository_permissions(tests_config.src_repo_name, dst_repo_name)
+
+
+@pytest.mark.unit
+def test_init_self_hosted_runners(github_api, tests_config):
+    assert github_api.init_self_hosted_runners()
+
+
+@pytest.mark.unit
+def test_init_github_hosted_runners(github_api, tests_config):
+    assert github_api.init_github_hosted_runners()
+
+
+
+@pytest.mark.unit
+def test_init_repository_self_hosted_runners(github_api, tests_config):
+    assert github_api.init_repository_self_hosted_runners(tests_config.src_repo_name)
+
+
+@pytest.mark.unit
+def test_request_runner_registration_token(github_api, tests_config):
+    assert github_api.request_runner_registration_token("test")
+
+@pytest.mark.wip
+def test_request_repository_runner_registration_token(github_api, tests_config):
+    assert github_api.request_repository_runner_registration_token(tests_config.src_repo_name)
 
 
 

@@ -855,3 +855,19 @@ class AWSLambdaAPI:
         """
 
         return self.cloudwatch_api.yield_logs(self.log_group_name, start_time=start_time)
+
+    def print_recent_execution_logs(self):
+        """
+        Print recent execution logs.
+
+        :return:
+        """
+        for stream in self.cloudwatch_api.yield_streams(log_group_name=self.log_group_name):
+            break
+        else:
+            raise NotImplementedError("No streams found")
+        ret = [log for log in  self.cloudwatch_api.yield_logs(self.log_group_name, streams=[stream])]
+
+        for log in ret:
+            print(log["message"])
+        return ret

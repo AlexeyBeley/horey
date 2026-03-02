@@ -116,7 +116,7 @@ class BuildAPI:
         """
 
         if self._build_directory is None:
-            build_dir_path = Path("/tmp/ecs_api_build_temp_dirs") / str(uuid.uuid4())
+            build_dir_path = self.environment_api.configuration.data_directory_path / "ecs_api_build_temp_dirs" / str(uuid.uuid4())
             build_dir_path.parent.mkdir(exist_ok=True)
             self._build_directory = build_dir_path
         return self._build_directory

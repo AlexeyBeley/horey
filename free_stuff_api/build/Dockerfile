@@ -15,26 +15,18 @@ RUN dnf install -y atk cups-libs gtk3 libXcomposite alsa-lib \
     xorg-x11-xauth dbus-glib dbus-glib-devel nss mesa-libgbm jq unzip
 
 
-COPY chrome-installer.sh ./chrome-installer.sh
-RUN chmod +x ./chrome-installer.sh
-RUN ./chrome-installer.sh
-RUN rm ./chrome-installer.sh
-
+COPY chrome /opt/chrome
+COPY chromedriver /opt/chrome-driver
+RUN chmod -R 777 /opt/chrome-driver
+RUN chmod -R 777 /opt/chrome
 
 RUN dnf install -y vi
-
-#RUN dnf install -y unzip && \
-#    curl -Lo "/tmp/chromedriver-linux64.zip" "https://storage.googleapis.com/chrome-for-testing-public/145.0.7632.77/linux64/chromedriver-linux64.zip" && \
-#    curl -Lo "/tmp/chrome-linux64.zip" "https://storage.googleapis.com/chrome-for-testing-public/145.0.7632.77/linux64/chrome-linux64.zip" && \
-#    unzip /tmp/chromedriver-linux64.zip -d /opt/ && \
-#    unzip /tmp/chrome-linux64.zip -d /opt/
 
 COPY frs_api_configuration.json ${LAMBDA_TASK_ROOT}
 
 COPY ${HOREY_FOLDER_NAME} ${LAMBDA_TASK_ROOT}/horey
-# RUN cd ${LAMBDA_TASK_ROOT}/horey && make recursive_install_from_source-alert_system
 RUN python ${LAMBDA_TASK_ROOT}/horey/pip_api/horey/pip_api/pip_api_make.py --install horey.free_stuff_api --pip_api_configuration ${LAMBDA_TASK_ROOT}/horey/pip_api_docker_configuration.py
 
-COPY lambda_handler.py ${LAMBDA_TASK_ROOT}/
+COPY lambda_handler.py ${LAMBDA_TASK_ROOT}/lambda_handler.py
 
 CMD [ "lambda_handler.handler" ]

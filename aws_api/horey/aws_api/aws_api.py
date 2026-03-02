@@ -3770,7 +3770,7 @@ class AWSAPI:
         @return:
         """
 
-        self.ecs_client.attach_capacity_providers_to_ecs_cluster(
+        return self.ecs_client.attach_capacity_providers_to_ecs_cluster(
             ecs_cluster, capacity_provider_names, default_capacity_provider_strategy
         )
 

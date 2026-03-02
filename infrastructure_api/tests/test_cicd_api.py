@@ -150,6 +150,10 @@ def setup_test_config():
 def fixture_env_api_integration():
     env_configuration = init_from_secrets_api(EnvironmentAPIConfigurationPolicy,
                                               Configuration.TEST_CONFIG.environment_api_configuration_file_secret_name)
+    if isinstance(env_configuration.private_subnets, str):
+        env_configuration.private_subnets = env_configuration.private_subnets.split(",")
+    if isinstance(env_configuration.public_subnets, str):
+        env_configuration.public_subnets = env_configuration.public_subnets.split(",")
     env_configuration.data_directory_path = Path("/tmp/test_data")
     infrastructure_api = InfrastructureAPI()
     environment_api = infrastructure_api.get_environment_api(env_configuration, aws_api=aws_api)
@@ -710,4 +714,10 @@ def test_run_remote_deployer_deploy_windows_target_raw(cicd_api_integration, ec2
         target.deployment_target_user_name= "Administrator"
         target.append_remote_step("Test", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
+
+
+@pytest.mark.wip
+def test_provision_jenkins_master_infrastructure(cicd_api_integration, ec2_api_mgmt_integration):
+    assert cicd_api_integration.provision_jenkins_master_infrastructure()
+
 

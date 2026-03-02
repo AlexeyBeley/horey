@@ -702,7 +702,7 @@ class EnvironmentAPI:
                                                                          self.configuration.container_instance_security_group_name)
 
         param = self.aws_api.ssm_client.get_region_parameter(self.region,
-                                                             "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended")
+                                                             "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended")
 
         filter_request = {"ImageIds": [json.loads(param.value)["image_id"]]}
         amis = self.aws_api.ec2_client.get_region_amis(self.region, custom_filters=filter_request)
@@ -836,7 +836,7 @@ class EnvironmentAPI:
         self.aws_api.provision_ecs_cluster(cluster)
         return cluster
 
-    def provision_container_instance_auto_scaling_group(self, launch_template):
+    def provision_auto_scaling_group(self, name, launch_template, min_size=1, max_size=2, desired_size=1):
         """
         Provision the container instance auto-scaling group.
 
@@ -845,28 +845,17 @@ class EnvironmentAPI:
         """
 
         as_group = AutoScalingGroup({})
-        as_group.name = self.configuration.container_instance_auto_scaling_group_name
+        as_group.name = name
         as_group.region = self.region
-        region_objects = self.aws_api.autoscaling_client.get_region_auto_scaling_groups(as_group.region,
-                                                                                        names=[as_group.name])
-
-        if len(region_objects) > 1:
-            raise RuntimeError(f"more there one as_group '{as_group.name}'")
-
-        if region_objects and region_objects[0].get_status() == region_objects[0].Status.ACTIVE:
-            as_group.desired_capacity = 1
-            as_group.min_size = 1
-        else:
-            # was 0
-            as_group.min_size = self.configuration.container_instance_auto_scaling_group_min_size
-            as_group.desired_capacity = self.configuration.container_instance_auto_scaling_group_min_size
+        as_group.min_size = min_size
+        as_group.desired_capacity = desired_size
 
         as_group.tags = self.get_tags_with_name(as_group.name)
         as_group.launch_template = {
             "LaunchTemplateId": launch_template.id,
             "Version": "$Default"
         }
-        as_group.max_size = self.configuration.container_instance_auto_scaling_group_max_size
+        as_group.max_size = max_size
         as_group.default_cooldown = 300
 
         as_group.health_check_type = "EC2"

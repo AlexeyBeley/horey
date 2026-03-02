@@ -10,6 +10,10 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
+from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
+from horey.aws_api.aws_services_entities.ecs_service import ECSService
+from horey.aws_api.aws_services_entities.ecs_task_definition import ECSTaskDefinition
 from horey.h_logger import get_logger
 
 from horey.aws_api.aws_services_entities.ecr_image import ECRImage
@@ -22,6 +26,8 @@ from horey.infrastructure_api.aws_iam_api import AWSIAMAPI
 from horey.infrastructure_api.ecs_api_configuration_policy import ECSAPIConfigurationPolicy
 from horey.infrastructure_api.environment_api import EnvironmentAPI
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
+from horey.infrastructure_api.ec2_api import EC2API, EC2APIConfigurationPolicy
+
 from horey.aws_api.aws_services_entities.application_auto_scaling_scalable_target import \
     ApplicationAutoScalingScalableTarget
 from horey.aws_api.aws_services_entities.application_auto_scaling_policy import ApplicationAutoScalingPolicy
@@ -47,6 +53,7 @@ class ECSAPI:
         self._aws_iam_api = None
         self.loadbalancer_api = None
         self.dns_api = None
+        self._ec2_api = None
         self.loadbalancer_dns_api_pairs = None
         self.init_ecr_repository_name()
 
@@ -54,6 +61,19 @@ class ECSAPI:
             assert self.configuration.ecr_repository_region
         except self.configuration.UndefinedValueError:
             self.configuration.ecr_repository_region = self.environment_api.configuration.region
+
+    @property
+    def ec2_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        if self._ec2_api is None:
+            config = EC2APIConfigurationPolicy()
+            self._ec2_api = EC2API(configuration=config, environment_api=self.environment_api)
+        return self._ec2_api
 
     def init_ecr_repository_name(self):
         """
@@ -85,7 +105,8 @@ class ECSAPI:
                 repository_names=[
                     self.configuration.ecr_repository_name])
             if len(src_ecr_repositories) != 1:
-                raise self.environment_api.ResourceNotFoundError(f"Can not find repository {self.configuration.ecr_repository_name} in region {self.configuration.ecr_repository_region}")
+                raise self.environment_api.ResourceNotFoundError(
+                    f"Can not find repository {self.configuration.ecr_repository_name} in region {self.configuration.ecr_repository_region}")
             self._ecr_repository = src_ecr_repositories[0]
         return self._ecr_repository
 
@@ -142,23 +163,23 @@ class ECSAPI:
             try:
                 self.loadbalancer_api.configuration.target_group_name
             except self.loadbalancer_api.configuration.UndefinedValueError:
-                self.loadbalancer_api.configuration.target_group_name = f"tg-cluster-{self.environment_api.configuration.project_name_abbr}"\
-                                                                        f"-{self.environment_api.configuration.environment_level_abbr}"\
-                                                                        f"-{self.environment_api.configuration.environment_name_abbr}"\
+                self.loadbalancer_api.configuration.target_group_name = f"tg-cluster-{self.environment_api.configuration.project_name_abbr}" \
+                                                                        f"-{self.environment_api.configuration.environment_level_abbr}" \
+                                                                        f"-{self.environment_api.configuration.environment_name_abbr}" \
                                                                         f"-{self.configuration.service_name}"
 
             try:
                 self.loadbalancer_api.configuration.load_balancer_name
             except self.loadbalancer_api.configuration.UndefinedValueError:
                 self.loadbalancer_api.configuration.load_balancer_name = f"lb-cluster-{self.environment_api.configuration.project_name_abbr}" \
-                                                                        f"-{self.environment_api.configuration.environment_level_abbr}" \
-                                                                        f"-{self.environment_api.configuration.environment_name_abbr}"
+                                                                         f"-{self.environment_api.configuration.environment_level_abbr}" \
+                                                                         f"-{self.environment_api.configuration.environment_name_abbr}"
 
             if len(self.configuration.container_definition_port_mappings) != 1:
                 raise NotImplementedError("Need to implement dynamic test that loadbalancer_api configuration has the"
                                           " port set explicitly")
             self.loadbalancer_api.configuration.target_group_port = \
-            self.configuration.container_definition_port_mappings[0]["containerPort"]
+                self.configuration.container_definition_port_mappings[0]["containerPort"]
             if self.dns_api:
                 raise NotImplementedError("todo: Validate the DNS addresses in DNS are the same as in load balancer.")
 
@@ -211,9 +232,11 @@ class ECSAPI:
                 self.loadbalancer_api.configuration.security_groups
             except self.loadbalancer_api.configuration.UndefinedValueError:
                 if self.loadbalancer_api.configuration.scheme == "internet-facing":
-                    self.loadbalancer_api.configuration.security_groups = [f"sg_lb-public-{self.configuration.slug.replace('_', '-')}"]
+                    self.loadbalancer_api.configuration.security_groups = [
+                        f"sg_lb-public-{self.configuration.slug.replace('_', '-')}"]
                 else:
-                    self.loadbalancer_api.configuration.security_groups = [f"sg_lb-{self.configuration.slug.replace('_', '-')}"]
+                    self.loadbalancer_api.configuration.security_groups = [
+                        f"sg_lb-{self.configuration.slug.replace('_', '-')}"]
 
     def validate_input(self):
         """
@@ -289,7 +312,7 @@ class ECSAPI:
 
         return True
 
-    def provision_cluster(self):
+    def provision_cluster(self, cluster_name=None):
         """
         Provision the ECS cluster for this env.
 
@@ -304,9 +327,10 @@ class ECSAPI:
             }
         ]
 
-        cluster.name = self.configuration.cluster_name
+        cluster.name = cluster_name
         cluster.region = self.environment_api.region
-        cluster.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.environment_api.get_tags_with_name(cluster.name)]
+        cluster.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
+                        self.environment_api.get_tags_with_name(cluster.name)]
         cluster.configuration = {}
 
         self.environment_api.aws_api.provision_ecs_cluster(cluster)
@@ -385,7 +409,8 @@ class ECSAPI:
             "DynamicScalingOutSuspended": False,
             "ScheduledScalingSuspended": False
         }
-        target.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.get_tags_with_name(f"{target.resource_id}/{target.scalable_dimension}")}
+        target.tags = {tag["Key"]: tag["Value"] for tag in
+                       self.environment_api.get_tags_with_name(f"{target.resource_id}/{target.scalable_dimension}")}
         self.environment_api.aws_api.provision_application_auto_scaling_scalable_target(target)
 
     def provision_application_autoscaling_policies(self):
@@ -592,16 +617,17 @@ class ECSAPI:
                                                           service_registry_dicts=service_registry_dicts
                                                           )
 
-    def provision_ecr_repository(self, repository_policy=None):
+    def provision_ecr_repository(self, repository_name=None, repository_policy=None):
         """
         Create or update the ECR repo
 
         :return:
         """
 
+
         repo = ECRRepository({})
         repo.region = Region.get_region(self.configuration.ecr_repository_region)
-        repo.name = self.configuration.ecr_repository_name
+        repo.name = repository_name or self.configuration.ecr_repository_name
         # todo: generate policy to permit only access from relevant services: AWS Lambda / ECS / EKS etc
         repo.policy_text = repository_policy or self.configuration.ecr_repository_policy_text
         repo.tags = self.environment_api.get_tags_with_name(repo.name)
@@ -737,7 +763,6 @@ class ECSAPI:
         """
         if self._cloudwatch_api is None:
             config = CloudwatchAPIConfigurationPolicy()
-            config.log_group_name = self.configuration.cloudwatch_log_group_name
             self._cloudwatch_api = CloudwatchAPI(configuration=config, environment_api=self.environment_api)
 
         return self._cloudwatch_api
@@ -769,9 +794,9 @@ class ECSAPI:
         """
 
         alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
-                                                        self.configuration.alerts_api_error_filter_text,
-                                                        "error", None, dimensions=None,
-                                                        alarm_description=None)
+                                                   self.configuration.alerts_api_error_filter_text,
+                                                   "error", None, dimensions=None,
+                                                   alarm_description=None)
 
         return True
 
@@ -949,7 +974,8 @@ class ECSAPI:
                 "awsvpcConfiguration": {
                     "subnets": [subnet.id for subnet in
                                 self.environment_api.private_subnets],
-                    "securityGroups": [sec_group.id for sec_group in self.environment_api.get_security_groups(self.configuration.security_groups)],
+                    "securityGroups": [sec_group.id for sec_group in
+                                       self.environment_api.get_security_groups(self.configuration.security_groups)],
                     "assignPublicIp": "ENABLED",
                 }
             },
@@ -966,7 +992,7 @@ class ECSAPI:
         :param task:
         :return:
         """
-        #if not self.environment_api.aws_api.ecs_client.update_task_information(task):
+        # if not self.environment_api.aws_api.ecs_client.update_task_information(task):
         #    raise RuntimeError("Task was not found")
         task.id = self.configuration.adhoc_task_name
         self.environment_api.aws_api.ecs_client.wait_for_status(
@@ -993,7 +1019,7 @@ class ECSAPI:
             [
                 task.State.FAILED,
             ],
-            timeout=60*60,
+            timeout=60 * 60,
         )
         return True
 
@@ -1016,3 +1042,314 @@ class ECSAPI:
         """
 
         return f"{self.ecr_repository.repository_uri}:{tag}"
+
+    def generate_ecs_service(self, ecs_cluster, ecs_task_definition, seed=None):
+        """
+        Generate ecs service.
+
+        :param ecs_cluster:
+        :param ecs_task_definition:
+        :param seed:
+        :return:
+        """
+
+        if seed is None:
+            raise NotImplementedError("seed")
+
+        service_name = seed
+        ecs_service = ECSService({})
+        ecs_service.name = service_name
+        ecs_service.region = self.environment_api.region
+
+        ecs_service.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
+                            self.environment_api.get_tags_with_name(ecs_service.name)]
+
+        ecs_service.cluster_arn = ecs_cluster.arn
+        ecs_service.task_definition = ecs_task_definition.arn
+
+        ecs_service.desired_count = 1
+
+        ecs_service.launch_type = "FARGATE"
+
+        ecs_service.deployment_configuration = {
+            "deploymentCircuitBreaker": {
+                "enable": False,
+                "rollback": False
+            },
+            "maximumPercent": 200,
+            "minimumHealthyPercent": 100
+        }
+
+        ecs_service.health_check_grace_period_seconds = 10
+        ecs_service.scheduling_strategy = "REPLICA"
+        ecs_service.enable_ecs_managed_tags = False
+        ecs_service.enable_execute_command = True
+
+        return ecs_service
+
+    def generate_ecs_task_definition(self, ecr_image_id, cluster_name=None, service_name=None, seed=None):
+
+        """
+        Provision task definition.
+
+        Example 1:
+        An error occurred (ClientException) when calling the RegisterTaskDefinition operation: Actual length: '514430'. Max allowed length is '65536' bytes.
+        len(str(request)) = 535118
+        535118 - 514430 = 20688
+
+        Example 2 (different env vars)
+        len(str(request)) = 635118
+        Actual length: '614430'
+        635118 - 614430 = 20688
+
+        Need to check if other params considered in the difference and the 20688 is constant for all requests.
+
+        :return:
+        """
+
+        ecs_task_definition = ECSTaskDefinition({})
+
+        ecs_task_definition.region = self.environment_api.region
+        ecs_task_definition.family = f"td-{cluster_name}-{service_name}-{seed}"
+
+        # Why? Because AWS! `Unknown parameter in tags[0]: "Key", must be one of: key, value`
+        ecs_task_definition.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
+                                    self.environment_api.get_tags_with_name(ecs_task_definition.family)]
+
+        ecs_task_definition.container_definitions = [{
+            "name": seed,
+            "essential": True,
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": self.get_ecs_service_log_group_name(cluster_name, service_name),
+                    "awslogs-region": self.environment_api.configuration.region,
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+        ]
+
+
+        ecs_task_definition.container_definitions[0]["cpu"] = 1024
+
+        ecs_task_definition.container_definitions[0][
+            "memoryReservation"] = 2048
+
+        ecs_task_definition.requires_compatibilities = ["FARGATE"]
+
+        ecs_task_definition.network_mode = "awsvpc"
+
+        ecs_task_definition.cpu = "1024"
+
+        ecs_task_definition.memory = "2048"
+
+        ecs_task_definition.container_definitions[0]["image"] = ecr_image_id
+
+        ecs_task_definition.runtime_platform = {
+            "cpuArchitecture": "ARM64",
+            "operatingSystemFamily": "LINUX"
+        }
+
+        request = ecs_task_definition.generate_create_request()
+        if len(str(request)) > 65536:
+            raise ValueError(f"Task definition request length {len(str(request))} while expected less then 65536")
+
+        return ecs_task_definition
+
+    def provision_service_log_group(self, cluster_name, service_name):
+        """
+        Provision log group for the service.
+
+        :param cluster_name:
+        :param service_name:
+        :return:
+        """
+
+        name = self.get_ecs_service_log_group_name(cluster_name, service_name)
+        return self.cloudwatch_api.provision_log_group(name)
+
+    def get_ecs_service_log_group_name(self, cluster_name, service_name):
+        """
+        Generate log group name for the service.
+
+        :param cluster_name:
+        :param service_name:
+        :return:
+        """
+
+        return f"/ecs/{cluster_name}/{service_name}"
+
+    def attach_capacity_provider_to_ecs_cluster(self, ecs_cluster: ECSCluster, capacity_provider: ECSCapacityProvider):
+        """
+        Attach provisioned instances to this cluster.
+
+        :param capacity_provider:
+        :param ecs_cluster:
+        :return:
+        """
+
+        default_capacity_provider_strategy = [
+            {
+                "capacityProvider": capacity_provider.name,
+                "weight": 1,
+                "base": 0
+            }
+        ]
+        return self.environment_api.aws_api.attach_capacity_providers_to_ecs_cluster(ecs_cluster, [
+            capacity_provider.name], default_capacity_provider_strategy)
+
+
+    def provision_ecs_autoscaling_group_capacity_provider(self, ecs_cluster, slug):
+        """
+        AWS infra.
+
+        :return:
+        """
+        breakpoint()
+        container_instance_ssh_key_pair_name = f"{self.environment_api.configuration.environment_level}-container-instance-{slug}"
+        asg_name =  f"asg_{self.environment_api.configuration.environment_level}-container-instance-{slug}"
+        sg_name = f"sg_{self.environment_api.configuration.environment_level}-container-instance-{slug}"
+        capacity_provider_name = f"cp_{self.environment_api.configuration.environment_level}-capacity-provider-{slug}"
+        launch_template_name = f"lt_{self.environment_api.configuration.environment_level}-capacity-provider-{slug}"
+
+        instance_profile = self.provision_iam_instance_profile_for_ecs_container_instances(slug)
+
+        sec_group = self.ec2_api.provision_security_group(name=sg_name)
+        key = self.environment_api.provision_ssh_key(container_instance_ssh_key_pair_name)
+        launch_template = self.provision_container_instance_launch_template(launch_template_name, sec_group, key, instance_profile, ecs_cluster)
+        auto_scaling_group = self.environment_api.provision_auto_scaling_group(asg_name, launch_template)
+        capacity_provider = self.provision_ecs_capacity_provider(capacity_provider_name, auto_scaling_group)
+        self.attach_capacity_provider_to_ecs_cluster(ecs_cluster, capacity_provider)
+        return True
+
+    def provision_iam_instance_profile_for_ecs_container_instances(self, slug):
+        """
+        AWS infra.
+
+        :return:
+        """
+
+        instance_profile_name = f"ip_{self.environment_api.configuration.environment_level}-container-instance-{slug}"
+        role_name = f"role_{self.environment_api.configuration.environment_name}-{self.environment_api.configuration.environment_name}-ecs-cnt-inst-{slug}"
+
+        assume_role_policy = """{
+                "Version": "2012-10-17",
+                "Statement": [
+                {
+                "Effect": "Allow",
+                "Principal": {
+                "Service": "ec2.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+                }
+                ]
+                }"""
+
+        role = self.aws_iam_api.provision_role(role_name, assume_role_policy=assume_role_policy, managed_policies_arns=["arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"])
+        instance_profile = self.aws_iam_api.provision_instance_profile(instance_profile_name, role)
+        return instance_profile
+
+    def provision_container_instance_launch_template(self, name, security_group, ssh_key_pair, instance_profile, ecs_cluster):
+        """
+        Provision container instance launch template.
+
+        :return:
+        """
+
+        param = self.environment_api.aws_api.ssm_client.get_region_parameter(self.environment_api.region,
+                                                             "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended")
+
+        filter_request = {"ImageIds": [json.loads(param.value)["image_id"]]}
+        amis = self.environment_api.aws_api.ec2_client.get_region_amis(self.environment_api.region, custom_filters=filter_request)
+        if len(amis) > 1:
+            raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
+
+        ami = amis[0]
+        user_data = self.generate_ecs_container_instance_user_data(ecs_cluster)
+
+        launch_template = EC2LaunchTemplate({})
+        launch_template.name = name
+        launch_template.region = self.environment_api.region
+        launch_template.tags = self.environment_api.get_tags_with_name(launch_template.name)
+
+        launch_template.launch_template_data = {"EbsOptimized": False,
+                                                "IamInstanceProfile": {
+                                                    "Arn": instance_profile.arn
+                                                },
+                                                "BlockDeviceMappings": [
+                                                    {
+                                                        "DeviceName": "/dev/xvda",
+                                                        "Ebs": {
+                                                            "VolumeSize": 50,
+                                                            "VolumeType": "gp3"
+                                                        }
+                                                    }
+                                                ],
+                                                "ImageId": ami.id,
+                                                "InstanceType": "C7i.large",
+                                                "KeyName": ssh_key_pair.name,
+                                                "Monitoring": {
+                                                    "Enabled": False
+                                                },
+                                                "NetworkInterfaces": [
+                                                    {
+                                                        "AssociatePublicIpAddress": False,
+                                                        "DeleteOnTermination": True,
+                                                        "DeviceIndex": 0,
+                                                        "Groups": [
+                                                            security_group.id,
+                                                        ]
+                                                    },
+                                                ],
+                                                "UserData": user_data
+                                                }
+        self.environment_api.aws_api.provision_launch_template(launch_template)
+        return launch_template
+
+    def generate_ecs_container_instance_user_data(self, ecs_cluster: ECSCluster):
+        """
+        EC2 container instance user data to run on ec2 start.
+
+        :return:
+        """
+
+        str_user_data = "#!/bin/bash\n" + \
+                        f'echo "ECS_CLUSTER={ecs_cluster.name}" >> /etc/ecs/ecs.config\n' + \
+                        "echo 'ECS_ENABLE_CONTAINER_METADATA=true' >> /etc/ecs/ecs.config\n" + \
+                        "yum update -y\n" + \
+                        "systemctl enable --now ecs"
+
+        user_data = self.environment_api.aws_api.ec2_client.generate_user_data(str_user_data)
+        return user_data
+
+    def provision_ecs_capacity_provider(self, name, auto_scaling_group):
+        """
+        Create capacity provider from provision instances.
+
+        :param name:
+        :param auto_scaling_group:
+        :return:
+        """
+
+        capacity_provider = ECSCapacityProvider({})
+        capacity_provider.name = name
+        capacity_provider.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
+                                  self.environment_api.get_tags_with_name(capacity_provider.name)]
+        capacity_provider.region = self.environment_api.region
+
+        capacity_provider.auto_scaling_group_provider = {
+            "autoScalingGroupArn": auto_scaling_group.arn,
+            "managedScaling": {
+                "status": "DISABLED",
+                "targetCapacity": 70,
+                "minimumScalingStepSize": 1,
+                "maximumScalingStepSize": 10000,
+                "instanceWarmupPeriod": 300
+            },
+            "managedTerminationProtection": "DISABLED"
+        }
+
+        self.environment_api.aws_api.provision_ecs_capacity_provider(capacity_provider)
+
+        return capacity_provider
