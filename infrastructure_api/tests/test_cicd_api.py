@@ -716,8 +716,13 @@ def test_run_remote_deployer_deploy_windows_target_raw(cicd_api_integration, ec2
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_provision_jenkins_master_infrastructure(cicd_api_integration, ec2_api_mgmt_integration):
     assert cicd_api_integration.provision_jenkins_master_infrastructure()
+
+@pytest.mark.wip
+def test_provision_jenkins_hagent_infrastructure(cicd_api_integration, ec2_api_mgmt_integration):
+    assert cicd_api_integration.provision_jenkins_hagent_infrastructure()
+
 
 

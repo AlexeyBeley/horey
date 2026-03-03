@@ -28,21 +28,7 @@ class EC2LaunchTemplate(AwsObject):
             self._init_ec2_launch_template_from_cache(dict_src)
             return
 
-        init_options = {
-            "LaunchTemplateName": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="name"
-            ),
-            "CreateTime": self.init_default_attr,
-            "CreatedBy": self.init_default_attr,
-            "DefaultVersionNumber": self.init_default_attr,
-            "LatestVersionNumber": self.init_default_attr,
-            "LaunchTemplateId": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="id"
-            ),
-            "Tags": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_ec2_launch_template_from_cache(self, dict_src):
         """
@@ -107,6 +93,7 @@ class EC2LaunchTemplate(AwsObject):
                 x, y, formatted_name="id"
             ),
             "Tags": self.init_default_attr,
+            "Operator": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

@@ -1206,7 +1206,6 @@ class ECSAPI:
 
         :return:
         """
-        breakpoint()
         container_instance_ssh_key_pair_name = f"{self.environment_api.configuration.environment_level}-container-instance-{slug}"
         asg_name =  f"asg_{self.environment_api.configuration.environment_level}-container-instance-{slug}"
         sg_name = f"sg_{self.environment_api.configuration.environment_level}-container-instance-{slug}"
@@ -1231,7 +1230,11 @@ class ECSAPI:
         """
 
         instance_profile_name = f"ip_{self.environment_api.configuration.environment_level}-container-instance-{slug}"
-        role_name = f"role_{self.environment_api.configuration.environment_name}-{self.environment_api.configuration.environment_name}-ecs-cnt-inst-{slug}"
+
+        if slug in [self.environment_api.configuration.environment_level, self.environment_api.configuration.environment_name]:
+            role_name = f"role_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-ecs-cnt-inst"
+        else:
+            role_name = f"role_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-ecs-cnt-inst-{slug}"
 
         assume_role_policy = """{
                 "Version": "2012-10-17",
@@ -1246,7 +1249,7 @@ class ECSAPI:
                 ]
                 }"""
 
-        role = self.aws_iam_api.provision_role(role_name, assume_role_policy=assume_role_policy, managed_policies_arns=["arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"])
+        role = self.aws_iam_api.provision_role(role_name=role_name, assume_role_policy=assume_role_policy, managed_policies_arns=["arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"])
         instance_profile = self.aws_iam_api.provision_instance_profile(instance_profile_name, role)
         return instance_profile
 
@@ -1287,7 +1290,7 @@ class ECSAPI:
                                                     }
                                                 ],
                                                 "ImageId": ami.id,
-                                                "InstanceType": "C7i.large",
+                                                "InstanceType": "c7i.large",
                                                 "KeyName": ssh_key_pair.name,
                                                 "Monitoring": {
                                                     "Enabled": False

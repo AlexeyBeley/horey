@@ -231,7 +231,6 @@ class CICDAPI:
         })
 
         task_role = self.iam_api.provision_role(role_name=self.get_task_role_name("jenkins-master"),
-                                                policies=self.task_role_inline_policies_callback(),
                                                 assume_role_policy=assume_role_policy_document)
 
         exec_role = self.iam_api.provision_role(role_name=self.get_task_role_name("jenkins-master-exec"),
@@ -249,6 +248,7 @@ class CICDAPI:
         cluster = self.ecs_api.provision_cluster(cluster_name=cluster_name)
         self.ecs_api.provision_service_log_group(cluster_name, "jenkins")
         self.ecs_api.provision_ecs_autoscaling_group_capacity_provider(cluster, "management")
+        return True
 
     def get_task_role_name(self, slug):
         """
@@ -810,3 +810,59 @@ class CICDAPI:
 
         target.append_remote_step("ProvisionGithub", entrypoint)
         assert self.run_remote_deployer_deploy_targets([target], asynchronous=False)
+
+    def provision_jenkins_hagent_infrastructure(self):
+        """
+        Jenkins hagent infra
+
+        :return:
+        """
+        assume_role_policy_document = json.dumps({
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "ecs-tasks.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        })
+
+        task_role = self.iam_api.provision_role(role_name=self.get_task_role_name("jenkins-hagent"),
+                                                assume_role_policy=assume_role_policy_document)
+
+        exec_role = self.iam_api.provision_role(role_name=self.get_task_role_name("jenkins-hagent-exec"),
+                                                assume_role_policy=assume_role_policy_document)
+
+        policy_text = self.iam_api.generate_ecr_repository_policy(ecs_task_execution_role=exec_role)
+        repo_name = f"repo_{self.environment_api.configuration.environment_level}_jenkins_hagent"
+
+        self.ecs_api.provision_ecr_repository(repository_name = repo_name, repository_policy=policy_text)
+
+        cluster_name = (f"{self.environment_api.configuration.project_name_abbr}-"
+                f"{self.environment_api.configuration.environment_level}-"
+                f"management")
+
+        self.ecs_api.provision_service_log_group(cluster_name, "hagent")
+        self.update_hagent()
+        return True
+
+    def update_hagent(self, branch_name=None, from_docker_repository=False):
+        if from_docker_repository:
+            image_tag_raw = self.ecs_api.fetch_latest_artifact_metadata().image_tags[0]
+            image_registry_reference = self.ecs_api.generate_image_registry_reference(image_tag_raw)
+        else:
+            build_number = self.ecs_api.get_next_build_number()
+
+            self.build_api.configuration.docker_build_arguments["platform"] = "linux/amd64"
+
+
+            image = self.build_api.run_build_image_routine(branch_name, build_number)
+
+            image_registry_reference = image.tags[0]
+
+        return self.deploy_lambda(image_registry_reference)
+        self.ecs_api.provision_ecs_task_definition(cluster_name, "hagent")

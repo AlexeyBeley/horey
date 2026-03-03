@@ -22,7 +22,7 @@ class FacebookAPI:
     def selenium_api(self):
         if self._selenium_api is None:
             self._selenium_api = SeleniumAPI()
-            self._selenium_api.proxy = "85.208.108.43:10808"
+            # self._selenium_api.proxy = "85.208.108.43:10808"
         return self._selenium_api
 
     def reload_elements(self):

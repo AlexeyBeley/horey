@@ -1444,6 +1444,15 @@ class EnvironmentAPI:
 
         self.aws_api.ec2_client.clear_cache(None, all_cache=True)
 
+    def clear_sessions(self):
+        """
+        Disconnect all sessions.
+
+        :return:
+        """
+
+        self.aws_api.ec2_client.clear_sessions()
+
     # pylint: disable=too-many-locals
     # pylint: disable = too-many-positional-arguments
     def provision_ecs_fargate_task_definition(self, task_definition_family=None,

@@ -173,8 +173,8 @@ class AWSIAMAPI:
 
         iam_instance_profile = IamInstanceProfile({})
         iam_instance_profile.name = profile_name
-        iam_instance_profile.path = self.configuration.iam_path
-        iam_instance_profile.tags = self.get_tags_with_name(iam_instance_profile.name)
+        iam_instance_profile.path = self.environment_api.configuration.iam_path
+        iam_instance_profile.tags = self.environment_api.get_tags_with_name(iam_instance_profile.name)
         iam_instance_profile.roles = [{"RoleName": iam_role.name}]
-        self.aws_api.iam_client.provision_instance_profile(iam_instance_profile)
+        self.environment_api.aws_api.iam_client.provision_instance_profile(iam_instance_profile)
         return iam_instance_profile

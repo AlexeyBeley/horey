@@ -88,6 +88,7 @@ class AutoScalingGroup(AwsObject):
             "TrafficSources": self.init_default_attr,
             "AvailabilityZoneDistribution": self.init_default_attr,
             "CapacityReservationSpecification": self.init_default_attr,
+            "InstanceLifecyclePolicy": self.init_default_attr,
         }
 
         return self.init_attrs(dict_src, init_options)
