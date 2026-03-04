@@ -31,7 +31,7 @@ class Provisioner(SystemFunctionCommon):
         retry_10_times_sleep_5 apt install --upgrade default-jre -y
         retry_10_times_sleep_5 apt install --upgrade default-jdk -y
         #done
-        echo "deb [signed-by=/usr/share/keyrings/elastic-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-8.x.list
+        echo "deb [signed-by=/usr/share/keyrings/elastic-keyring.gpg] https://artifacts.elastic.co/packages/9.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-9.x.list
         sudo rm  /etc/apt/sources.list.d/elastic-7.x.list
         sudo apt update
         sudo apt install --upgrade logstash -y
@@ -51,8 +51,8 @@ class Provisioner(SystemFunctionCommon):
 
         self.remove_file("/etc/apt/sources.list.d/elastic-7.x.list", sudo=True)
 
-        line = f"deb [signed-by={dst_file_path}] https://artifacts.elastic.co/packages/8.x/apt stable main"
-        self.add_line_to_file(line=line, file_path="/etc/apt/sources.list.d/elastic-8.x.list", sudo=True)
+        line = f"deb [signed-by={dst_file_path}] https://artifacts.elastic.co/packages/9.x/apt stable main"
+        self.add_line_to_file(line=line, file_path="/etc/apt/sources.list.d/elastic-9.x.list", sudo=True)
         self.reinit_apt_packages()
         self.apt_install("logstash")
         self.run_bash("sudo systemctl daemon-reload")
@@ -121,7 +121,7 @@ class Provisioner(SystemFunctionCommon):
                                                               dst_file_path=dst_file_path).provision_remote(self.remoter)
 
         file_paths = self.ls_remote(Path("/etc/apt/sources.list.d/"), sudo=True)
-        elastic_version = "8.x"
+        elastic_version = "9.x"
         elastic_file_name = f"elastic-{elastic_version}.list"
 
         for file_path in file_paths:
