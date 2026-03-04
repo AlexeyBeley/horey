@@ -27,6 +27,7 @@ from horey.infrastructure_api.ecs_api_configuration_policy import ECSAPIConfigur
 from horey.infrastructure_api.environment_api import EnvironmentAPI
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
 from horey.infrastructure_api.ec2_api import EC2API, EC2APIConfigurationPolicy
+from horey.infrastructure_api.build_api import BuildAPI, BuildAPIConfigurationPolicy
 
 from horey.aws_api.aws_services_entities.application_auto_scaling_scalable_target import \
     ApplicationAutoScalingScalableTarget
@@ -54,6 +55,7 @@ class ECSAPI:
         self.loadbalancer_api = None
         self.dns_api = None
         self._ec2_api = None
+        self._build_api = None
         self.loadbalancer_dns_api_pairs = None
         self.init_ecr_repository_name()
 
@@ -74,6 +76,22 @@ class ECSAPI:
             config = EC2APIConfigurationPolicy()
             self._ec2_api = EC2API(configuration=config, environment_api=self.environment_api)
         return self._ec2_api
+
+    @property
+    def build_api(self):
+        """
+        Standard
+
+        :return:
+        """
+
+        if self._build_api is None:
+            config = BuildAPIConfigurationPolicy()
+            config.docker_repository_uri = self.ecr_repo_uri
+            build_api = BuildAPI(configuration=config, environment_api=self.environment_api)
+            build_api.git_api = build_api.horey_git_api
+            self._build_api = build_api
+        return self._build_api
 
     def init_ecr_repository_name(self):
         """

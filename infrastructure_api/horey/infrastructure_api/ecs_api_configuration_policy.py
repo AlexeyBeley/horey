@@ -213,6 +213,10 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
 
         return self._slug
 
+    @slug.setter
+    def slug(self, value):
+        self._slug = value
+
     @property
     def service_load_balancers(self):
         if self._service_load_balancers is None:

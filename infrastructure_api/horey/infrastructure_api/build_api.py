@@ -4,6 +4,7 @@ Build API.
 """
 import json
 import shutil
+import textwrap
 import time
 import uuid
 from pathlib import Path
@@ -154,21 +155,71 @@ class BuildAPI:
         :param source_code_directory_path:
         :return:
         """
-
-
+        breakpoint()
+        dockerfile_path = self.docker_build_directory / "Dockerfile"
         logger.info(
             f"Preparing horey.{source_code_directory_path} docker build directory' {source_code_directory_path}' to '{self.docker_build_directory}'")
         perf_counter_start = time.perf_counter()
         self.docker_build_directory.mkdir(parents=True, exist_ok=True)
+        if not dockerfile_path.exists():
+            self.add_base_horey_dockerfile(dockerfile_path)
         StandaloneMethods.copy_horey_package_required_packages_to_build_dir(package_raw_name, self.docker_build_directory , source_code_directory_path)
+
+        self.add_docker_instruction_copy(dockerfile_path, "horey")
+        self.add_docker_instruction_run(dockerfile_path, f"python horey/pip_api/horey/pip_api/pip_api_make.py --install horey.{package_raw_name} --pip_api_configuration horey/pip_api_docker_configuration.py")
 
         build_dir_path = self.prepare_docker_image_build_directory_callback(self.docker_build_directory)
 
-        self.add_build_metadata_file(build_dir_path, build_number)
+        file_name = self.add_build_metadata_file(build_dir_path, build_number)
+        self.add_docker_instruction_copy(dockerfile_path, file_name)
 
         logger.info(f"Prepared docker build directory. Took {time.perf_counter() - perf_counter_start}")
 
         return build_dir_path
+
+    @staticmethod
+    def add_docker_instruction_copy(dockerfile_path, source):
+        """
+        Add copy instruction to dockerfile
+
+        :param dockerfile_path:
+        :param source:
+        :return:
+        """
+
+        with open(dockerfile_path, "r", encoding="utf-8") as file_handler:
+            lines = file_handler.readlines()
+
+        i = None
+        for i, line in enumerate(lines):
+            if "ENTRYPOINT" in line:
+                break
+
+        lines = lines[:i] + [f"COPY {source} /{source}\n"] + lines[i+1:]
+        with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
+            file_handler.writelines(lines)
+
+    @staticmethod
+    def add_docker_instruction_run(dockerfile_path, command):
+        """
+        Add run instruction to dockerfile
+
+        :param dockerfile_path:
+        :param command:
+        :return:
+        """
+
+        with open(dockerfile_path, "r", encoding="utf-8") as file_handler:
+            lines = file_handler.readlines()
+
+        i = None
+        for i, line in enumerate(lines):
+            if "ENTRYPOINT" in line:
+                break
+
+        lines = lines[:i] + [f"RUN {command}\n"] + lines[i+1:]
+        with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
+            file_handler.writelines(lines)
 
     def add_build_metadata_file(self, build_dir_path, build_number):
         """
@@ -177,8 +228,30 @@ class BuildAPI:
         :return:
         """
 
-        with open(build_dir_path / "build_metadata.json", "w", encoding="utf-8") as file_handler:
+        file_name = "build_metadata.json"
+        with open(build_dir_path / file_name, "w", encoding="utf-8") as file_handler:
             json.dump({"commit": self.commit_id, "build": str(build_number)}, file_handler)
+        return file_name
+
+    @staticmethod
+    def add_base_horey_dockerfile(dockerfile_path:Path):
+        """
+        Add base dockerfile
+
+        :param dockerfile_path:
+        :return:
+        """
+
+        dockerfile_path.write_text(textwrap.dedent(
+        """
+        FROM python:3.14-slim-trixie
+        USER root
+        RUN apt update
+        RUN apt install -y git make wget which findutils
+        RUN wget https://bootstrap.pypa.io/get-pip.py
+        RUN python get-pip.py
+        RUN rm get-pip.py
+        """).strip("\n"))
 
     def prepare_docker_image_build_directory_callback(self, build_dir_path: Path):
         """

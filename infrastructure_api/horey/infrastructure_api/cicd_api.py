@@ -3,6 +3,8 @@ Standard Load balancing maintainer.
 
 """
 import json
+import pathlib
+import textwrap
 from pathlib import Path
 import time
 import getpass
@@ -851,18 +853,45 @@ class CICDAPI:
         return True
 
     def update_hagent(self, branch_name=None, from_docker_repository=False):
+        """
+        Update jenkins hagent
+
+        :param branch_name:
+        :param from_docker_repository:
+        :return:
+        """
+
+        package_raw_name = "docker_api"
+        self.ecs_api.configuration.slug = "hagent"
+
+        self.ecs_api.build_api.prepare_docker_image_build_directory = self.prepare_hagent_container_build_directory
         if from_docker_repository:
             image_tag_raw = self.ecs_api.fetch_latest_artifact_metadata().image_tags[0]
             image_registry_reference = self.ecs_api.generate_image_registry_reference(image_tag_raw)
         else:
             build_number = self.ecs_api.get_next_build_number()
 
-            self.build_api.configuration.docker_build_arguments["platform"] = "linux/amd64"
+            self.ecs_api.build_api.configuration.docker_build_arguments["platform"] = "linux/amd64"
 
 
-            image = self.build_api.run_build_image_routine(branch_name, build_number)
+            image = self.ecs_api.build_api.run_build_image_routine(branch_name, build_number)
 
             image_registry_reference = image.tags[0]
 
-        return self.deploy_lambda(image_registry_reference)
         self.ecs_api.provision_ecs_task_definition(cluster_name, "hagent")
+
+    def prepare_hagent_container_build_directory(self, dir_path: pathlib.Path, build_number):
+        """
+        Callback to prepare the build directory for the hagent.
+
+        :param build_number:
+        :param dir_path:
+        :return:
+        """
+
+        build_dir_path = self.ecs_api.build_api.prepare_docker_image_horey_package_build_directory(dir_path, "docker_api", build_number)
+
+        breakpoint()
+
+        return True
+
