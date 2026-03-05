@@ -158,8 +158,8 @@ class Provisioner(SystemFunctionCommon):
                                             WantedBy=multi-user.target
                                             """)
         if self.kwargs.get("run_as_root"):
-            service_content.replace("User=logstash\n", "User=root\n")
-            service_content.replace("Group=logstash\n", "Group=root\n")
+            service_content.replace("User=logstash", "User=root")
+            service_content.replace("Group=logstash", "Group=root")
 
         logstash_service_file.write_text(service_content)
 
