@@ -140,6 +140,7 @@ class Provisioner(SystemFunctionCommon):
         self.remoter.execute("sudo chmod 644 /etc/systemd/system/logstash.service")
 
         logstash_service_file = self.deployment_dir / "logstash.service"
+        logstash_yaml_file = self.deployment_dir / "logstash.yml"
         # Write logstash service file
         service_content = textwrap.dedent("""
                                             [Unit]
@@ -157,13 +158,20 @@ class Provisioner(SystemFunctionCommon):
                                             [Install]
                                             WantedBy=multi-user.target
                                             """)
+        logstash_yaml = textwrap.dedent("""
+                                        path.data: /var/lib/logstash
+                                        path.logs: /var/log/logstash
+                                        """)
         if self.kwargs.get("run_as_root"):
             service_content.replace("User=logstash", "User=root")
             service_content.replace("Group=logstash", "Group=root")
+            logstash_yaml += "\nallow_superuser: true"
 
         logstash_service_file.write_text(service_content)
+        logstash_yaml_file.write_text(logstash_yaml)
 
         self.remoter.put_file(logstash_service_file, Path("/etc/systemd/system/logstash.service"), sudo=True)
+        self.remoter.put_file(logstash_yaml_file, Path("/etc/logstash/logstash.yml"), sudo=True)
         self.remoter.execute("sudo systemctl daemon-reload")
         self.remoter.execute("sudo systemctl enable logstash")
 
