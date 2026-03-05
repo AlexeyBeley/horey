@@ -22,6 +22,13 @@ class Provisioner(SystemFunctionCommon):
     """
 
     def __init__(self, deployment_dir, force, upgrade, **kwargs):
+        """
+
+        :param deployment_dir:
+        :param force:
+        :param upgrade:
+        :param kwargs: run_as_root = run the service as root
+        """
         super().__init__(deployment_dir, force, upgrade, **kwargs)
 
     def _provision(self):
@@ -147,6 +154,10 @@ class Provisioner(SystemFunctionCommon):
                                             [Install]
                                             WantedBy=multi-user.target
                                             """)
+        if self.kwargs.get("run_as_root"):
+            service_content.replace("User=logstash\n", "User=root\n")
+            service_content.replace("Group=logstash\n", "Group=root\n")
+
         logstash_service_file.write_text(service_content)
 
         self.remoter.put_file(logstash_service_file, Path("/etc/systemd/system/logstash.service"), sudo=True)
