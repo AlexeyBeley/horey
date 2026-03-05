@@ -4,6 +4,7 @@ Logstash service provisioner.
 """
 
 import os
+import textwrap
 from pathlib import Path
 
 from horey.common_utils.remoter import Remoter
@@ -94,13 +95,22 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-        logstash_version = self.kwargs.get("logstash_version")
+        logstash_version = self.kwargs.get("logstash_version", "9.3.1")
         if not logstash_version:
             raise ValueError("logstash_version must be specified")
 
-        logstash_tarball = f"logstash-{logstash_version}-linux-x86_64.tar.gz"
-        logstash_url = f"https://artifacts.elastic.co/downloads/logstash/{logstash_tarball}"
-        self.remoter.execute(f"cd /tmp && curl -O {logstash_url}")
+        logstash_tarball = f"logstash-oss-{logstash_version}-linux-x86_64.tar.gz"
+        tarball_path = self.deployment_dir / logstash_tarball
+        if not tarball_path.exists():
+            logstash_url = f"https://artifacts.elastic.co/downloads/logstash/{logstash_tarball}"
+            self.deployment_dir.mkdir(exist_ok=True)
+            self.download_file_from_web(logstash_url, tarball_path)
+
+        self.remoter.put_file(tarball_path, Path(f"/tmp/{logstash_tarball}"))
+
+        # Verify file integrity before extraction
+        self.remoter.execute(f"gzip -t /tmp/{logstash_tarball}")
+
         self.remoter.execute(f"sudo mkdir -p /opt/logstash")
         self.remoter.execute(f"sudo tar -xzf /tmp/{logstash_tarball} -C /opt/logstash --strip-components 1")
         self.remoter.execute(f"sudo chown -R root:root /opt/logstash")
@@ -109,8 +119,9 @@ class Provisioner(SystemFunctionCommon):
         # Create symlink
         self.remoter.execute(f"sudo ln -sf /opt/logstash/bin/logstash /usr/local/bin/logstash")
 
-        # Create logstash user
-        self.remoter.execute("sudo useradd logstash -r -s /sbin/nologin")
+        # Create logstash user if it doesn't exist
+        self.remoter.execute("id -u logstash >/dev/null 2>&1 || sudo useradd logstash -r -s /sbin/nologin")
+        self.remoter.execute("sudo usermod -a -G logstash $USER")
 
         # Create logstash config directory
         self.remoter.execute("sudo mkdir -p /etc/logstash")
@@ -119,27 +130,28 @@ class Provisioner(SystemFunctionCommon):
         self.remoter.execute("sudo touch /etc/systemd/system/logstash.service")
         self.remoter.execute("sudo chmod 644 /etc/systemd/system/logstash.service")
 
+        logstash_service_file = self.deployment_dir / "logstash.service"
         # Write logstash service file
-        service_content = """[Unit]
-Description=Logstash
-After=network.target
+        service_content = textwrap.dedent("""[Unit]
+                                             Description=Logstash
+                                             After=network.target
 
-[Service]
-Type=simple
-User=logstash
-Group=logstash
-ExecStart=/usr/local/bin/logstash
-Restart=always
-RestartSec=10
+                                            [Service]
+                                            Type=simple
+                                            User=logstash
+                                            Group=logstash
+                                            ExecStart=/usr/local/bin/logstash "--path.settings" "/etc/logstash"
+                                            Restart=always
+                                            RestartSec=10
 
-[Install]
-WantedBy=multi-user.target
-"""
-        self.remoter.put_file(Path("/tmp/logstash.service"), Path("/etc/systemd/system/logstash.service"))
+                                            [Install]
+                                            WantedBy=multi-user.target
+                                            """)
+        logstash_service_file.write_text(service_content)
+
+        self.remoter.put_file(logstash_service_file, Path("/etc/systemd/system/logstash.service"), sudo=True)
         self.remoter.execute("sudo systemctl daemon-reload")
         self.remoter.execute("sudo systemctl enable logstash")
-        self.remoter.execute("sudo systemctl start logstash")
-        self.remoter.execute("sudo systemctl status logstash")
 
     def provision_remote_install_plugin(self):
         """
@@ -152,7 +164,7 @@ WantedBy=multi-user.target
         if not plugin_name:
             raise ValueError("plugin_name must be specified")
         self.remoter.execute(f"sudo /usr/share/logstash/bin/logstash-plugin install {plugin_name}",
-                        self.last_line_validator("Installation successful"))
+                             self.last_line_validator("Installation successful"))
 
         return True
 
@@ -172,7 +184,8 @@ WantedBy=multi-user.target
         dst_file_path = "/usr/share/keyrings/elastic-keyring.gpg"
         SystemFunctionFactory.REGISTERED_FUNCTIONS["gpg_key"](self.deployment_dir, self.force,
                                                               self.upgrade, src_url=src_url,
-                                                              dst_file_path=dst_file_path).provision_remote(self.remoter)
+                                                              dst_file_path=dst_file_path).provision_remote(
+            self.remoter)
 
         file_paths = self.ls_remote(Path("/etc/apt/sources.list.d/"), sudo=True)
         elastic_version = "9.x"
@@ -185,11 +198,13 @@ WantedBy=multi-user.target
                     self.remove_file_remote(self.remoter, f"/etc/apt/sources.list.d/{file_name}", sudo=True)
 
         line = f"deb [signed-by={dst_file_path}] https://artifacts.elastic.co/packages/{elastic_version}/apt stable main"
-        self.add_line_to_file_remote(self.remoter, line=line, file_path=Path(f"/etc/apt/sources.list.d/{elastic_file_name}"),
+        self.add_line_to_file_remote(self.remoter, line=line,
+                                     file_path=Path(f"/etc/apt/sources.list.d/{elastic_file_name}"),
                                      sudo=True)
 
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, True, self.upgrade,
-                                                                          action="update_packages").provision_remote(self.remoter)
+                                                                          action="update_packages").provision_remote(
+            self.remoter)
 
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
                                                                           package_names=[
@@ -208,7 +223,8 @@ WantedBy=multi-user.target
         :return:
         """
 
-        ret = self.remoter.execute("logstash_pid=$(ps aux | grep 'logstash' | grep 'java' | awk '{print $2}') && echo \"logstash_pid=${logstash_pid}\"")
+        ret = self.remoter.execute(
+            "logstash_pid=$(ps aux | grep 'logstash' | grep 'java' | awk '{print $2}') && echo \"logstash_pid=${logstash_pid}\"")
         last_line = ret[0][-1]
 
         if "logstash_pid=" not in last_line:

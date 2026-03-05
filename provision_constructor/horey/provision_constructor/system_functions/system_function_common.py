@@ -13,6 +13,8 @@ import time
 from pathlib import Path
 from typing import List
 
+import requests
+
 from horey.common_utils.actions_manager import ActionsManager
 from horey.replacement_engine.replacement_engine import ReplacementEngine
 
@@ -1508,6 +1510,26 @@ class SystemFunctionCommon:
                 return ret
             ret.append(path / line.split(" ")[-1])
         raise ValueError(f"Was not able to find 'total <number>' in the output: '{ret}'")
+
+    @staticmethod
+    def download_file_from_web(url, local_file_path: Path):
+        """
+        Download binary file from web.
+
+        :param url:
+        :param local_file_path:
+        :return:
+        """
+
+        logger.info(f"Downloading file from {url}")
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        
+        logger.info(f"Writing the file to {local_file_path}")
+        with open(local_file_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
 
 
 SystemFunctionCommon.ACTION_MANAGER.register_action(
