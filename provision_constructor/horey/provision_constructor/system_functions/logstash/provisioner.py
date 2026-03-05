@@ -141,9 +141,10 @@ class Provisioner(SystemFunctionCommon):
 
         logstash_service_file = self.deployment_dir / "logstash.service"
         # Write logstash service file
-        service_content = textwrap.dedent("""[Unit]
-                                             Description=Logstash
-                                             After=network.target
+        service_content = textwrap.dedent("""
+                                            [Unit]
+                                            Description=Logstash
+                                            After=network.target
 
                                             [Service]
                                             Type=simple
