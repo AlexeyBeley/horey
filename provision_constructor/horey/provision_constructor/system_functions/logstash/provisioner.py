@@ -77,7 +77,7 @@ class Provisioner(SystemFunctionCommon):
 
         self.remoter = remoter
         if self.action == "install":
-            return self.provision_remote_install_logstash()
+            return self.provision_remote_install_logstash_from_binary()
 
         if self.action == "install_plugin":
             return self.provision_remote_install_plugin()
@@ -86,6 +86,60 @@ class Provisioner(SystemFunctionCommon):
             return self.provision_remote_restart()
 
         raise NotImplementedError(self.action)
+
+    def provision_remote_install_logstash_from_binary(self):
+        """
+        Provision logstash from binary.
+
+        :return:
+        """
+
+        logstash_version = self.kwargs.get("logstash_version")
+        if not logstash_version:
+            raise ValueError("logstash_version must be specified")
+
+        logstash_tarball = f"logstash-{logstash_version}-linux-x86_64.tar.gz"
+        logstash_url = f"https://artifacts.elastic.co/downloads/logstash/{logstash_tarball}"
+        self.remoter.execute(f"cd /tmp && curl -O {logstash_url}")
+        self.remoter.execute(f"sudo mkdir -p /opt/logstash")
+        self.remoter.execute(f"sudo tar -xzf /tmp/{logstash_tarball} -C /opt/logstash --strip-components 1")
+        self.remoter.execute(f"sudo chown -R root:root /opt/logstash")
+        self.remoter.execute(f"sudo rm /tmp/{logstash_tarball}")
+
+        # Create symlink
+        self.remoter.execute(f"sudo ln -sf /opt/logstash/bin/logstash /usr/local/bin/logstash")
+
+        # Create logstash user
+        self.remoter.execute("sudo useradd logstash -r -s /sbin/nologin")
+
+        # Create logstash config directory
+        self.remoter.execute("sudo mkdir -p /etc/logstash")
+
+        # Create logstash service
+        self.remoter.execute("sudo touch /etc/systemd/system/logstash.service")
+        self.remoter.execute("sudo chmod 644 /etc/systemd/system/logstash.service")
+
+        # Write logstash service file
+        service_content = """[Unit]
+Description=Logstash
+After=network.target
+
+[Service]
+Type=simple
+User=logstash
+Group=logstash
+ExecStart=/usr/local/bin/logstash
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+"""
+        self.remoter.put_file(Path("/tmp/logstash.service"), Path("/etc/systemd/system/logstash.service"))
+        self.remoter.execute("sudo systemctl daemon-reload")
+        self.remoter.execute("sudo systemctl enable logstash")
+        self.remoter.execute("sudo systemctl start logstash")
+        self.remoter.execute("sudo systemctl status logstash")
 
     def provision_remote_install_plugin(self):
         """
@@ -102,7 +156,7 @@ class Provisioner(SystemFunctionCommon):
 
         return True
 
-    def provision_remote_install_logstash(self):
+    def provision_remote_install_logstash_from_apt(self):
         """
         Install plugin
 
