@@ -887,7 +887,6 @@ class CICDAPI:
             self.ecs_api.build_api.configuration.docker_build_arguments["platform"] = "linux/amd64"
             self.ecs_api.build_api.configuration.docker_build_arguments["pull"] = True
 
-            breakpoint()
             image = self.ecs_api.build_api.run_build_image_routine(branch_name, build_number)
 
             image_registry_reference = image.tags[0]

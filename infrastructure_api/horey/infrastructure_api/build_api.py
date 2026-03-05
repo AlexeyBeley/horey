@@ -88,6 +88,7 @@ class BuildAPI:
         source_code_directory_path = self.prepare_source_code_directory(branch_name)
         build_directory = self.prepare_docker_image_build_directory(source_code_directory_path, build_number)
         tags = self.generate_docker_image_tags(build_number)
+        breakpoint()
         image = self.build_docker_image(build_directory, tags, nocache=nocache, dockerfile=dockerfile)
         # todo: self.validate_docker_image()
         self.upload_docker_image_to_artifactory(tags)
