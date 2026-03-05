@@ -576,6 +576,17 @@ class ECSAPI:
         )
         return task_definition
 
+    def provision_ecs_task_definition_ng(self, task_definition: ECSTaskDefinition):
+        """
+        Provision task definition.
+
+        :return:
+        """
+
+        task_definition = self.environment_api.aws_api.ecs_client.provision_ecs_task_definition(task_definition)
+
+        return task_definition
+
     def provision_ecs_service(self, ecs_task_definition):
         """
         Provision component's ECS service.
@@ -1105,7 +1116,7 @@ class ECSAPI:
 
         return ecs_service
 
-    def generate_ecs_task_definition(self, ecr_image_id, cluster_name=None, service_name=None, seed=None):
+    def generate_ecs_task_definition(self, ecr_image_id, cluster_name=None, service_name=None, slug=None):
 
         """
         Provision task definition.
@@ -1128,14 +1139,17 @@ class ECSAPI:
         ecs_task_definition = ECSTaskDefinition({})
 
         ecs_task_definition.region = self.environment_api.region
-        ecs_task_definition.family = f"td-{cluster_name}-{service_name}-{seed}"
+        if service_name:
+            ecs_task_definition.family = f"td-{cluster_name}-{service_name}-{slug}"
+        else:
+            ecs_task_definition.family = f"td-{cluster_name}-{slug}"
 
         # Why? Because AWS! `Unknown parameter in tags[0]: "Key", must be one of: key, value`
         ecs_task_definition.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
                                     self.environment_api.get_tags_with_name(ecs_task_definition.family)]
 
         ecs_task_definition.container_definitions = [{
-            "name": seed,
+            "name": slug,
             "essential": True,
             "logConfiguration": {
                 "logDriver": "awslogs",
@@ -1174,6 +1188,21 @@ class ECSAPI:
             raise ValueError(f"Task definition request length {len(str(request))} while expected less then 65536")
 
         return ecs_task_definition
+
+    def generate_ecs_task_definition_volumes(self, task_definition: ECSTaskDefinition, mount_points=None):
+        """
+        Add storage.
+
+        :param task_definition:
+        :param mount_points:
+        :return:
+        """
+
+        if mount_points:
+            if len(task_definition.container_definitions) != 1:
+                raise NotImplementedError("Only 1 container is supported for now")
+            task_definition.container_definitions[0]["mountPoints"] = mount_points
+        return True
 
     def provision_service_log_group(self, cluster_name, service_name):
         """

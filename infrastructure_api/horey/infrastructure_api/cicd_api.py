@@ -840,17 +840,31 @@ class CICDAPI:
                                                 assume_role_policy=assume_role_policy_document)
 
         policy_text = self.iam_api.generate_ecr_repository_policy(ecs_task_execution_role=exec_role)
-        repo_name = f"repo_{self.environment_api.configuration.environment_level}_jenkins_hagent"
 
-        self.ecs_api.provision_ecr_repository(repository_name = repo_name, repository_policy=policy_text)
+        self.ecs_api.provision_ecr_repository(repository_name = self.generate_hagent_repository_name(), repository_policy=policy_text)
 
-        cluster_name = (f"{self.environment_api.configuration.project_name_abbr}-"
-                f"{self.environment_api.configuration.environment_level}-"
-                f"management")
-
+        cluster_name = self.generate_management_cluster_name()
         self.ecs_api.provision_service_log_group(cluster_name, "hagent")
         self.update_hagent()
         return True
+
+    def generate_management_cluster_name(self):
+        """
+        Generate name
+
+        :return:
+        """
+
+        return (f"{self.environment_api.configuration.project_name_abbr}-"
+                f"{self.environment_api.configuration.environment_level}-"
+                f"management")
+
+    def generate_hagent_repository_name(self):
+        """
+        Generate name
+        :return:
+        """
+        return f"repo_{self.environment_api.configuration.environment_level}_jenkins_hagent"
 
     def update_hagent(self, branch_name=None, from_docker_repository=False):
         """
@@ -861,7 +875,6 @@ class CICDAPI:
         :return:
         """
 
-        package_raw_name = "docker_api"
         self.ecs_api.configuration.slug = "hagent"
 
         self.ecs_api.build_api.prepare_docker_image_build_directory = self.prepare_hagent_container_build_directory
@@ -872,13 +885,24 @@ class CICDAPI:
             build_number = self.ecs_api.get_next_build_number()
 
             self.ecs_api.build_api.configuration.docker_build_arguments["platform"] = "linux/amd64"
+            self.ecs_api.build_api.configuration.docker_build_arguments["pull"] = True
 
-
+            breakpoint()
             image = self.ecs_api.build_api.run_build_image_routine(branch_name, build_number)
 
             image_registry_reference = image.tags[0]
 
-        self.ecs_api.provision_ecs_task_definition(cluster_name, "hagent")
+        td = self.ecs_api.generate_ecs_task_definition(image_registry_reference, cluster_name=self.generate_management_cluster_name(), slug="hagent")
+        self.ecs_api.generate_ecs_task_definition_volumes(td, mount_points=[
+            {
+                'sourceVolume': '/var/run/docker.sock',
+                'containerPath': '/var/run/docker.sock',
+                'readOnly': False
+            },
+        ])
+
+
+        self.ecs_api.provision_ecs_task_definition_ng(td)
 
     def prepare_hagent_container_build_directory(self, dir_path: pathlib.Path, build_number):
         """
@@ -890,8 +914,18 @@ class CICDAPI:
         """
 
         build_dir_path = self.ecs_api.build_api.prepare_docker_image_horey_package_build_directory(dir_path, "docker_api", build_number)
+        entrypoint_name = "docker_builder.py"
+        with open(build_dir_path / entrypoint_name, "w", encoding="utf-8") as fh:
+            fh.writelines([
+                "from horey.docker_api.docker_api import DockerAPI\n",
+                "docker_api = DockerAPI()\n",
+                "print(docker_api.get_all_images())\n"
+                ])
+        self.ecs_api.build_api.add_docker_instruction_copy(build_dir_path, entrypoint_name)
+        self.ecs_api.build_api.add_docker_instruction_entrypoint(build_dir_path, f'["python", "{entrypoint_name}"]')
 
-        breakpoint()
 
-        return True
+        # docker run --mount type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock -it --entrypoint=/bin/bash test
+
+        return build_dir_path
 

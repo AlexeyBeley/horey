@@ -155,7 +155,7 @@ class BuildAPI:
         :param source_code_directory_path:
         :return:
         """
-        breakpoint()
+
         dockerfile_path = self.docker_build_directory / "Dockerfile"
         logger.info(
             f"Preparing horey.{source_code_directory_path} docker build directory' {source_code_directory_path}' to '{self.docker_build_directory}'")
@@ -178,7 +178,7 @@ class BuildAPI:
         return build_dir_path
 
     @staticmethod
-    def add_docker_instruction_copy(dockerfile_path, source):
+    def add_docker_instruction_copy(dockerfile_path:Path, source):
         """
         Add copy instruction to dockerfile
 
@@ -186,6 +186,9 @@ class BuildAPI:
         :param source:
         :return:
         """
+
+        if dockerfile_path.is_dir():
+            dockerfile_path = dockerfile_path / "Dockerfile"
 
         with open(dockerfile_path, "r", encoding="utf-8") as file_handler:
             lines = file_handler.readlines()
@@ -195,7 +198,30 @@ class BuildAPI:
             if "ENTRYPOINT" in line:
                 break
 
-        lines = lines[:i] + [f"COPY {source} /{source}\n"] + lines[i+1:]
+        lines = lines[:i] + [f"\nCOPY {source} /{source}\n"] + lines[i:]
+        with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
+            file_handler.writelines(lines)
+
+    @staticmethod
+    def add_docker_instruction_entrypoint(dockerfile_path, entrypoint ):
+        """
+        Add copy instruction to dockerfile
+
+        :param dockerfile_path:
+        :param entrypoint:
+        :return:
+        """
+        if dockerfile_path.is_dir():
+            dockerfile_path = dockerfile_path / "Dockerfile"
+
+        with open(dockerfile_path, "r", encoding="utf-8") as file_handler:
+            lines = file_handler.readlines()
+
+        for line in lines:
+            if "ENTRYPOINT" in line:
+                raise ValueError(f"Entry point already exists in line: '{line}'")
+
+        lines += [f"\nENTRYPOINT {entrypoint}\n"]
         with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
             file_handler.writelines(lines)
 
@@ -209,6 +235,9 @@ class BuildAPI:
         :return:
         """
 
+        if dockerfile_path.is_dir():
+            dockerfile_path = dockerfile_path / "Dockerfile"
+
         with open(dockerfile_path, "r", encoding="utf-8") as file_handler:
             lines = file_handler.readlines()
 
@@ -217,7 +246,7 @@ class BuildAPI:
             if "ENTRYPOINT" in line:
                 break
 
-        lines = lines[:i] + [f"RUN {command}\n"] + lines[i+1:]
+        lines = lines[:i] + [f"\nRUN {command}\n"] + lines[i:]
         with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
             file_handler.writelines(lines)
 
@@ -284,6 +313,7 @@ class BuildAPI:
         :param tags:
         :return:
         """
+
         for _ in range(120):
             try:
                 logger.info(f"Building docker image with arguments: {self.configuration.docker_build_arguments}")
