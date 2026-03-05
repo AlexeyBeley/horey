@@ -163,8 +163,8 @@ class Provisioner(SystemFunctionCommon):
                                         path.logs: /var/log/logstash
                                         """)
         if self.kwargs.get("run_as_root"):
-            service_content.replace("User=logstash", "User=root")
-            service_content.replace("Group=logstash", "Group=root")
+            service_content = service_content.replace("User=logstash", "User=root")
+            service_content = service_content.replace("Group=logstash", "Group=root")
             logstash_yaml += "\nallow_superuser: true"
 
         logstash_service_file.write_text(service_content)
