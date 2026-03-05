@@ -27,7 +27,9 @@ class Provisioner(SystemFunctionCommon):
         :param deployment_dir:
         :param force:
         :param upgrade:
-        :param kwargs: run_as_root = run the service as root
+        :param kwargs:
+        run_as_root = run the service as root
+        plugin_name - install plugin
         """
         super().__init__(deployment_dir, force, upgrade, **kwargs)
 
@@ -174,7 +176,8 @@ class Provisioner(SystemFunctionCommon):
         plugin_name = self.kwargs.get("plugin_name")
         if not plugin_name:
             raise ValueError("plugin_name must be specified")
-        self.remoter.execute(f"sudo /usr/share/logstash/bin/logstash-plugin install {plugin_name}",
+
+        self.remoter.execute(f"sudo /opt/logstash/bin/logstash-plugin install {plugin_name}",
                              self.last_line_validator("Installation successful"))
 
         return True
