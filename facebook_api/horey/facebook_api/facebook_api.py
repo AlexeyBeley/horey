@@ -75,7 +75,6 @@ class FacebookAPI:
         self.close_popup()
         self.selenium_api.scroll_to_bottom()
         ret = self.fetch_free_items_from_page()
-        breakpoint()
         logger.info(f"Total fetched free items from Facebook: {len(ret)}")
         return ret
 

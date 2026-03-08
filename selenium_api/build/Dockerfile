@@ -1,0 +1,22 @@
+# ARM64 Dockerfile
+FROM python:3.11-slim-bookworm
+
+# 1. Install Chromium and Driver via the package manager
+# This automatically fetches the ARM64 versions on an M1/M2 Mac
+RUN apt-get update && apt-get install -y \
+    chromium \
+    chromium-driver \
+    xvfb \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Tell Selenium where to find them
+ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROME_PATH=/usr/lib/chromium/
+RUN pip install selenium pyvirtualdisplay
+# Start Xvfb and run the script
+CMD Xvfb :99 -screen 0 1920x1080x24 & python your_script.py
+
+WORKDIR /app
+COPY . .
+
+CMD ["python", "script.py"]

@@ -551,7 +551,7 @@ class CICDAPI:
         return self._iam_api
 
     @property
-    def ecs_api(self):
+    def jenkins_master_ecs_api(self):
         """
         Generate environment config
 
@@ -577,6 +577,39 @@ class CICDAPI:
 
             ecs_api_configuration.task_definition_desired_count = 1
             ecs_api_configuration.launch_type = "FARGATE"
+            ecs_api_configuration.kill_old_containers = False
+
+            if self.environment_api.git_api is None:
+                configuration = GitAPIConfigurationPolicy()
+                configuration.remote = "git@github.com:AlexeyBeley/horey.git"
+                configuration.ssh_key_file_path = f"/Users/{getpass.getuser()}/.ssh/github_key"
+                configuration.git_directory_path = "/opt/git/"
+                configuration.branch_name = "main"
+                self.environment_api.git_api = GitAPI(configuration)
+
+            ecs_api.prepare_container_build_directory_callback = self.prepare_container_build_directory_callback
+            self._ecs_api = ecs_api
+        return self._ecs_api
+
+    @property
+    def jenkins_hagent_ecs_api(self):
+        """
+        Generate environment config
+
+        :return:
+        """
+        if self._ecs_api is None:
+            ecs_api_configuration = ECSAPIConfigurationPolicy()
+            ecs_api_configuration.slug = "hagent"
+            ecs_api = ECSAPI(ecs_api_configuration, self.environment_api)
+
+            ecs_api_configuration.ecs_task_definition_cpu_reservation = 1024
+            ecs_api_configuration.ecs_task_definition_memory_reservation = 2048
+            ecs_api_configuration.autoscaling_max_capacity = 1
+            ecs_api_configuration.network_mode = "awsvpc"
+
+            ecs_api_configuration.task_definition_desired_count = 1
+            ecs_api_configuration.launch_type = "EC2"
             ecs_api_configuration.kill_old_containers = False
 
             if self.environment_api.git_api is None:
@@ -838,7 +871,6 @@ class CICDAPI:
 
         exec_role = self.iam_api.provision_role(role_name=self.get_task_role_name("jenkins-hagent-exec"),
                                                 assume_role_policy=assume_role_policy_document)
-
         policy_text = self.iam_api.generate_ecr_repository_policy(ecs_task_execution_role=exec_role)
 
         self.ecs_api.provision_ecr_repository(repository_name = self.generate_hagent_repository_name(), repository_policy=policy_text)
@@ -875,7 +907,7 @@ class CICDAPI:
         :return:
         """
 
-        self.ecs_api.configuration.slug = "hagent"
+        self.hagent_ecs_api.configuration.slug = "hagent"
 
         self.ecs_api.build_api.prepare_docker_image_build_directory = self.prepare_hagent_container_build_directory
         if from_docker_repository:
@@ -887,18 +919,24 @@ class CICDAPI:
             self.ecs_api.build_api.configuration.docker_build_arguments["platform"] = "linux/amd64"
             self.ecs_api.build_api.configuration.docker_build_arguments["pull"] = True
 
+            repo_name = self.generate_hagent_repository_name()
+            self.ecs_api.build_api.configuration.docker_repository_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.ecs_api.configuration.ecr_repository_region}.amazonaws.com/{repo_name}"
+
             image = self.ecs_api.build_api.run_build_image_routine(branch_name, build_number)
 
             image_registry_reference = image.tags[0]
 
-        td = self.ecs_api.generate_ecs_task_definition(image_registry_reference, cluster_name=self.generate_management_cluster_name(), slug="hagent")
-        self.ecs_api.generate_ecs_task_definition_volumes(td, mount_points=[
-            {
-                'sourceVolume': '/var/run/docker.sock',
-                'containerPath': '/var/run/docker.sock',
-                'readOnly': False
-            },
-        ])
+        td = self.ecs_api.generate_ecs_task_definition(image_registry_reference, cluster_name=self.generate_management_cluster_name(), slug="hagent", requires_compatibilities=["EC2"])
+        linux_params = {"devices" :[{
+            'hostPath': '/var/run/docker.sock',
+            'containerPath': '/var/run/docker.sock',
+            'permissions': [
+                'write',
+            ]
+        },
+        ]}
+        breakpoint()
+        self.ecs_api.generate_ecs_task_definition_storage(td, linux_params=linux_params)
 
 
         self.ecs_api.provision_ecs_task_definition_ng(td)

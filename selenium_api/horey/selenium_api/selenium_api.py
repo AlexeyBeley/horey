@@ -22,6 +22,7 @@ logger = get_logger()
 
 class SeleniumAPI:
     driver = None
+    v_display = None
     def __init__(self, data_dir:Path=None, chromedriver_path:Path=None, chrome_path:Path=None):
         self.data_dir = data_dir
         self.chromedriver_path = chromedriver_path
@@ -126,6 +127,10 @@ class SeleniumAPI:
         SeleniumAPI.driver.quit()
         logger.info("Disconnecting diver in SeleniumAPI")
         SeleniumAPI.driver = None
+        try:
+            SeleniumAPI.v_display.stop()
+        except Exception:
+            pass
 
     def get_element(self, by, value) -> WebElement:
         return self.driver.find_element(by, value)

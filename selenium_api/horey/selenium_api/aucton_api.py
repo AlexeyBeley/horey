@@ -239,7 +239,7 @@ class AuctionAPI:
                 return self.update_auction_event(auction_event.id, end_time=auction_event.end_time.strftime(format_string))
             return True
 
-        sql = """
+        sql_insert = """
             INSERT INTO auction_events 
             (provider_id, name, description, url, start_time, end_time, address, provinces, last_update_time)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -252,7 +252,7 @@ class AuctionAPI:
             base_tuple = auction_event.generate_db_tuple()
             data_tuple = (auction_event.provider_id,) + base_tuple
             try:
-                cursor.execute(sql, data_tuple)
+                cursor.execute(sql_insert, data_tuple)
                 conn.commit()
             except Exception as inst_err:
                 logger.exception(f"Error Inserting {repr(inst_err)}")
@@ -260,19 +260,21 @@ class AuctionAPI:
                     logger.error(f"Data is not unique: {data_tuple}")
                     select_sql = "select * from auction_events where name=? or url=?"
                     ret = cursor.execute(select_sql, (auction_event.name, auction_event.url,))
-                    breakpoint()
+                    lines = ret.fetchall()
+                    self.delete_auction_event_with_lots(lines[0][0], connection=conn, cursor=cursor)
+                    cursor.execute(sql_insert, data_tuple)
+                    conn.commit()
                 else:
                     logger.error(f"Unknown error with data: {data_tuple}")
-                breakpoint()
 
-                #delete_sql = "DELETE from auction_events where url = ?"
-                #ret = cursor.execute(delete_sql, (lot.url,))
-                #logger.exception(f"Deleted: {ret.fetchall()}")
-                #cursor.execute(insert_sql, data_tuple)
+                    #delete_sql = "DELETE from auction_events where url = ?"
+                    #ret = cursor.execute(delete_sql, (lot.url,))
+                    #logger.exception(f"Deleted: {ret.fetchall()}")
+                    #cursor.execute(insert_sql, data_tuple)
 
-                # url = 'https://www.jardineauctioneers.com/auctions/24895-45th-annual-fredericton-sports-investment-auction?filter=(auction_ring_id:1200)'
-                # self.update_auction_event(23, url=url)
-                raise
+                    # url = 'https://www.jardineauctioneers.com/auctions/24895-45th-annual-fredericton-sports-investment-auction?filter=(auction_ring_id:1200)'
+                    # self.update_auction_event(23, url=url)
+                    raise
 
         return True
 
@@ -589,16 +591,39 @@ class AuctionAPI:
 
         self.update_auction_event(auction_event.id, last_update_time=now.strftime(format_string))
 
-    def delete_auction_event_with_lots(self, auction_event_id):
+    def delete_auction_event_with_lots(self, auction_event_id, connection=None, cursor=None):
+        """
+        Delete auction event and lots.
+
+        :param auction_event_id:
+        :param connection:
+        :param cursor:
+        :return:
+        """
+
         auction_event = self.init_auction_event_from_db(auction_event_id)
-        with sqlite3.connect(self.db_file_path) as conn:
-            cursor = conn.cursor()
+        if cursor:
             cursor.execute("PRAGMA foreign_keys = ON;")
             for lot in auction_event.lots:
-                self.delete_db_lot(conn, cursor, lot)
-        self.delete_db_auction_event(auction_event)
+                self.delete_db_lot(connection, cursor, lot)
+        else:
+            with sqlite3.connect(self.db_file_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("PRAGMA foreign_keys = ON;")
+                for lot in auction_event.lots:
+                    self.delete_db_lot(conn, cursor, lot)
+        self.delete_db_auction_event(auction_event, connection=connection, cursor=cursor)
 
     def delete_db_lot(self, conn: sqlite3.Connection, cursor: sqlite3.Cursor, lot: Lot):
+        """
+        Delete lot.
+
+        :param conn:
+        :param cursor:
+        :param lot:
+        :return:
+        """
+
         table_name = 'lots'
         delete_query = f"DELETE FROM {table_name} WHERE id = ?"
 
@@ -610,9 +635,22 @@ class AuctionAPI:
             breakpoint()
             raise
 
-    def delete_db_auction_event(self, auction_event: AuctionEvent):
+    def delete_db_auction_event(self, auction_event: AuctionEvent, connection=None, cursor=None):
+        """
+        Delete auction event only.
+
+        :param auction_event:
+        :param connection:
+        :param cursor:
+        :return:
+        """
         table_name = 'auction_events'
         delete_query = f"DELETE FROM {table_name} WHERE id = ?"
+        if cursor:
+            cursor.execute(delete_query, (auction_event.id, ))
+            connection.commit()
+            return
+
         with sqlite3.connect(self.db_file_path) as conn:
             cursor = conn.cursor()
             try:

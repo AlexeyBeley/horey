@@ -19,6 +19,24 @@ class FreeStuffAPIConfigurationPolicy(ConfigurationPolicy):
         self._telegram_chat_id = None
         self._region = None
         self._horey_directory_path = None
+        self._chromedriver_path = None
+        self._chrome_path = None
+
+    @property
+    def chromedriver_path(self):
+        return self._chromedriver_path
+
+    @chromedriver_path.setter
+    def chromedriver_path(self, value: Path):
+        self._chromedriver_path = value
+
+    @property
+    def chrome_path(self):
+        return self._chrome_path
+
+    @chrome_path.setter
+    def chrome_path(self, value: Path):
+        self._chrome_path = value
 
     @property
     def horey_directory_path(self):

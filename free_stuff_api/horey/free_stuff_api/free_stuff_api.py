@@ -22,9 +22,10 @@ logger = get_logger()
 class FreeStuffAPI:
     def __init__(self, configuration: FreeStuffAPIConfigurationPolicy = None):
         self.configuration = configuration
+        self.selenium_api = SeleniumAPI(chromedriver_path= self.configuration.chromedriver_path,
+                                                                   chrome_path=self.configuration.chrome_path)
 
-        self.platform_apis = [FacebookAPI(selenium_api=SeleniumAPI(chromedriver_path=Path("/opt/chrome-driver/chromedriver"),
-                                                                   chrome_path=Path("/opt/chrome/chrome")))]
+        self.platform_apis = [FacebookAPI(selenium_api=self.selenium_api)]
         self._db_api = None
         self._environment_api = None
         self._aws_lambda_api = None
@@ -220,7 +221,6 @@ class FreeStuffAPI:
         logger.info(f"Triggered lambda {res=}")
 
         self.aws_lambda_api.print_recent_execution_logs()
-        breakpoint()
         return True
 
     def dispose_infra(self):

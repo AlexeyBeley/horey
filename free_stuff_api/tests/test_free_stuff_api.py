@@ -17,6 +17,26 @@ config.init_from_file()
 
 # pylint: disable= missing-function-docstring
 
+@pytest.fixture(scope="module", name="free_stuff_mac_raw")
+def fixture_free_stuff_mac_raw():
+    free_stuff_api = FreeStuffAPI(config)
+    yield free_stuff_api
+    free_stuff_api.selenium_api.disconnect()
+
+@pytest.fixture(scope="module", name="linux_amd_docker")
+def fixture_linux_amd_docker():
+    free_stuff_api = FreeStuffAPI(config)
+    yield free_stuff_api
+    free_stuff_api.selenium_api.disconnect()
+
+
+@pytest.fixture(scope="module", name="linux_arm_docker")
+def fixture_linux_arm_docker():
+    free_stuff_api = FreeStuffAPI(config)
+    config.chromedriver_path = Path("/opt/chrome-driver/chromedriver")
+    config.chrome_path = Path("/opt/chrome/chrome")
+    yield free_stuff_api
+    free_stuff_api.selenium_api.disconnect()
 
 @pytest.mark.unit
 def test_main():
@@ -46,13 +66,20 @@ def test_provision_infra():
     assert free_stuff_api.provision_infra()
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_update():
     free_stuff_api = FreeStuffAPI(config)
     assert free_stuff_api.update()
 
 
+@pytest.mark.unit
+def test_main_free_stuff_mac_raw(free_stuff_mac_raw):
+    assert free_stuff_mac_raw.main()
+
+@pytest.mark.unit
+def test_main_free_stuff_linux_amd_docker(linux_amd_docker):
+    assert linux_amd_docker.main()
+
 @pytest.mark.wip
-def test_trigger():
-    free_stuff_api = FreeStuffAPI(config)
-    assert free_stuff_api.trigger()
+def test_main_free_stuff_linux_arm_docker(linux_arm_docker):
+    assert linux_arm_docker.main()

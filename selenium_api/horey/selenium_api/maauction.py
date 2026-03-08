@@ -631,6 +631,12 @@ class MAauction(Provider):
             breakpoint()
 
         element_text = element_text.replace("Current Bid:", "").replace("$", "").replace("CAD", "").replace(",", "")
+        if "x" in element_text:
+            if "=" in element_text:
+                result = element_text.split("=")[1]
+                return float(result.strip())
+            left, right = element_text.split("x")
+            return float(left.strip()) * float(right.strip())
         return float(element_text)
 
     def find_lot_starting_bid(self, lot: Lot):

@@ -1116,7 +1116,7 @@ class ECSAPI:
 
         return ecs_service
 
-    def generate_ecs_task_definition(self, ecr_image_id, cluster_name=None, service_name=None, slug=None):
+    def generate_ecs_task_definition(self, ecr_image_id, cluster_name=None, service_name=None, slug=None, requires_compatibilities=None):
 
         """
         Provision task definition.
@@ -1168,7 +1168,8 @@ class ECSAPI:
         ecs_task_definition.container_definitions[0][
             "memoryReservation"] = 2048
 
-        ecs_task_definition.requires_compatibilities = ["FARGATE"]
+        requires_compatibilities = requires_compatibilities or ["FARGATE"]
+        ecs_task_definition.requires_compatibilities = requires_compatibilities
 
         ecs_task_definition.network_mode = "awsvpc"
 
@@ -1179,7 +1180,7 @@ class ECSAPI:
         ecs_task_definition.container_definitions[0]["image"] = ecr_image_id
 
         ecs_task_definition.runtime_platform = {
-            "cpuArchitecture": "ARM64",
+            "cpuArchitecture": "X86_64",
             "operatingSystemFamily": "LINUX"
         }
 
@@ -1189,19 +1190,20 @@ class ECSAPI:
 
         return ecs_task_definition
 
-    def generate_ecs_task_definition_volumes(self, task_definition: ECSTaskDefinition, mount_points=None):
+    def generate_ecs_task_definition_storage(self, task_definition: ECSTaskDefinition, linux_params=None ):
         """
         Add storage.
 
         :param task_definition:
-        :param mount_points:
+        :param linux_params:
         :return:
         """
 
-        if mount_points:
+        if linux_params:
             if len(task_definition.container_definitions) != 1:
                 raise NotImplementedError("Only 1 container is supported for now")
-            task_definition.container_definitions[0]["mountPoints"] = mount_points
+            task_definition.container_definitions[0]["linuxParameters"] = linux_params
+
         return True
 
     def provision_service_log_group(self, cluster_name, service_name):
