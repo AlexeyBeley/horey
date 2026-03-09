@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     chromium \
     chromium-driver \
     xvfb \
+    make \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Tell Selenium where to find them
@@ -17,10 +18,10 @@ RUN pip install selenium pyvirtualdisplay
 
 #CMD Xvfb :99 -screen 0 1920x1080x24 & python your_script.py
 
-COPY ${HOREY_FOLDER_NAME} horey
+COPY horey horey
 RUN python ./horey/pip_api/horey/pip_api/pip_api_make.py --install horey.free_stuff_api --pip_api_configuration ./horey/pip_api_docker_configuration.py
 
 
 WORKDIR ./horey/free_stuff_api/tests
-#CMD ["make", "wip"]
-CMD Xvfb :99 -screen 0 1920x1080x24 & make wip
+
+CMD Xvfb :99 -screen 0 1920x1080x24 && cd ./horey/free_stuff_api/tests && make wip_docker_raw

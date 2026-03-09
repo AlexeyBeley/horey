@@ -88,11 +88,13 @@ def init_configuration():
     arguments = parser.parse_args()
 
     if arguments.pip_api_configuration is not None:
+        logger.info(f"Loading configuration from: {arguments.pip_api_configuration}")
         if arguments.pip_api_configuration.endswith(".py"):
             ret = init_configuration_from_py(arguments.pip_api_configuration)
         else:
             raise RuntimeError("Not supported pip_api_configuration file extension")
     else:
+        logger.info("Loading default configuration")
         pip_api_default_dir_path = get_default_dir()
 
         ret = {"venv_dir_path": pip_api_default_dir_path,
@@ -243,6 +245,9 @@ def install_pip(configs):
         ret = StandaloneMethods.execute(command)
         stderr = ret.get("stderr")
         if stderr:
+            if "Running pip as the 'root'" in stderr and not configs.get("venv_dir_path"):
+                return True
+            logger.info(f"venv env path : {configs.get('venv_dir_path')}")
             raise RuntimeError(ret)
 
     return True
