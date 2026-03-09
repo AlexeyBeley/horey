@@ -338,7 +338,7 @@ class GitAPI:
             if ret["stderr"] and "registered for path" not in ret["stderr"]:
                 raise ValueError(ret)
 
-            command = f"{self.ssh_base_command or ''} git submodule update"
+            command = f"{self.ssh_base_command or ''} git submodule update --remote"
             ret = self.bash_executor.run_bash(command)
             if ret["stdout"] or ret["stderr"]:
                 if "checked out" not in ret["stdout"] and "Cloning into" not in ret["stderr"]:
