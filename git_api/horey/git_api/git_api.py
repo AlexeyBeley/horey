@@ -4,6 +4,7 @@ GIT API module.
 """
 import os
 import shutil
+from csv import excel
 from pathlib import Path
 from time import perf_counter
 
@@ -331,18 +332,27 @@ class GitAPI:
             return True
 
         with CommonUtils.temporary_directory(self.configuration.directory_path):
-            command = "git submodule init"
-            ret = self.bash_executor.run_bash(command)
-            if ret["stdout"]:
-                raise ValueError(ret)
-            if ret["stderr"] and "registered for path" not in ret["stderr"]:
-                raise ValueError(ret)
+            try:
+                if self.configuration.user and self.configuration.pat:
+                    command = f'git config url."https://{self.configuration.user}:{self.configuration.pat}@github.com/".insteadOf "git@github.com:"'
+                    self.bash_executor.run_bash(command)
 
-            command = f"{self.ssh_base_command or ''} git submodule update --remote"
-            ret = self.bash_executor.run_bash(command)
-            if ret["stdout"] or ret["stderr"]:
-                if "checked out" not in ret["stdout"] and "Cloning into" not in ret["stderr"]:
+                command = "git submodule init"
+                ret = self.bash_executor.run_bash(command)
+                if ret["stdout"]:
                     raise ValueError(ret)
+                if ret["stderr"] and "registered for path" not in ret["stderr"]:
+                    raise ValueError(ret)
+
+                command = f"{self.ssh_base_command or ''} git submodule update --remote"
+                ret = self.bash_executor.run_bash(command)
+                if ret["stdout"] or ret["stderr"]:
+                    if "checked out" not in ret["stdout"] and "Cloning into" not in ret["stderr"]:
+                        raise ValueError(ret)
+            finally:
+                if self.configuration.user and self.configuration.pat:
+                    command = f'git config --unset url."https://{self.configuration.user}:{self.configuration.pat}@github.com/".insteadOf'
+                    self.bash_executor.run_bash(command)
         return True
 
     def get_commit_id(self):
