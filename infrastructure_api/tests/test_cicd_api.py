@@ -444,17 +444,20 @@ def test_run_remote_deployer_deploy_targets_raw(cicd_api_integration, ec2_api_mg
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
 
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_run_remote_deployer_deploy_targets_logstash_install(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
     targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname,
-                                                               bastions=ec2_instances)
+                                                               bastions=ec2_instances
+                                                              )
 
     def entrypoint():
         cicd_api_integration.run_remote_provision_constructor(target,
                                                               "logstash",
-                                                              action="install")
+                                                              action="install",
+                                                              run_as_root=True
+                                                              )
 
     for target in targets:
         target.append_remote_step("Test", entrypoint)

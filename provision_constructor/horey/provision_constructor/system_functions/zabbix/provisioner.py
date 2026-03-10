@@ -7,6 +7,8 @@ import re
 import time
 from pathlib import Path
 
+import requests
+
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 from horey.provision_constructor.system_functions.system_function_common import (
@@ -29,6 +31,14 @@ class Provisioner(SystemFunctionCommon):
     """
 
     def __init__(self, deployment_dir, force, upgrade, **kwargs):
+        """
+
+        :param deployment_dir:
+        :param force:
+        :param upgrade:
+        :param kwargs:
+                    local_cache_dir_path - use local dir for cache.
+        """
         super().__init__(deployment_dir, force, upgrade, **kwargs)
 
         self.zabbix_server_address = self.kwargs["zabbix_server_address"]
@@ -47,13 +57,22 @@ class Provisioner(SystemFunctionCommon):
 
         self.remoter = remoter
 
-        if deb_file_path:=self.kwargs.get("deb_file_path"):
-            remote_deb_file_path = Path("/tmp") / deb_file_path.name
+        zabbix_agent_version = "zabbix-release_latest+ubuntu24.04_all.deb"
+        url = f"https://repo.zabbix.com/zabbix/8.0/release/ubuntu/pool/main/z/zabbix-release/{zabbix_agent_version}"
+
+        if local_cache_dir_path :=self.kwargs.get("local_cache_dir_path"):
+            deb_file_path = local_cache_dir_path / zabbix_agent_version
+            if not deb_file_path.exists():
+                response = requests.get(url, timeout=180)
+                with open(deb_file_path, "wb") as file_handler:
+                    file_handler.write(response.content)
+                    logger.info(f"Downloaded {deb_file_path}")
+
+            remote_deb_file_path = Path("/tmp") / zabbix_agent_version
             remoter.put_file(deb_file_path, remote_deb_file_path, sudo=False)
         else:
-            zabbix_agent_version = "zabbix-release_7.0-2+ubuntu24.04_all.deb"
             remote_deb_file_path = Path("/tmp") / zabbix_agent_version
-            remoter.execute(f"wget https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/{zabbix_agent_version} -O {remote_deb_file_path}",
+            remoter.execute(f"wget {url} -O {remote_deb_file_path}",
                             self.last_line_validator(" saved "),
                               self.last_line_validator(zabbix_agent_version))
 

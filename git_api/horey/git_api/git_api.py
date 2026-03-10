@@ -271,7 +271,7 @@ class GitAPI:
         branch_name = f"pr/{remote_object.split('/')[2]}"
         self.delete_local_branch(branch_name)
 
-        command = f"{self.ssh_base_command} git fetch {remote_name} {remote_object}:{branch_name}"
+        command = f"{self.ssh_base_command or ''} git fetch {remote_name} {remote_object}:{branch_name}"
         ret = self.bash_executor.run_bash(command)
         stdout = ret.get("stdout")
         if stdout:
@@ -338,10 +338,16 @@ class GitAPI:
             if ret["stderr"] and "registered for path" not in ret["stderr"]:
                 raise ValueError(ret)
 
-            command = f"{self.ssh_base_command} git submodule update"
+            if self.configuration.user and self.configuration.pat:
+                command = f'git -c url."https://{self.configuration.user}:{self.configuration.pat}@github.com/".insteadOf="git@github.com:" submodule update --remote'
+            else:
+                command = f"{self.ssh_base_command or ''} git submodule update --remote"
+
             ret = self.bash_executor.run_bash(command)
             if ret["stdout"] or ret["stderr"]:
-                if "checked out" not in ret["stdout"] and "Cloning into" not in ret["stderr"]:
+                if "checked out" not in ret["stdout"] and \
+                    "Cloning into" not in ret["stderr"] and \
+                        "Permanently added" not in ret["stderr"] :
                     raise ValueError(ret)
         return True
 
