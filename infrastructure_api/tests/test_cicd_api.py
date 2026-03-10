@@ -20,6 +20,7 @@ from horey.infrastructure_api.infrastructure_api import InfrastructureAPI
 from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
 from horey.infrastructure_api.cicd_api import CICDAPI, CICDAPIConfigurationPolicy
 from horey.infrastructure_api.ec2_api import EC2API, EC2APIConfigurationPolicy
+from horey.github_api.github_api import GithubAPI, GithubAPIConfigurationPolicy
 
 mock_values_file_path = Path(__file__).parent.parent.parent.parent / "ignore" / "test_cicd_mocks.py"
 mock_values = CommonUtils.load_module(mock_values_file_path)
@@ -50,6 +51,23 @@ class Configuration(ConfigurationPolicy):
         self._bastion_chain = None
         self._windows_ssh_key = None
         self._windows_hostname = None
+        self._github_api_configuration_file_secret_name = None
+        self._github_hagent_repo_name = None
+
+    @property
+    def github_hagent_repo_name(self):
+        return self._github_hagent_repo_name
+    @github_hagent_repo_name.setter
+    def github_hagent_repo_name(self, value):
+        self._github_hagent_repo_name = value
+
+    @property
+    def github_api_configuration_file_secret_name(self):
+        return self._github_api_configuration_file_secret_name
+
+    @github_api_configuration_file_secret_name.setter
+    def github_api_configuration_file_secret_name(self, value):
+        self._github_api_configuration_file_secret_name = value
 
     @property
     def bastion_chain(self):
@@ -186,6 +204,14 @@ def fixture_ec2_api_mgmt_integration(env_api_mgmt_integration):
     api_configuration = EC2APIConfigurationPolicy()
     api = EC2API(api_configuration, env_api_mgmt_integration)
     yield api
+
+
+@pytest.fixture(name="github_api")
+def fixture_github_api():
+    github_config = init_from_secrets_api(GithubAPIConfigurationPolicy,
+                                              Configuration.TEST_CONFIG.github_api_configuration_file_secret_name)
+    github_api = GithubAPI(github_config)
+    yield github_api
 
 
 @pytest.mark.unit
@@ -725,7 +751,14 @@ def test_provision_jenkins_hagent_infrastructure(cicd_api_integration, ec2_api_m
     assert cicd_api_integration.provision_jenkins_hagent_infrastructure()
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_update_hagent(cicd_api_integration, ec2_api_mgmt_integration):
     cicd_api_integration.ecs_api.get_next_build_number = lambda : 1
     assert cicd_api_integration.update_hagent()
+
+
+@pytest.mark.wip
+def test_provision_github_hagent(cicd_api_integration, ec2_api_mgmt_integration, github_api):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+    assert cicd_api_integration.provision_github_hagent(github_api, bastions=ec2_instances, repository_name=Configuration.TEST_CONFIG.github_hagent_repo_name)

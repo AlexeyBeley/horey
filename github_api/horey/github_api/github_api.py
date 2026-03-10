@@ -291,7 +291,6 @@ class GithubAPI:
         Request a runner registration token for a repository.
 
         :param repository_name: Name of the repository
-        :param token_name: Name of the token
         :return:
         """
 

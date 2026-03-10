@@ -21,6 +21,20 @@ class CICDAPIConfigurationPolicy(ConfigurationPolicy):
         self._efs_master_security_group_name = None
         self._master_efs_access_point_name = None
         self._master_file_system_name = None
+        self._github_hagent_security_group_name = None
+
+    @property
+    def github_hagent_security_group_name(self):
+        try:
+            self.check_defined()
+        except self.UndefinedValueError:
+            self._github_hagent_security_group_name = "sg_github-hagent"
+
+        return self._github_hagent_security_group_name
+
+    @github_hagent_security_group_name.setter
+    def github_hagent_security_group_name(self, value):
+        self._github_hagent_security_group_name = value
 
     @property
     def master_file_system_name(self):

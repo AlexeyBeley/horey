@@ -67,8 +67,8 @@ class FacebookAPI:
         """
 
         self.selenium_api.connect()
-        address = "https://www.facebook.com/marketplace/winnipeg/free/?exact=false"
-        address = "https://www.facebook.com/marketplace/winnipeg/free?exact=false&radius_in_km=20"
+        # address = "https://www.facebook.com/marketplace/winnipeg/free/?exact=false"
+        address = "https://www.facebook.com/marketplace/winnipeg/free?exact=false&radius_in_km=50"
 
         self.selenium_api.get(address)
         self.selenium_api.wait_for_page_load()
@@ -100,7 +100,6 @@ class FacebookAPI:
 
         breakpoint()
         count = 6
-        item_elements = []
         for i in range(count):
             self.selenium_api.scroll_to_bottom()
             logger.info(f"Going to sleep {i}/{count}")
@@ -143,7 +142,7 @@ class FacebookAPI:
         :param by_class:
         :return:
         """
-
+        candidates = {}
         for class_id, values in by_class.items():
             if len(values) < 10:
                 continue
@@ -154,11 +153,22 @@ class FacebookAPI:
             logger.info(f"Initialized {len(free_items)=} free items ")
             if len(free_items) < 10:
                 continue
-            
-            return free_items
-        else:
-            breakpoint()
-            raise ValueError("Initializing free items")
+            candidates[class_id] = free_items
+
+        descriptions = []
+        breakpoint()
+        for candidate_class, items in candidates.items():
+            descriptions += [item.description for item in items]
+        sorted_descriptions = sorted(descriptions, key=len)
+        shortest_descriptions = sorted_descriptions[:5]
+        breakpoint()
+        for candidate_class, items in candidates.items():
+            for item in items:
+                if all(short_description in item.description for short_description in shortest_descriptions):
+                    print(item.description)
+                    print(item.url)
+                    print("*"*50)
+
 
 
     def get_free_items_by_class_id(self, elements):

@@ -72,7 +72,7 @@ def test_update():
     assert free_stuff_api.update()
 
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_main_free_stuff_mac_raw(free_stuff_mac_raw):
     assert free_stuff_mac_raw.main()
 
@@ -80,6 +80,6 @@ def test_main_free_stuff_mac_raw(free_stuff_mac_raw):
 def test_main_free_stuff_linux_amd_docker(linux_amd_docker):
     assert linux_amd_docker.main()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_main_free_stuff_linux_arm_docker(linux_arm_docker):
     assert linux_arm_docker.main()

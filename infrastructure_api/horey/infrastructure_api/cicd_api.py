@@ -4,7 +4,6 @@ Standard Load balancing maintainer.
 """
 import json
 import pathlib
-import textwrap
 from pathlib import Path
 import time
 import getpass
@@ -13,6 +12,7 @@ from typing import List
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.common_utils.storage_service import StorageService
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
+from horey.github_api.github_api import GithubAPI
 from horey.infrastructure_api.aws_iam_api import AWSIAMAPI, AWSIAMAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
@@ -820,32 +820,6 @@ class CICDAPI:
 
         return self.remote_deployer.deploy_targets(targets, asynchronous=asynchronous)
 
-    def provision_jenkins_triggering_github_runner(self, jenkins_address, github_api, bastions: List[EC2Instance] = None, ):
-        """
-        Provision jenkins triggering github runner
-
-        :return:
-        """
-
-        sec_group = self.ec2_api.provision_security_group()
-
-        ec2_instance = self.ec2_api.provision_ubuntu_24_04_instance(
-            name=f"{self.environment_api.configuration.environment_level}-github-runner",
-            security_groups=[sec_group.id],
-            volume_size=30,
-            instance_type="t3a.small")
-
-        target = self.init_deployment_target(ec2_instance, bastions=bastions)
-
-        def entrypoint():
-            self.run_remote_provision_constructor(target,
-                                                  "github_agent",
-                                                  token=github_token,
-                                                  )
-
-        target.append_remote_step("ProvisionGithub", entrypoint)
-        assert self.run_remote_deployer_deploy_targets([target], asynchronous=False)
-
     def provision_jenkins_hagent_infrastructure(self):
         """
         Jenkins hagent infra
@@ -966,3 +940,35 @@ class CICDAPI:
 
         return build_dir_path
 
+
+    def provision_github_hagent(self, github_api: GithubAPI, bastions: List[EC2Instance] = None, repository_name=None):
+        """
+        Provision jenkins triggering github runner
+
+        :return:
+        """
+
+        github_token = github_api.request_repository_runner_registration_token(repository_name)
+
+        sec_group = self.ec2_api.provision_security_group(name = self.configuration.github_hagent_security_group_name, description=f"{self.environment_api.configuration.environment_name}, {self.environment_api.configuration.environment_level}")
+
+        ec2_instance = self.ec2_api.provision_ubuntu_24_04_instance(
+            name=f"{self.environment_api.configuration.environment_level}-github-runner",
+            security_groups=[sec_group.id],
+            volume_size=30,
+            instance_type="t3a.small",
+            asynchronous=False)
+
+        target = self.init_deployment_target(ec2_instance, bastions=bastions)
+
+        def entrypoint():
+            breakpoint()
+            self.run_remote_provision_constructor(target,
+                                                  "github_agent",
+                                                  github_token=github_token,
+                                                  repo_name= repository_name,
+                                                  repo_owner=github_api.configuration.owner
+                                                  )
+
+        target.append_remote_step("ProvisionGithub", entrypoint)
+        assert self.run_remote_deployer_deploy_targets([target], asynchronous=False)

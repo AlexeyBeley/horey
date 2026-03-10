@@ -2,7 +2,7 @@
 Standard EC2 maintainer.
 
 """
-
+from horey.aws_api.aws_services_entities.key_pair import KeyPair
 from horey.h_logger import get_logger
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 from horey.infrastructure_api.ec2_api_configuration_policy import EC2APIConfigurationPolicy
@@ -116,7 +116,7 @@ class EC2API:
             raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
         return amis[0]
 
-    def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None, instance_type="t3a.medium"):
+    def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None, instance_type="t3a.medium", asynchronous=True):
         """
         Provision instance.
 
@@ -128,7 +128,8 @@ class EC2API:
         """
 
         if key_name is None:
-            raise NotImplementedError("key_name")
+            key = self.provision_ssh_key(f"key_{name}")
+            key_name = key.name
 
         ec2_instance = EC2Instance({})
 
@@ -176,7 +177,7 @@ class EC2API:
         ]
         ec2_instance.monitoring = {"Enabled": True}
 
-        self.environment_api.aws_api.provision_ec2_instance(ec2_instance)
+        self.environment_api.aws_api.provision_ec2_instance(ec2_instance, wait_until_active=asynchronous)
         return ec2_instance
 
     def stop_instance(self, name=None):
@@ -241,3 +242,21 @@ class EC2API:
         destination_group.ip_permissions.append(desired_permission)
         return self.environment_api.aws_api.ec2_client.provision_security_group(destination_group)
 
+    def provision_ssh_key(self, name):
+        """
+        Standard.
+
+        :return:
+        """
+
+        key_pair = KeyPair({})
+        key_pair.name = name
+        key_pair.key_type = "ed25519"
+        key_pair.region = self.environment_api.region
+        key_pair.tags = self.environment_api.get_tags_with_name(key_pair.name)
+
+        self.environment_api.aws_api.provision_key_pair(key_pair, save_to_secrets_manager=True,
+                                        secrets_manager_region=self.environment_api.region
+                                            )
+
+        return key_pair

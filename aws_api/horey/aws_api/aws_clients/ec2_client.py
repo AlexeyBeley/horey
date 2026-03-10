@@ -2402,12 +2402,12 @@ class EC2Client(Boto3Client):
             self, ec2_instance: EC2Instance, wait_until_active=False, tagname_uid=True,
     ):
         """
-        Standard
+        Provision EC2 instance if not exists.
 
-        @param ec2_instance:
-        @param wait_until_active:
-        @return:
+        :param ec2_instance:
+        :param wait_until_active:
         :param tagname_uid:
+        :return:
         """
 
         if tagname_uid:
