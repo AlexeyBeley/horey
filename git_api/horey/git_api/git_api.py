@@ -4,7 +4,6 @@ GIT API module.
 """
 import os
 import shutil
-from csv import excel
 from pathlib import Path
 from time import perf_counter
 
@@ -332,7 +331,6 @@ class GitAPI:
             return True
 
         with CommonUtils.temporary_directory(self.configuration.directory_path):
-
             command = "git submodule init"
             ret = self.bash_executor.run_bash(command)
             if ret["stdout"]:
@@ -347,7 +345,9 @@ class GitAPI:
 
             ret = self.bash_executor.run_bash(command)
             if ret["stdout"] or ret["stderr"]:
-                if "checked out" not in ret["stdout"] and "Cloning into" not in ret["stderr"]:
+                if "checked out" not in ret["stdout"] and \
+                    "Cloning into" not in ret["stderr"] and \
+                        "Permanently added" not in ret["stderr"] :
                     raise ValueError(ret)
         return True
 
