@@ -26,13 +26,16 @@ def run_job_parser():
     parser.add_argument(
         "--build_info_file", required=True, type=str, help="build_info_file"
     )
+    parser.add_argument(
+        "--jenkins_api_config_file", required=True, type=str, help="jenkins_api_config_file"
+    )
 
     return parser
 
 
-def run_job(arguments, configs_dict) -> None:
+def run_job(arguments) -> None:
     configuration = JenkinsAPIConfigurationPolicy()
-    configuration.init_from_dictionary(configs_dict)
+    configuration.configuration_file_full_path = arguments.jenkins_api_config_file
     configuration.init_from_file()
 
     manager = JenkinsAPI(configuration)
@@ -236,4 +239,4 @@ action_manager.register_action("find_build", find_build_parser, find_build)
 
 
 if __name__ == "__main__":
-    action_manager.call_action(pass_unknown_args=True)
+    action_manager.call_action(pass_unknown_args=False)

@@ -1018,7 +1018,7 @@ class CICDAPI:
         self.hagent_build_api.prepare_docker_image_build_directory = self.prepare_github_hagent_docker_build_dir
 
         # todo: uncomment:
-        image = self.hagent_build_api.run_prepare_and_build_image_routine(branch_name, build_number, tags=["github_hagent"])
+        # image = self.hagent_build_api.run_prepare_and_build_image_routine(branch_name, build_number, tags=["github_hagent"])
         # todo: remove:
         # image = self.environment_api.docker_api.get_image("github_hagent:latest")
         ret = self.environment_api.docker_api.get_all_images()
@@ -1037,6 +1037,7 @@ class CICDAPI:
 
         ec2_instance = self.provision_github_hagent_ec2_instance(bastions=bastions)
 
+        github_token = github_api.delete_repository_runner(repository_name, repository_name)
         github_token = github_api.request_repository_runner_registration_token(repository_name)
         def entrypoint():
             self.run_remote_provision_constructor(target,

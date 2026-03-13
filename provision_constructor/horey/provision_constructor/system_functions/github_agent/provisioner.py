@@ -2,6 +2,7 @@
 Provision ntp service.
 
 """
+import json
 from pathlib import Path
 
 from horey.common_utils.remoter import Remoter
@@ -66,6 +67,15 @@ class Provisioner(SystemFunctionCommon):
         github_token = self.kwargs.get("github_token")
         repo_name = self.kwargs.get("repo_name")
         repo_owner = self.kwargs.get("repo_owner")
+        breakpoint()
+        ret = self.remoter.execute(f"docker ps -a --format json -f name={repo_name}")
+        if ret[0]:
+            response = json.loads(ret[0][0])
+            container_id = response["ID"]
+            if "Up " in response["Status"]:
+                ret = self.remoter.execute(f"docker kill {container_id}", self.last_line_validator(container_id))
+            ret = self.remoter.execute(f"docker rm {container_id}", self.last_line_validator(container_id))
+
 
         ret = self.remoter.execute(f"docker run -d --name {repo_name} "
                                    f"-e REPO_OWNER={self.kwargs.get('repo_owner')} "

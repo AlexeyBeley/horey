@@ -316,3 +316,45 @@ class GithubAPI:
             shutil.copy(Path(__file__).parent / "build" /file_name, build_dir / file_name)
         return True
 
+
+    def delete_repository_runner(self, repo_name, runner_name):
+        """
+        Delete a repository runner.
+
+        :param repo_name:
+        :param runner_name:
+        :return:
+        """
+        runners = self.init_repository_self_hosted_runners(repo_name)
+        for runner in runners:
+            if runner["name"] == runner_name:
+                self.delete_repository_runner_by_id(repo_name, runner["id"])
+                return True
+        return False
+
+    def delete_repository_runner_by_id(self, repo_name, runner_id):
+        """
+        Delete a repository runner by id.
+
+        :param repo_name:
+        :param runner_id:
+        :return:
+        """
+
+        self.delete(f"repos/{self.configuration.owner}/{repo_name}/actions/runners/{runner_id}")
+
+    def delete(self, request_path):
+        """
+        Compose and send DELETE request
+
+        @param request_path:
+        @return:
+        """
+
+        request = self.create_request(request_path)
+        headers = {"Authorization": f"Bearer {self.configuration.pat}",
+                   "Content-Type": "application/vnd.github+json",
+                   "Accept": "application/vnd.github+json"}
+
+        response = requests.delete(request, headers=headers)
+        response.raise_for_status()
