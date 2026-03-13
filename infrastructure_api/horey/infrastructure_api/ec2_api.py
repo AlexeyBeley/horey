@@ -2,6 +2,8 @@
 Standard EC2 maintainer.
 
 """
+from typing import Union
+
 from horey.aws_api.aws_services_entities.key_pair import KeyPair
 from horey.h_logger import get_logger
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
@@ -152,7 +154,7 @@ class EC2API:
 
         ec2_instance.network_interfaces = [
             {
-                "AssociatePublicIpAddress": True,
+                "AssociatePublicIpAddress": False,
                 "DeleteOnTermination": True,
                 "Description": "Primary network interface",
                 "DeviceIndex": 0,
@@ -175,8 +177,7 @@ class EC2API:
                 },
             }
         ]
-        ec2_instance.monitoring = {"Enabled": True}
-
+        ec2_instance.monitoring = {"Enabled": False}
         self.environment_api.aws_api.provision_ec2_instance(ec2_instance, wait_until_active=asynchronous)
         return ec2_instance
 
@@ -205,7 +206,7 @@ class EC2API:
         return self.provision_security_group(f"sg_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-internal-alb",
                                       "Internal ALB security group")
 
-    def security_group_add_rule(self, destination_group: EC2SecurityGroup, source_group:EC2SecurityGroup=None, port_range=None):
+    def security_group_add_rule(self, destination_group: EC2SecurityGroup, source_group: Union[EC2SecurityGroup, str]=None, port_range=None):
         """
         Add rule to security group.
         :param destination_group:
@@ -223,13 +224,21 @@ class EC2API:
         if not source_group:
             raise NotImplementedError("source_group was not set")
 
+        source_group_id = None
+        if isinstance(source_group, EC2SecurityGroup):
+            source_group_id = source_group.id
+
+        if isinstance(source_group, str):
+            source_group_id = source_group
+
+
         desired_permission = {
             "IpProtocol": "tcp",
             "FromPort": port_range[0],
             "ToPort": port_range[1],
             "UserIdGroupPairs": [
                 {
-                    "GroupId": source_group.id,
+                    "GroupId": source_group_id,
                 }
             ],
         }
@@ -237,7 +246,7 @@ class EC2API:
         for permission in destination_group.ip_permissions:
             if permission.get("FromPort") == port_range[0] and \
                 permission.get("ToPort") == port_range[1] and \
-                permission.get("UserIdGroupPairs")[0].get("GroupId") == source_group.id:
+                permission.get("UserIdGroupPairs")[0].get("GroupId") == source_group_id:
                 return True
         destination_group.ip_permissions.append(desired_permission)
         return self.environment_api.aws_api.ec2_client.provision_security_group(destination_group)

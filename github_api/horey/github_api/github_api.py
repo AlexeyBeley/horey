@@ -3,6 +3,8 @@ Shamelessly stolen from:
 https://github.com/lukecyca/pyslack
 """
 import json
+import shutil
+from pathlib import Path
 
 import requests
 from horey.h_logger import get_logger
@@ -299,3 +301,18 @@ class GithubAPI:
         )
 
         return response
+
+    @staticmethod
+    def init_hagent_docker_build_dir(build_dir: Path):
+        """
+        Initialize docker build directory.
+
+        :param build_dir: Build directory path
+        :return:
+        """
+
+        build_dir.mkdir(parents=True, exist_ok=True)
+        for file_name in ["Dockerfile", "entrypoint.sh"]:
+            shutil.copy(Path(__file__).parent / "build" /file_name, build_dir / file_name)
+        return True
+

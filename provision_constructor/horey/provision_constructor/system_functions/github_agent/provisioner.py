@@ -2,6 +2,7 @@
 Provision ntp service.
 
 """
+from pathlib import Path
 
 from horey.common_utils.remoter import Remoter
 
@@ -32,6 +33,7 @@ class Provisioner(SystemFunctionCommon):
         :param upgrade:
         :param kwargs:
                     github_token - token
+                    runner_name - Name to give to the runner
                     repo_name
                     repo_owner
         """
@@ -48,28 +50,52 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.remoter = remoter
+        if self.action == "start_container":
+            return self.start_container_remote()
+        self.provision_agent_remote()
 
-        self.remoter.execute("pwd")
+    def start_container_remote(self):
+        """
+        Start container
 
-    def provision_agent(self):
+        :return:
+        """
+
+
+        image_name = self.kwargs.get("image_name")
+        github_token = self.kwargs.get("github_token")
+        repo_name = self.kwargs.get("repo_name")
+        repo_owner = self.kwargs.get("repo_owner")
+
+        ret = self.remoter.execute(f"docker run -d --name {repo_name} "
+                                   f"-e REPO_OWNER={self.kwargs.get('repo_owner')} "
+                                   f"-e REPO_NAME={self.kwargs.get('repo_name')} "
+                                   f"-e GITHUB_TOKEN={self.kwargs.get('github_token')} "
+                                   f"-e RUNNER_NAME={self.kwargs.get('runner_name', repo_name)} "
+                                   f"{image_name}")
+        breakpoint()
+
+    def provision_agent_remote(self):
         """
         Provision GitHub agent remotely.
 
         :return:
         """
+
         github_token = self.kwargs.get("github_token")
         if not github_token:
             raise ValueError("github_token is required in kwargs")
+        runner_name = self.kwargs.get("runner_name")
+        if not runner_name:
+            raise ValueError("runner_name is required in kwargs")
 
         # Download and configure GitHub Actions runner
-        commands = [
-            "mkdir -p actions-runner && cd actions-runner",
-            "curl -o actions-runner-linux-x64-2.311.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.311.0/actions-runner-linux-x64-2.311.0.tar.gz",
-            "tar xzf ./actions-runner-linux-x64-2.311.0.tar.gz",
-            f"./config.sh --url https://github.com/{self.kwargs.get('repo_owner')}/{self.kwargs.get('repo_name')} --token {github_token} --unattended",
-            "sudo ./svc.sh install",
-            "sudo ./svc.sh start"
-        ]
+        remote_dir = Path("actions-runner")
+        remote_targ_gz_path = remote_dir / "actions-runner-linux-x64-2.311.0.tar.gz"
 
-        for command in commands:
-            self.remoter.execute(command)
+        self.remoter.execute(f"mkdir -p {remote_dir}")
+        self.download_file_from_web_remote("https://github.com/actions/runner/releases/download/v2.311.0/actions-runner-linux-x64-2.311.0.tar.gz", remote_targ_gz_path)
+        self.remoter.execute(f"tar xzf {remote_targ_gz_path}")
+        self.remoter.execute(f"./config.sh --url https://github.com/{self.kwargs.get('repo_owner')}/{self.kwargs.get('repo_name')} --token {github_token} --name {runner_name} --unattended")
+        self.remoter.execute("sudo ./svc.sh install")
+        self.remoter.execute("sudo ./svc.sh start")

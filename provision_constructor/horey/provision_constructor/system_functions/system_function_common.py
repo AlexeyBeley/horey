@@ -1531,6 +1531,19 @@ class SystemFunctionCommon:
                 if chunk:
                     f.write(chunk)
 
+    def download_file_from_web_remote(self, url, remote_file_path: Path):
+        """
+        Download binary file from web directly on the remote machine.
+
+        :param url:
+        :param remote_file_path:
+        :return:
+        """
+
+        logger.info(f"Downloading file from {url}")
+        self.remoter.execute(f"wget {url} -O {remote_file_path}",
+                        self.last_line_validator(" saved "))
+
 
 SystemFunctionCommon.ACTION_MANAGER.register_action(
     "check_files_exist",

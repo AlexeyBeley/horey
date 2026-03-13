@@ -52,7 +52,16 @@ class Configuration(ConfigurationPolicy):
         self._windows_ssh_key = None
         self._windows_hostname = None
         self._github_api_configuration_file_secret_name = None
+        self._github_hagent_runner_name = None
         self._github_hagent_repo_name = None
+
+    @property
+    def github_hagent_runner_name(self):
+        return self._github_hagent_runner_name
+
+    @github_hagent_runner_name.setter
+    def github_hagent_runner_name(self, value):
+        self._github_hagent_runner_name = value
 
     @property
     def github_hagent_repo_name(self):
@@ -444,7 +453,7 @@ def test_run_remote_deployer_deploy_targets_raw(cicd_api_integration, ec2_api_mg
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_remote_deployer_deploy_targets_logstash_install(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
@@ -760,8 +769,21 @@ def test_update_hagent(cicd_api_integration, ec2_api_mgmt_integration):
     assert cicd_api_integration.update_hagent()
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_provision_github_hagent(cicd_api_integration, ec2_api_mgmt_integration, github_api):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
-    assert cicd_api_integration.provision_github_hagent(github_api, bastions=ec2_instances, repository_name=Configuration.TEST_CONFIG.github_hagent_repo_name)
+    assert cicd_api_integration.provision_github_hagent(github_api,
+                                                        bastions=ec2_instances,
+                                                        repository_name=Configuration.TEST_CONFIG.github_hagent_repo_name
+                                                        )
+
+@pytest.mark.wip
+def test_provision_github_hagent_dockerized(cicd_api_integration, ec2_api_mgmt_integration, github_api):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+    assert cicd_api_integration.provision_github_hagent_dockerized(github_api,
+                                                        bastions=ec2_instances,
+                                                        repository_name=Configuration.TEST_CONFIG.github_hagent_repo_name,
+                                                        horey_repo_path = Path(__file__).parent.parent.parent
+                                                        )

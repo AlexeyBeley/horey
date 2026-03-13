@@ -111,6 +111,9 @@ class Provisioner(SystemFunctionCommon):
             return self.provision_pull_remote()
         if self.action == "login":
             return self.provision_login_remote()
+        if self.action == "copy_image_file":
+            return self.copy_image_file_remote()
+
 
         if not SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force,
                                                                   self.upgrade,
@@ -197,3 +200,20 @@ class Provisioner(SystemFunctionCommon):
                 return True
 
         raise self.FailedCheckError(f"Did not find registry {registry} in ~/.docker/config.json: {output} ")
+
+    def copy_image_file_remote(self):
+        """
+        Clean old images.
+
+        :return:
+        """
+
+        image_file = self.kwargs.get("image_file")
+        tag = self.kwargs.get("tag")
+        self.remoter.put_file(image_file, Path(f"/tmp/{image_file.name}"), sudo=False)
+        response = self.remoter.execute(f"docker load < /tmp/{image_file.name}", self.last_line_validator("Loaded image ID"))
+        image_id = response[0][-1].split("sha256:")[1]
+        self.remoter.execute(f"docker image tag {image_id} {tag}")
+
+        return True
+

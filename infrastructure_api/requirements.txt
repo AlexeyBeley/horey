@@ -7,3 +7,4 @@ horey.docker_api>=1.0.0
 horey.git_api>=1.0.0
 horey.provision_constructor>=1.0.0
 horey.pip_api>=1.0.0
+horey.github_api>=1.0.0

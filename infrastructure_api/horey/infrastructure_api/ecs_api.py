@@ -583,7 +583,7 @@ class ECSAPI:
         :return:
         """
 
-        task_definition = self.environment_api.aws_api.ecs_client.provision_ecs_task_definition(task_definition)
+        self.environment_api.aws_api.ecs_client.provision_ecs_task_definition(task_definition)
 
         return task_definition
 

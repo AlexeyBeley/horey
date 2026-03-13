@@ -25,6 +25,8 @@ setup(
         include=["horey.github_api", "horey.github_api.*"]
     ),
     include_package_data=True,
-    package_data={"": ["github_runner/remote_scripts/*.sh"]},
+    package_data={"": ["build/*.sh",
+                       "build/Dockerfile",
+                       ]},
     zip_safe=False,
 )

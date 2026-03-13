@@ -503,7 +503,7 @@ class AWSLambdaAPI:
                 self.build_api.configuration.docker_build_arguments["platform"] = "linux/arm64"
             else:
                 raise ValueError(f"architecture must be x86_64 or arm64, got {self.configuration.architecture}")
-            image = self.build_api.run_build_image_routine(branch_name, build_number)
+            image = self.build_api.run_build_and_upload_image_routine(branch_name, build_number)
 
             image_registry_reference = image.tags[0]
 

@@ -14,6 +14,7 @@ from horey.common_utils.storage_service import StorageService
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.github_api.github_api import GithubAPI
 from horey.infrastructure_api.aws_iam_api import AWSIAMAPI, AWSIAMAPIConfigurationPolicy
+from horey.infrastructure_api.build_api import BuildAPI, BuildAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
 from horey.infrastructure_api.ec2_api import EC2API, EC2APIConfigurationPolicy
@@ -105,7 +106,8 @@ class CICDAPI:
         self._dns_api = None
         self._remote_deployer = None
         self._iam_api = None
-
+        self._build_api = None
+    
     @property
     def remote_deployer(self):
         """
@@ -131,6 +133,20 @@ class CICDAPI:
             self._cloudwatch_api = CloudwatchAPI(configuration=config, environment_api=self.environment_api)
             self.init_clouwatch_api_defaults()
         return self._cloudwatch_api
+
+    @property
+    def hagent_build_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        if self._build_api is None:
+            config = BuildAPIConfigurationPolicy()
+            self._build_api = BuildAPI(configuration=config, environment_api=self.environment_api)
+            self._build_api.git_api = self._build_api.horey_git_api
+        return self._build_api
 
     @property
     def ec2_api(self):
@@ -896,7 +912,7 @@ class CICDAPI:
             repo_name = self.generate_hagent_repository_name()
             self.ecs_api.build_api.configuration.docker_repository_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.ecs_api.configuration.ecr_repository_region}.amazonaws.com/{repo_name}"
 
-            image = self.ecs_api.build_api.run_build_image_routine(branch_name, build_number)
+            image = self.ecs_api.build_api.run_build_and_upload_image_routine(branch_name, build_number)
 
             image_registry_reference = image.tags[0]
 
@@ -951,10 +967,12 @@ class CICDAPI:
         github_token = github_api.request_repository_runner_registration_token(repository_name)
 
         sec_group = self.ec2_api.provision_security_group(name = self.configuration.github_hagent_security_group_name, description=f"{self.environment_api.configuration.environment_name}, {self.environment_api.configuration.environment_level}")
+        if bastions:
+            self.ec2_api.security_group_add_rule(sec_group, source_group=bastions[-1].security_groups[0]["GroupId"], port_range=[22,22])
 
         ec2_instance = self.ec2_api.provision_ubuntu_24_04_instance(
             name=f"{self.environment_api.configuration.environment_level}-github-runner",
-            security_groups=[sec_group.id],
+            security_groups=[sec_group],
             volume_size=30,
             instance_type="t3a.small",
             asynchronous=False)
@@ -962,13 +980,105 @@ class CICDAPI:
         target = self.init_deployment_target(ec2_instance, bastions=bastions)
 
         def entrypoint():
-            breakpoint()
             self.run_remote_provision_constructor(target,
                                                   "github_agent",
-                                                  github_token=github_token,
+                                                  github_token=github_token["token"],
                                                   repo_name= repository_name,
                                                   repo_owner=github_api.configuration.owner
                                                   )
 
         target.append_remote_step("ProvisionGithub", entrypoint)
         assert self.run_remote_deployer_deploy_targets([target], asynchronous=False)
+
+    def prepare_github_hagent_docker_build_dir(self, _src_dir, build_number) -> Path:
+        """
+        Create tmp build dir
+
+        :param _src_dir:
+        :param build_id:
+        :return:
+        """
+
+        self.hagent_build_api.prepare_docker_image_horey_package_build_directory(_src_dir, "jenkins_api", build_number)
+        return self.hagent_build_api.docker_build_directory
+
+    def provision_github_hagent_dockerized(self, github_api: GithubAPI, bastions: List[EC2Instance] = None, repository_name=None, horey_repo_path=None):
+        """
+        Provision multirunner.
+
+        :return:
+        """
+
+        branch_name = None
+        build_number = 1
+        self.hagent_build_api.git_api.configuration.directory_path = horey_repo_path
+        self.hagent_build_api.docker_build_directory = Path("/tmp") / f"github_hagent_{build_number}"
+        github_api.init_hagent_docker_build_dir(self.hagent_build_api.docker_build_directory)
+        self.hagent_build_api.prepare_source_code_directory = lambda _build_number: horey_repo_path
+        self.hagent_build_api.prepare_docker_image_build_directory = self.prepare_github_hagent_docker_build_dir
+
+        # todo: uncomment:
+        image = self.hagent_build_api.run_prepare_and_build_image_routine(branch_name, build_number, tags=["github_hagent"])
+        # todo: remove:
+        # image = self.environment_api.docker_api.get_image("github_hagent:latest")
+        ret = self.environment_api.docker_api.get_all_images()
+        for image in ret:
+            if not image.tags:
+                continue
+            if image.tags[0] == "github_hagent:latest":
+                break
+        else:
+            breakpoint()
+            raise NotImplementedError("Not implemented")
+
+
+        image_file_path = Path("/tmp/github_hagent_image.tar")
+        self.environment_api.docker_api.save(image, image_file_path)
+
+        ec2_instance = self.provision_github_hagent_ec2_instance(bastions=bastions)
+
+        github_token = github_api.request_repository_runner_registration_token(repository_name)
+        def entrypoint():
+            self.run_remote_provision_constructor(target,
+                                                  "docker",
+                                                  )
+            self.run_remote_provision_constructor(target,
+                                                  "docker",
+                                                  action="copy_image_file",
+                                                  image_file=image_file_path,
+                                                  tag="github_hagent:latest"
+                                                  )
+
+            self.run_remote_provision_constructor(target,
+                                                  "github_agent",
+                                                  action="start_container",
+                                                  image_name="github_hagent:latest",
+                                                  github_token=github_token["token"],
+                                                  repo_name=repository_name,
+                                                  repo_owner=github_api.configuration.owner
+                                                  )
+
+        target = self.init_deployment_target(ec2_instance, bastions=bastions)
+        target.append_remote_step("ProvisionGithub", entrypoint)
+        assert self.run_remote_deployer_deploy_targets([target], asynchronous=False)
+
+
+    def provision_github_hagent_ec2_instance(self, bastions=None):
+        """
+        Provision an instance.
+
+        :param bastions:
+        :return:
+        """
+
+        sec_group = self.ec2_api.provision_security_group(name = self.configuration.github_hagent_security_group_name, description=f"{self.environment_api.configuration.environment_name}, {self.environment_api.configuration.environment_level}")
+        if bastions:
+            self.ec2_api.security_group_add_rule(sec_group, source_group=bastions[-1].security_groups[0]["GroupId"], port_range=[22,22])
+
+        ec2_instance = self.ec2_api.provision_ubuntu_24_04_instance(
+            name=f"{self.environment_api.configuration.environment_level}-github-runner",
+            security_groups=[sec_group],
+            volume_size=30,
+            instance_type="t3a.small",
+            asynchronous=False)
+        return ec2_instance

@@ -460,7 +460,8 @@ def install(configs):
         force_reinstall = False
 
     if requirement := configs.get("install"):
-        response = StandaloneMethods.install_requirement_from_string(os.path.abspath(__file__), requirement, force_reinstall=force_reinstall)
+        break_system_packages = False if configs.get("venv_dir_path") else True
+        response = StandaloneMethods.install_requirement_from_string(os.path.abspath(__file__), requirement, force_reinstall=force_reinstall, break_system_packages=break_system_packages)
         logger.info(f"Installation took {perf_counter()-start}")
         return response
 
@@ -479,7 +480,6 @@ def copy_horey_dependencies(configs):
     package_name = configs.get("package_name")
     StandaloneMethods = get_standalone_methods(configs)
     StandaloneMethods.copy_horey_package_required_packages_to_build_dir(package_name, dst_dir_path, horey_dir_path)
-
 
 def main():
     """

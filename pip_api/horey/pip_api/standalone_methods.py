@@ -297,10 +297,11 @@ class StandaloneMethods:
                 return this
         raise RuntimeError(f"This should be unreachable: this_min: {this.min_version}, other_min: {other.min_version}")
 
-    def install_source_code_requirement(self, requirement: Requirement):
+    def install_source_code_requirement(self, requirement: Requirement, break_system_packages=False):
         """
         Prepare list of requirements to be installed and install those missing.
 
+        :param break_system_packages:
         :param requirement:
         :return:
         """
@@ -316,11 +317,11 @@ class StandaloneMethods:
         all_reversed = list(reversed(requirements_aggregator.values()))
         for aggregated_requirement in all_reversed[:-1]:
             if aggregated_requirement.multi_package_repo_path:
-                self.install_source_code_requirement_raw(aggregated_requirement)
+                self.install_source_code_requirement_raw(aggregated_requirement, break_system_packages=break_system_packages)
             else:
-                self.install_requirement_standard(aggregated_requirement)
+                self.install_requirement_standard(aggregated_requirement, break_system_packages=break_system_packages)
 
-        self.install_source_code_requirement_raw(requirement)
+        self.install_source_code_requirement_raw(requirement, break_system_packages=break_system_packages)
 
         return True
 
@@ -457,10 +458,11 @@ class StandaloneMethods:
         for line in lines:
             self.install_requirement_from_string(src_file_path, line.strip("\n"), force_reinstall=force_reinstall)
 
-    def install_requirement_from_string(self, src_file_path, str_src, force_reinstall=False):
+    def install_requirement_from_string(self, src_file_path, str_src, force_reinstall=False, break_system_packages=False):
         """
         Entrypoint.
 
+        :param break_system_packages:
         :param src_file_path: Requirement source file
         :param str_src: line to initialize
         :param force_reinstall:
@@ -469,28 +471,31 @@ class StandaloneMethods:
         self.logger.info(f"install_requirement_from_string {src_file_path}, {str_src}")
         requirement = self.init_requirement_from_string(src_file_path, str_src)
         requirement.force = force_reinstall
-        return self.install_requirement(requirement)
+        return self.install_requirement(requirement, break_system_packages=break_system_packages)
 
-    def install_requirement(self, requirement: Requirement):
+    def install_requirement(self, requirement: Requirement, break_system_packages=False):
         """
         Install single requirement.
 
+        :param break_system_packages:
         :param requirement:
         :return:
         """
 
         if requirement.multi_package_repo_path:
-            return self.install_source_code_requirement(requirement)
+            return self.install_source_code_requirement(requirement, break_system_packages=break_system_packages)
 
         return self.install_requirement_standard(requirement)
 
-    def install_requirement_standard(self, requirement):
+    def install_requirement_standard(self, requirement, break_system_packages=False):
         """
         Default pip install
 
         :param requirement:
         :return:
         """
+
+        break_system_packages_command = "--break-system-packages " if break_system_packages else ""
         if self.requirement_satisfied(requirement) and not requirement.force:
             return True
         self.INSTALLED_PACKAGES = None
@@ -502,32 +507,33 @@ class StandaloneMethods:
 
         break_system = self.init_break_system_flag()
         ret = self.execute(
-            f"{self.python_interpreter_command} -m pip install --force-reinstall {break_system}{requirement_string}")
+            f"{self.python_interpreter_command} -m pip install {break_system_packages_command}--force-reinstall {break_system}{requirement_string}")
 
         last_line = ret.get("stdout").strip("\r\n").split("\n")[-1]
         if ret.get("stdout") and ("Successfully installed" not in last_line or requirement.name not in last_line):
             raise ValueError(ret)
         return True
 
-    def install_source_code_requirement_raw(self, requirement):
+    def install_source_code_requirement_raw(self, requirement, break_system_packages=False):
         """
         Build package and install it.
 
+        :param break_system_packages:
         :param requirement:
         :return:
         """
 
         requirement_setup_tools = Requirement("horey_auto_generated", "setuptools")
         requirement_setup_tools.force = False
-        self.install_requirement_standard(requirement_setup_tools)
+        self.install_requirement_standard(requirement_setup_tools, break_system_packages=break_system_packages)
 
         if requirement.force or not self.requirement_satisfied(requirement):
             package_lower_dir_name = requirement.name.split(".")[-1]
             package_upper_dir_name = requirement.name.split(".")[0]
-            self.build_and_install_package(requirement.multi_package_repo_path, package_upper_dir_name, package_lower_dir_name)
+            self.build_and_install_package(requirement.multi_package_repo_path, package_upper_dir_name, package_lower_dir_name, break_system_packages=break_system_packages)
             self.INSTALLED_PACKAGES = None
 
-    def build_and_install_package(self, multi_package_repo_path, package_upper_dir_name, package_lower_dir_name):
+    def build_and_install_package(self, multi_package_repo_path, package_upper_dir_name, package_lower_dir_name, break_system_packages=False):
         """
         Build the wheel and install it.
 
@@ -550,8 +556,9 @@ class StandaloneMethods:
             if wheel_file_name.endswith(".whl"):
                 break
 
-        break_system = self.init_break_system_flag()
-        command = f"{self.python_interpreter_command} -m pip install --force-reinstall {break_system}{os.path.join(dist_dir_path, wheel_file_name)}"
+        break_system_packages_command = "--break-system-packages " if break_system_packages else ""
+        # todo: check break_system = self.init_break_system_flag()
+        command = f"{self.python_interpreter_command} -m pip install --force-reinstall {break_system_packages_command}{os.path.join(dist_dir_path, wheel_file_name)}"
         response = self.execute(command)
 
         lines = response["stdout"].split("\n")

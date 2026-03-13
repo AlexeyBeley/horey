@@ -284,6 +284,11 @@ class Kayesauction(Provider):
         month = self.MONTH_BY_NAME[month_name]
 
         line_date = line[month_index + len(month_name):]
+        if line_date.count(",") > 1:
+            if "and closes" in line_date.lower():
+                line_date = line_date.split(" and closes")[0]
+            else:
+                breakpoint()
         day, line_date = line_date.split(",")
         day = int(day.strip())
         year, line_date = line_date.strip().split("at")
