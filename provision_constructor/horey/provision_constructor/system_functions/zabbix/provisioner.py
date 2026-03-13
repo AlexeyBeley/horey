@@ -3,8 +3,7 @@ Provision ntp service.
 
 """
 
-import re
-import time
+import threading
 from pathlib import Path
 
 import requests
@@ -29,6 +28,7 @@ class Provisioner(SystemFunctionCommon):
     Remove all others.
 
     """
+    LOCK = threading.Lock()
 
     def __init__(self, deployment_dir, force, upgrade, **kwargs):
         """
@@ -62,11 +62,13 @@ class Provisioner(SystemFunctionCommon):
 
         if local_cache_dir_path :=self.kwargs.get("local_cache_dir_path"):
             deb_file_path = local_cache_dir_path / zabbix_agent_version
-            if not deb_file_path.exists():
-                response = requests.get(url, timeout=180)
-                with open(deb_file_path, "wb") as file_handler:
-                    file_handler.write(response.content)
-                    logger.info(f"Downloaded {deb_file_path}")
+
+            with Provisioner.LOCK:
+                if not deb_file_path.exists():
+                    response = requests.get(url, timeout=180)
+                    with open(deb_file_path, "wb") as file_handler:
+                        file_handler.write(response.content)
+                        logger.info(f"Downloaded {deb_file_path}")
 
             remote_deb_file_path = Path("/tmp") / zabbix_agent_version
             remoter.put_file(deb_file_path, remote_deb_file_path, sudo=False)
