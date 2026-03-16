@@ -310,4 +310,15 @@ def test_get_container_ids():
     @return:
     """
 
-    assert DockerAPI().get_container_ids(all_containers=True)
+    assert DockerAPI().get_container_ids(all_containers=True,  filters=["status=exited", "until=10m"])
+
+
+@pytest.mark.unit
+def test_prune_stopped_containers():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    assert DockerAPI().prune_stopped_containers(time_limit=60)

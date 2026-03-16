@@ -514,18 +514,28 @@ class DockerAPI:
                 return self.get_container_ids_bash(all_containers=all_containers)
             raise
 
-    def get_container_ids_bash(self, all_containers=False):
+    @staticmethod
+    def get_container_ids_bash(all_containers=False, filters=None):
         """
         Get all containers via bash.
 
+        Example filters:
+        filters=["status=exited", "until=60m" ] -> becomes
+        -> '--filter "status=exited" --filter "until=60m"'
+
+        :param filters:
         :param all_containers:
         :return:
         """
         breakpoint()
-
-        all_containers_str = "" if not all_containers else "--all "
-        ret =  BashExecutor.run_bash(f"docker ps {all_containers_str}-q")["stdout"].split("\n")
-        breakpoint()
+        all_containers_str = "" if not all_containers else " --all"
+        if filters:
+            filters_str = "--filter ".join(filters)
+        else:
+            filters_str = ""
+        command = f'docker ps -q{all_containers_str}{filters_str}'
+        response =   BashExecutor.run_bash()["stdout"]
+        return response.split("\n") if response else []
 
 
     def remove_image(self, image_id, force=True, wait_to_finish=20 * 60, childless=False):
@@ -768,24 +778,12 @@ class DockerAPI:
         """
 
         container_dir_name = "pruner"
-        try:
-            return BashExecutor.run_bash(f"docker container prune --force --filter \"until={time_limit}m\"")
-        except Exception as inst_error:
-            DockerAPI.log_to_container_file(container_dir_name,
-                                            f"Pruning error: 'docker container prune' failed with error {repr(inst_error)}", attrs=container_log_attrs)
 
         start = perf_counter()
         try:
-            all_containers = self.client.containers.list(all=True)
+            all_containers = self.get_container_ids_bash(all_containers=True, filters=["status=exited", f"until={time_limit}m"])
         except Exception as inst_error:
-            DockerAPI.prune_dead_containers()
-            logger.info("Going to sleep - allowing docker service to gracefully start")
-            time.sleep(5)
-            try:
-                all_containers = self.client.containers.list(all=True)
-            except Exception:
-                DockerAPI.log_to_container_file(container_dir_name, f"Pruning error: {repr(inst_error)}", attrs=container_log_attrs)
-                raise
+            DockerAPI.log_to_container_file(container_dir_name, f"Pruning error: {repr(inst_error)}", attrs=container_log_attrs)
 
         to_delete_counter = 0
         deleted_counter = 0
