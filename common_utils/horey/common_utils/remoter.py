@@ -27,7 +27,7 @@ class Remoter(ABC):
         """
 
     @abstractmethod
-    def execute(self, command: str, *output_validators: List[Any]) -> Tuple[List[str], List[str], int]:
+    def execute(self, command: str, *output_validators: List[Any], timeout: int=None, retries: int=None) -> Tuple[List[str], List[str], int]:
         """
         Execute remote.
 

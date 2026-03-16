@@ -182,7 +182,7 @@ class Provisioner(SystemFunctionCommon):
         # True by default unless "false" explicitly set
         logout = str(logout).lower() != "false"
 
-        ret = self.remoter.execute("aws sts get-caller-identity")
+        ret = self.remoter.execute("aws sts get-caller-identity", timeout=10, retries=6)
         response = json.loads("".join(ret[0]))
         registry = f"{response['Account']}.dkr.ecr.{region}.amazonaws.com"
         if logout:
