@@ -601,10 +601,11 @@ class RemoteDeployer:
         return exit_code
 
     @staticmethod
-    def execute_windows(ssh_client:paramiko.SSHClient, cmd, remote_address, timeout=60):
+    def execute_windows(ssh_client:paramiko.SSHClient, cmd, remote_address, timeout=60, retries=1):
         """
         Execute command using remote shell.
 
+        :param retries:
         :param remote_address:
         :param timeout: in minutes
         :param cmd: the command to be executed on the remote computer
@@ -1447,11 +1448,11 @@ class RemoteDeployer:
                 self.sftp_clients[key] = client
         return client
 
-    def get_remoter(self, target, windows=False, timeout=60*60) -> SSHRemoter:
+    def get_remoter(self, target, windows=False, default_timeout=60*60) -> SSHRemoter:
         """
         Create remoter.
 
-        :param timeout:
+        :param default_timeout:
         :param windows:
         :param target:
         :return:
@@ -1483,19 +1484,24 @@ class RemoteDeployer:
                 :param command:
                 :return:
                 """
+                timeout = timeout or default_timeout
                 return self.execute_remote_shell(channel, command, target.deployment_target_address, stdin=stdin, timeout=timeout, retries=retries)
 
             return executor
 
-        def executor_windows(command):
+        def executor_windows(command, timeout:int =60*60, retries=1):
             """
             Execute remotely
 
+            :param retries:
+            :param timeout:
             :param command:
             :return:
             """
 
-            return self.execute_windows(ssh_client, command, target.deployment_target_address, timeout=timeout)
+            timeout = timeout or default_timeout
+
+            return self.execute_windows(ssh_client, command, target.deployment_target_address, timeout=timeout, retries=retries)
 
 
         ret = SSHRemoter(executor_windows if windows else init_executor_linux(), sftp_client,  target.remote_deployment_dir_path)

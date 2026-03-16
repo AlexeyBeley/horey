@@ -667,7 +667,7 @@ class CICDAPI:
         ProvisionConstructor.generate_provision_constructor_apply_scripts(target.local_deployment_dir_path, provision_script_generator, target=target)
         raise NotImplementedError("Not implemented")
 
-    def run_remote_provision_constructor(self, target, function_name, windows=False, timeout=60, **kwargs):
+    def run_remote_provision_constructor(self, target, function_name, windows=False, timeout=60*60, **kwargs):
         """
         Run the function remotely
 
@@ -682,7 +682,7 @@ class CICDAPI:
         except KeyError:
             storage_service = None
 
-        remoter = self.remote_deployer.get_remoter(target, windows=windows, timeout=timeout)
+        remoter = self.remote_deployer.get_remoter(target, windows=windows, default_timeout=timeout)
         provision_constructor = ProvisionConstructor()
         provision_constructor.deployment_dir = target.local_deployment_dir_path
         return provision_constructor.provision_system_function_remote(remoter, function_name, storage_service=storage_service, **kwargs)
