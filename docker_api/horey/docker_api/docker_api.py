@@ -510,8 +510,9 @@ class DockerAPI:
             ret = self.client.containers.list(all=all_containers)
             breakpoint()
         except Exception as inst_error:
-            if "No such container" in repr(inst_error):
+            if "No such container" in str(inst_error):
                 return self.get_container_ids_bash(all_containers=all_containers)
+            raise
 
     def get_container_ids_bash(self, all_containers=False):
         """
