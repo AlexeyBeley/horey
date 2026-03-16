@@ -520,6 +520,7 @@ class DockerAPI:
         :param all_containers:
         :return:
         """
+        breakpoint()
 
         all_containers_str = "" if not all_containers else "--all "
         ret =  BashExecutor.run_bash(f"docker ps {all_containers_str}-q")["stdout"].split("\n")
