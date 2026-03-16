@@ -496,6 +496,36 @@ class DockerAPI:
         ]
         return ret
 
+    def get_container_ids(self, all_containers=False):
+        """
+        Get all containers.
+
+        @param all_containers:
+        @param image_id:
+        @return:
+        """
+
+        breakpoint()
+        try:
+            ret = self.client.containers.list(all=all_containers)
+            breakpoint()
+        except Exception as inst_error:
+            if "No such container" in repr(inst_error):
+                return self.get_container_ids_bash(all_containers=all_containers)
+
+    def get_container_ids_bash(self, all_containers=False):
+        """
+        Get all containers via bash.
+
+        :param all_containers:
+        :return:
+        """
+
+        all_containers_str = "" if not all_containers else "--all "
+        ret =  BashExecutor.run_bash(f"docker ps {all_containers_str}-q")["stdout"].split("\n")
+        breakpoint()
+
+
     def remove_image(self, image_id, force=True, wait_to_finish=20 * 60, childless=False):
         """
         Remove image.

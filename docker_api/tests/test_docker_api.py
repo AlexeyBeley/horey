@@ -297,3 +297,14 @@ def test_log_to_container_file_with_attrs():
     """
 
     assert DockerAPI.log_to_container_file("test", "Pruning error: blabla", attrs={"tag": "test_tag"})
+
+
+@pytest.mark.wip
+def test_get_container_ids():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    assert DockerAPI.get_container_ids(all_containers=True)
