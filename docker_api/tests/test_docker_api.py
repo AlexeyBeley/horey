@@ -8,7 +8,10 @@ import os
 import pytest
 from horey.docker_api.docker_api import DockerAPI
 from horey.common_utils.common_utils import CommonUtils
-from horey.aws_api.aws_api import AWSAPI
+try:
+    from horey.aws_api.aws_api import AWSAPI
+except Exception:
+    pass
 
 src_aws_region = "us-west-2"
 dst_aws_region = "us-west-2"
