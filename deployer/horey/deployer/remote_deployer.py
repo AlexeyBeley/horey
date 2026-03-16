@@ -52,10 +52,11 @@ class SSHRemoter(Remoter):
         """
         return self._state
 
-    def execute(self, command: str, *output_validators: List[Any], timeout:int=None) -> Tuple[List[str], List[str], int]:
+    def execute(self, command: str, *output_validators: List[Any], timeout:int=60*60, retries:int=1) -> Tuple[List[str], List[str], int]:
         """
         Remote command.
 
+        :param retries:
         :param timeout:
         :param command:
         :param output_validators:
@@ -63,7 +64,7 @@ class SSHRemoter(Remoter):
         """
 
         errors = []
-        _, lst_stdout, lst_stderr, status_code = self.executor(command, timeout=timeout)
+        _, lst_stdout, lst_stderr, status_code = self.executor(command, timeout=timeout, retries=retries)
 
         for output_validator in output_validators:
             try:
