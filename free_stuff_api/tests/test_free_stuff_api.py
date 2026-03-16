@@ -7,11 +7,13 @@ import pytest
 from horey.free_stuff_api.free_stuff_api import FreeStuffAPIConfigurationPolicy, FreeStuffAPI
 
 from horey.common_utils.free_item import FreeItem
+from horey.free_stuff_api.platform import Platform
 
 config = FreeStuffAPIConfigurationPolicy()
 config.configuration_file_full_path = Path(__file__).parent.parent.parent.parent / "ignore" / "test_frs_api_configuration.py"
 config.horey_directory_path =  Path(__file__).parent.parent.parent
 config.init_from_file()
+config.db_file_path = Path("/opt/hfrs/hfrs.sqlite")
 
 
 
@@ -71,7 +73,6 @@ def test_update():
     free_stuff_api = FreeStuffAPI(config)
     assert free_stuff_api.update()
 
-
 @pytest.mark.wip
 def test_main_free_stuff_mac_raw(free_stuff_mac_raw):
     assert free_stuff_mac_raw.main()
@@ -83,3 +84,11 @@ def test_main_free_stuff_linux_amd_docker(linux_amd_docker):
 @pytest.mark.unit
 def test_main_free_stuff_linux_arm_docker(linux_arm_docker):
     assert linux_arm_docker.main()
+
+@pytest.mark.unit
+def test_provision_db(free_stuff_mac_raw):
+    assert free_stuff_mac_raw.provision_db()
+
+@pytest.mark.unit
+def test_add_platform(free_stuff_mac_raw):
+    assert free_stuff_mac_raw.add_platform(Platform("Facebook"))

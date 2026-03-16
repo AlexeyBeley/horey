@@ -61,7 +61,7 @@ class AuctionAPI:
                     (provider.name,)
                 )
 
-    def provsion_db_providers_table(self):
+    def provision_db_providers_table(self):
         """
         Create table
 
@@ -221,7 +221,7 @@ class AuctionAPI:
         :return:
         """
 
-        self.provsion_db_providers_table()
+        self.provision_db_providers_table()
         self.provision_db_auction_events_table()
         self.provision_db_lots_table()
 

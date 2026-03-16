@@ -21,6 +21,16 @@ class FreeStuffAPIConfigurationPolicy(ConfigurationPolicy):
         self._horey_directory_path = None
         self._chromedriver_path = None
         self._chrome_path = None
+        self._db_file_path = None
+
+
+    @property
+    def db_file_path(self):
+        return self._db_file_path
+
+    @db_file_path.setter
+    def db_file_path(self, value: Path):
+        self._db_file_path = value
 
     @property
     def chromedriver_path(self):

@@ -245,6 +245,7 @@ class Kayesauction(Provider):
                 auction_event.name = self.selenium_api.get_element(By.CLASS_NAME, "auction-title").text
                 if auction_event.name:
                     break
+
                 time.sleep(0.1)
             else:
                 raise ValueError("Name")

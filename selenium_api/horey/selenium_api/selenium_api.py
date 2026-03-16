@@ -13,6 +13,8 @@ from selenium.webdriver.remote.webelement import WebElement
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import StaleElementReferenceException
+
 
 
 from horey.h_logger import get_logger
@@ -124,16 +126,30 @@ class SeleniumAPI:
 
     @staticmethod
     def disconnect():
-        SeleniumAPI.driver.quit()
-        logger.info("Disconnecting diver in SeleniumAPI")
-        SeleniumAPI.driver = None
+        if SeleniumAPI.driver is not None:
+            SeleniumAPI.driver.quit()
+            logger.info("Disconnecting diver in SeleniumAPI")
+            SeleniumAPI.driver = None
         try:
             SeleniumAPI.v_display.stop()
         except Exception:
             pass
 
     def get_element(self, by, value) -> WebElement:
-        return self.driver.find_element(by, value)
+        """
+        Reliably get element
+
+        :param by:
+        :param value:
+        :return:
+        """
+
+        for _ in range(20):
+            try:
+                return self.driver.find_element(by, value)
+            except StaleElementReferenceException:
+                time.sleep(1)
+        raise TimeoutError("Was not able to fetch element")
 
     def get_elements(self, by, value):
         """

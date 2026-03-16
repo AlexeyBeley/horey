@@ -14,6 +14,7 @@ from horey.common_utils.free_item import FreeItem
 logger = get_logger()
 
 class FacebookAPI:
+    NAME = "Facebook"
     def __init__(self, configuration: FacebookAPIConfigurationPolicy = None, selenium_api=None):
         self._selenium_api = selenium_api
         self.configuration = configuration
@@ -25,15 +26,6 @@ class FacebookAPI:
             # self._selenium_api.proxy = "85.208.108.43:10808"
         return self._selenium_api
 
-    def reload_elements(self):
-        """
-        Using dynamic loading
-        
-        :return: 
-        """
-        main = CommonUtils.load_object_from_module_raw("/Users/alexeybeley/git/horey/facebook_api/horey/facebook_api/dynamic.py", "main")
-        free_items = main(self.selenium_api)
-
     def main(self):
         count = 2
         free_items = []
@@ -42,7 +34,6 @@ class FacebookAPI:
                 self.selenium_api.scroll_to_bottom()
             except Exception as inst_error:
                 logger.exception(inst_error)
-                breakpoint()
             logger.info(f"Going to sleep {i}/{count}")
             time.sleep(2)
 
@@ -59,7 +50,7 @@ class FacebookAPI:
         return free_items
 
 
-    def get_free_items(self):
+    def get_free_items(self, address="winnipeg"):
         """
         Load all free items.
 
@@ -68,51 +59,17 @@ class FacebookAPI:
 
         self.selenium_api.connect()
         # address = "https://www.facebook.com/marketplace/winnipeg/free/?exact=false"
-        address = "https://www.facebook.com/marketplace/winnipeg/free?exact=false&radius_in_km=50"
+        url = f"https://www.facebook.com/marketplace/{address}/free?exact=false&radius_in_km=50"
 
-        self.selenium_api.get(address)
+        self.selenium_api.get(url)
         self.selenium_api.wait_for_page_load()
         self.close_popup()
         self.selenium_api.scroll_to_bottom()
-        ret = self.fetch_free_items_from_page()
-        logger.info(f"Total fetched free items from Facebook: {len(ret)}")
-        return ret
+        free_items = self.fetch_free_items_from_page(address)
+        logger.info(f"Total fetched free items from Facebook: {len(free_items)}")
+        return free_items
 
-    def load_free_logged_in(self):
-        """
-        Load free items.
-
-        :return:
-        """
-
-        self.selenium_api.connect()
-        #address = "https://www.facebook.com/marketplace/winnipeg/free/?exact=false"
-        address = "https://www.facebook.com/marketplace/winnipeg/free?exact=false&radius_in_km=20"
-        self.selenium_api.get(address)
-
-        self.selenium_api.wait_for_page_load()
-        login = False
-        breakpoint()
-        if login:
-            self.login()
-        self.reload_elements()
-        breakpoint()
-
-        breakpoint()
-        count = 6
-        for i in range(count):
-            self.selenium_api.scroll_to_bottom()
-            logger.info(f"Going to sleep {i}/{count}")
-            time.sleep(2)
-
-            item_elements = self.fetch_free_items_from_page()
-            if len(item_elements) > 230:
-                break
-
-        breakpoint()
-
-
-    def fetch_free_items_from_page(self):
+    def fetch_free_items_from_page(self, address):
         """
         Fetch elements
 
@@ -128,14 +85,14 @@ class FacebookAPI:
                     by_class[div.get_attribute("class")].append(div)
 
                 logger.info(f"Fetched divs classIds: {len(by_class)=}")
-                return self.get_free_items_from_elements_by_class_id(by_class)
+                return self.get_free_items_from_elements_by_class_id(by_class, address)
             except StaleElementReferenceException:
                 logger.error(f"StaleElementReferenceException. Going to sleep {i}/{count}")
             time.sleep(1)
 
         raise TimeoutError("Was not able to fetch free items")
 
-    def get_free_items_from_elements_by_class_id(self, by_class):
+    def get_free_items_from_elements_by_class_id(self, by_class, address):
         """
         Get item elements from class dict
 
@@ -149,29 +106,24 @@ class FacebookAPI:
             if len(values) > 100:
                 continue
             logger.info(f"Initializing item elements by class ID: {class_id}")
-            free_items = self.get_free_items_by_class_id(values)
+            free_items = self.get_free_items_by_class_id(values, address)
             logger.info(f"Initialized {len(free_items)=} free items ")
             if len(free_items) < 10:
                 continue
             candidates[class_id] = free_items
 
-        descriptions = []
-        breakpoint()
-        for candidate_class, items in candidates.items():
-            descriptions += [item.description for item in items]
-        sorted_descriptions = sorted(descriptions, key=len)
-        shortest_descriptions = sorted_descriptions[:5]
-        breakpoint()
+        clean_items = {}
         for candidate_class, items in candidates.items():
             for item in items:
-                if all(short_description in item.description for short_description in shortest_descriptions):
-                    print(item.description)
-                    print(item.url)
-                    print("*"*50)
+                if item.description.count("\n") > 20:
+                    continue
+                if item.url in clean_items:
+                    continue
+                clean_items[item.url] = item
+        return list(clean_items.values())
 
 
-
-    def get_free_items_by_class_id(self, elements):
+    def get_free_items_by_class_id(self, elements, address):
         """
         Magic happens here
 
@@ -188,6 +140,7 @@ class FacebookAPI:
                 continue
             if free_item.url in urls:
                 continue
+            free_item.address = address
             urls.append(free_item.url)
             lst_ret.append(free_item)
 
@@ -257,7 +210,6 @@ class FacebookAPI:
             if "Email or phone number" in form_element.text:
                 break
         else:
-            breakpoint()
             raise ValueError("Can not find login form")
 
         div_elements = form_element.find_elements(By.TAG_NAME, "div")
@@ -277,7 +229,6 @@ class FacebookAPI:
                     continue
                 break
         else:
-            breakpoint()
             raise ValueError("Can not find  user input")
 
         for div_user in div_elements:
@@ -296,7 +247,6 @@ class FacebookAPI:
                     continue
                 break
         else:
-            breakpoint()
             raise ValueError("Can not find  user input")
 
         for div in div_elements:
