@@ -310,4 +310,4 @@ def test_get_container_ids():
     @return:
     """
 
-    assert DockerAPI.get_container_ids(all_containers=True)
+    assert DockerAPI().get_container_ids(all_containers=True)
