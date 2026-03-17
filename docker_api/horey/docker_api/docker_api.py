@@ -868,6 +868,10 @@ class DockerAPI:
 
         if "days" in container["Status"]:
             container_seconds = int(container["Status"].split("days")[0].strip().split(" ")[-1])*24*60*60
+        elif "minutes" in container["Status"]:
+            breakpoint()
+            container_seconds = int(container["Status"].split("minutes")[0].strip().split(" ")[-1])*60
+
         else:
             raise ValueError(f"Unknown time format: {container['Status']}")
 
