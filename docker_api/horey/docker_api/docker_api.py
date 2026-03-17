@@ -798,6 +798,7 @@ class DockerAPI:
 
         to_delete_counter = 0
         deleted_counter = 0
+        breakpoint()
 
         for i, container in enumerate(containers):
             try:
