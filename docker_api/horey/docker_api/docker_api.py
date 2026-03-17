@@ -812,7 +812,7 @@ class DockerAPI:
                 breakpoint()
                 to_delete_counter += 1
                 logger.info(f"Removing {to_delete_counter}/{len(containers)} container: {container['ID']}")
-                self.delete_container_by_id_bash(container["ID"], force= True)
+                self.delete_container_bash(container, force= True)
                 deleted_counter += 1
             except Exception as inst_error:
                 DockerAPI.log_to_container_file(container_dir_name,
@@ -824,20 +824,31 @@ class DockerAPI:
         return True
 
     @staticmethod
-    def delete_container_by_id_bash(container_id: str, force: bool = False):
+    def delete_container_bash(container_dict: dict, force: bool = False):
         """
         Delete container by id.
 
-        :param container_id:
+        :param container_dict:
         :param force:
         :return:
         """
 
-        force_str = "--force" if force else ""
-        command = f"docker container rm {force_str} {container_id}"
+        if container_dict["State"] == "dead":
+            command = f"sudo ls /var/lib/docker/containers | grep {container_dict['ID']} | xargs sudo rm -rf "
+            validator = lambda response: container_dict["ID"].startswith(response["stdout"])
+        else:
+            force_str = "--force" if force else ""
+            command = f"docker container rm {force_str} {container_dict['ID']}"
+            validator = lambda response: container_dict["ID"].startswith(response["stdout"])
 
         def helper():
-            BashExecutor.run_bash(command)
+            breakpoint()
+            response = BashExecutor.run_bash(command)
+            assert validator(response)
+
+
+        helper()
+        breakpoint()
 
         thread = threading.Thread(
             target=helper
