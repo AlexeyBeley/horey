@@ -321,4 +321,4 @@ def test_prune_containers():
     @return:
     """
 
-    assert DockerAPI().prune_containers(time_limit=60, stopped=True)
+    assert DockerAPI().prune_containers(time_limit=60*5, stopped=True)
