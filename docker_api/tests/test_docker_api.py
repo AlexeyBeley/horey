@@ -303,22 +303,22 @@ def test_log_to_container_file_with_attrs():
 
 
 @pytest.mark.wip
-def test_get_container_ids():
+def test_get_containers_bash():
     """
     Test building image.
 
     @return:
     """
 
-    assert DockerAPI().get_container_ids(all_containers=True,  filters=["status=exited", "until=10m"])
+    assert DockerAPI().get_containers_bash(all_containers=True,  filters=["status=exited"])
 
 
 @pytest.mark.unit
-def test_prune_stopped_containers():
+def test_prune_containers():
     """
     Test building image.
 
     @return:
     """
 
-    assert DockerAPI().prune_stopped_containers(time_limit=60)
+    assert DockerAPI().prune_containers(time_limit=60)

@@ -511,15 +511,18 @@ class DockerAPI:
             breakpoint()
         except Exception as inst_error:
             if "No such container" in str(inst_error):
-                return self.get_container_ids_bash(all_containers=all_containers)
+                breakpoint()
+                return self.get_containers_bash(all_containers=all_containers)
             raise
 
     @staticmethod
-    def get_container_ids_bash(all_containers=False, filters=None):
+    def get_containers_bash(all_containers=False, filters=None):
         """
         Get all containers via bash.
 
         Example filters:
+        ! until is not working with 'ps'
+
         filters=["status=exited", "until=60m" ] -> becomes
         -> '--filter "status=exited" --filter "until=60m"'
 
@@ -527,15 +530,21 @@ class DockerAPI:
         :param all_containers:
         :return:
         """
-        breakpoint()
+
         all_containers_str = "" if not all_containers else " --all"
         if filters:
-            filters_str = "--filter ".join(filters)
+            filters_str = ' --filter "' + '" --filter "'.join(filters) + '"'
         else:
             filters_str = ""
-        command = f'docker ps -q{all_containers_str}{filters_str}'
-        response =   BashExecutor.run_bash()["stdout"]
-        return response.split("\n") if response else []
+        command = f'docker ps --format json {all_containers_str}{filters_str}'
+        response_str =   BashExecutor.run_bash(command)["stdout"]
+        ret_containers = []
+        for line in response_str.split("\n"):
+            if line:
+                response_dict = json.loads(line)
+                ret_containers.append(response_dict)
+        breakpoint()
+        return ret_containers
 
 
     def remove_image(self, image_id, force=True, wait_to_finish=20 * 60, childless=False):
@@ -768,7 +777,7 @@ class DockerAPI:
 
         return return_dict
 
-    def prune_stopped_containers(self, time_limit=60, container_log_attrs=None):
+    def prune_containers(self, time_limit=60, container_log_attrs=None):
         """
         Deleted old containers
 
@@ -781,15 +790,16 @@ class DockerAPI:
 
         start = perf_counter()
         try:
-            all_containers = self.get_container_ids_bash(all_containers=True, filters=["status=exited", f"until={time_limit}m"])
+            all_containers = self.get_containers_bash(all_containers=True, filters=["status=exited"])
         except Exception as inst_error:
             DockerAPI.log_to_container_file(container_dir_name, f"Pruning error: {repr(inst_error)}", attrs=container_log_attrs)
+            raise
 
         to_delete_counter = 0
         deleted_counter = 0
 
         time_limit = datetime.datetime.now() - datetime.timedelta(minutes=time_limit)
-        for i, container in enumerate(all_containers):
+        for i, container_id in enumerate(all_containers):
             logger.info(f"Checking {i}/{len(all_containers)} container: {container.id}")
             try:
                 if container.attrs["State"]["Status"].lower() == "running":
