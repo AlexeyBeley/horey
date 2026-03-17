@@ -837,7 +837,7 @@ class DockerAPI:
         )
 
         thread.start()
-        time.sleep(0.5)
+        time.sleep(0.1)
 
 
     @staticmethod
