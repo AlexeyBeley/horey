@@ -543,7 +543,6 @@ class DockerAPI:
             if line:
                 response_dict = json.loads(line)
                 ret_containers.append(response_dict)
-        breakpoint()
         return ret_containers
 
 
@@ -777,20 +776,22 @@ class DockerAPI:
 
         return return_dict
 
-    def prune_containers(self, time_limit=60, container_log_attrs=None):
+    def prune_containers(self, time_limit=60*60, container_log_attrs=None, dead=True):
         """
         Deleted old containers
 
+        :param dead:
         :param container_log_attrs:
-        :param time_limit:
+        :param time_limit: default is an hour
         :return:
         """
 
         container_dir_name = "pruner"
 
         start = perf_counter()
+        filters = ["status=exited"] if dead else None
         try:
-            all_containers = self.get_containers_bash(all_containers=True, filters=["status=exited"])
+            containers = self.get_containers_bash(all_containers=True, filters=filters)
         except Exception as inst_error:
             DockerAPI.log_to_container_file(container_dir_name, f"Pruning error: {repr(inst_error)}", attrs=container_log_attrs)
             raise
@@ -798,20 +799,15 @@ class DockerAPI:
         to_delete_counter = 0
         deleted_counter = 0
 
-        time_limit = datetime.datetime.now() - datetime.timedelta(minutes=time_limit)
-        for i, container_id in enumerate(all_containers):
-            logger.info(f"Checking {i}/{len(all_containers)} container: {container.id}")
+        for i, container in enumerate(containers):
             try:
-                if container.attrs["State"]["Status"].lower() == "running":
+                if self.prune_container_check_time_limit(container, time_limit):
                     continue
-                str_finished_date = container.attrs["State"]["FinishedAt"]
-                str_finished_date = str_finished_date[:str_finished_date.rfind(".")]
-                time_finished = datetime.datetime.strptime(str_finished_date, "%Y-%m-%dT%H:%M:%S")
-                if time_limit > time_finished:
-                    to_delete_counter += 1
-                    logger.info(f"Removing container: {container.id}")
-                    container.remove(force=True)
-                    deleted_counter += 1
+                breakpoint()
+                to_delete_counter += 1
+                logger.info(f"Removing {to_delete_counter}/{len(containers)} container: {container['ID']}")
+                self.delete_container_by_id_bash(container["ID"], force= True)
+                deleted_counter += 1
             except Exception as inst_error:
                 DockerAPI.log_to_container_file(container_dir_name,
                                                 f"Pruning error deleting container {container.id}: {repr(inst_error)}", attrs=container_log_attrs)
@@ -820,6 +816,50 @@ class DockerAPI:
             f"Finished deleting {deleted_counter=} {to_delete_counter=} containers after {perf_counter() - start}")
 
         return True
+
+    @staticmethod
+    def delete_container_by_id_bash(container_id: str, force: bool = False):
+        """
+        Delete container by id.
+
+        :param container_id:
+        :param force:
+        :return:
+        """
+
+        force_str = "--force" if force else ""
+        command = f"docker container rm {force_str} {container_id}"
+
+        def helper():
+            BashExecutor.run_bash(command)
+
+        thread = threading.Thread(
+            target=helper
+        )
+
+        thread.start()
+        time.sleep(0.5)
+
+
+    @staticmethod
+    def prune_container_check_time_limit(container, time_limit_seconds) -> bool:
+        """
+        Check if container is newer than time_limit
+        Return True if the container is newer than time_limit.
+
+        'Exited (127) 4 days ago'
+
+        :param container:
+        :param time_limit_seconds:
+        :return:
+        """
+
+        if "days" in container["Status"]:
+            container_seconds = int(container["Status"].split("days")[0].strip().split(" ")[-1])*24*60*60
+        else:
+            raise ValueError(f"Unknown time format: {container['Status']}")
+
+        return container_seconds < time_limit_seconds
 
     @staticmethod
     def log_to_container_file(dir_name, log_line, attrs=None):

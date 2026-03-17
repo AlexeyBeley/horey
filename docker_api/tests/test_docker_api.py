@@ -302,7 +302,7 @@ def test_log_to_container_file_with_attrs():
     assert DockerAPI.log_to_container_file("test", "Pruning error: blabla", attrs={"tag": "test_tag"})
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_get_containers_bash():
     """
     Test building image.
@@ -313,7 +313,7 @@ def test_get_containers_bash():
     assert DockerAPI().get_containers_bash(all_containers=True,  filters=["status=exited"])
 
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_prune_containers():
     """
     Test building image.
@@ -321,4 +321,4 @@ def test_prune_containers():
     @return:
     """
 
-    assert DockerAPI().prune_containers(time_limit=60)
+    assert DockerAPI().prune_containers(time_limit=60, dead=True)
