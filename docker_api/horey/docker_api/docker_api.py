@@ -866,16 +866,51 @@ class DockerAPI:
         :return:
         """
 
+        container_seconds = DockerAPI.get_container_age_bash(container["ID"])
+        breakpoint()
+
+
         if "days" in container["Status"]:
             container_seconds = int(container["Status"].split("days")[0].strip().split(" ")[-1])*24*60*60
         elif "minutes" in container["Status"]:
             breakpoint()
             container_seconds = int(container["Status"].split("minutes")[0].strip().split(" ")[-1])*60
-
+        elif "About a minute ago" in container["Status"]:
+            if time_limit_seconds  > 60:
+                container_seconds = 60
+            else:
+                container_seconds = DockerAPI.get_container_age_bash(container["ID"])
+            breakpoint()
         else:
-            raise ValueError(f"Unknown time format: {container['Status']}")
+            logger.error(f"Unknown container status format: {container['Status']}")
+            container_seconds = DockerAPI.get_container_age_bash(container["ID"])
 
         return container_seconds < time_limit_seconds
+
+    @staticmethod
+    def get_container_age_bash(container_id:str) -> int:
+        """
+        Return seconds.
+
+        :param container_id:
+        :return:
+        """
+
+        command = f"docker container inspect --format json {container_id}"
+        response = BashExecutor.run_bash(command)
+        containers = json.loads(response["stdout"])
+        if len(containers) != 1:
+            raise ValueError(f"Expected one container: {containers}")
+        container = containers[0]
+        try:
+            # 2026-03-13T14:10:38.199877338Z
+            finished = container["State"].get("FinishedAt").split(".")[0]
+            container_datetime = datetime.datetime.strptime(finished, "%Y-%m-%dT%H:%M:%S")
+        except Exception:
+            breakpoint()
+        now_aware_utc = datetime.datetime.now()
+        return int((now_aware_utc - container_datetime).total_seconds())
+
 
     @staticmethod
     def log_to_container_file(dir_name, log_line, attrs=None):
