@@ -789,9 +789,8 @@ class DockerAPI:
         container_dir_name = "pruner"
 
         start = perf_counter()
-        filters = ["status=exited"] if dead else None
         try:
-            containers = self.get_containers_bash(all_containers=True, filters=filters)
+            containers = self.get_containers_bash(all_containers=True)
         except Exception as inst_error:
             DockerAPI.log_to_container_file(container_dir_name, f"Pruning error: {repr(inst_error)}", attrs=container_log_attrs)
             raise
