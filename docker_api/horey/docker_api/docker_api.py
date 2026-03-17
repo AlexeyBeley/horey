@@ -803,14 +803,13 @@ class DockerAPI:
             try:
                 if self.prune_container_check_time_limit(container, time_limit):
                     continue
-                breakpoint()
                 to_delete_counter += 1
                 logger.info(f"Removing {to_delete_counter}/{len(containers)} container: {container['ID']}")
                 self.delete_container_by_id_bash(container["ID"], force= True)
                 deleted_counter += 1
             except Exception as inst_error:
                 DockerAPI.log_to_container_file(container_dir_name,
-                                                f"Pruning error deleting container {container.id}: {repr(inst_error)}", attrs=container_log_attrs)
+                                                f"Pruning error deleting container {container['ID']}: {repr(inst_error)}", attrs=container_log_attrs)
 
         logger.info(
             f"Finished deleting {deleted_counter=} {to_delete_counter=} containers after {perf_counter() - start}")
