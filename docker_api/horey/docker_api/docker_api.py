@@ -776,7 +776,7 @@ class DockerAPI:
 
         return return_dict
 
-    def prune_containers(self, time_limit=60*60, container_log_attrs=None, dead=True):
+    def prune_containers(self, time_limit=60*60, container_log_attrs=None, stopped=True):
         """
         Deleted old containers
 
@@ -801,7 +801,9 @@ class DockerAPI:
         for i, container in enumerate(containers):
             try:
                 delete = False
-                if container["State"] == "dead":
+                if stopped and container["State"] == "running":
+                    delete = False
+                elif container["State"] == "dead":
                     delete = True
                 elif not self.check_container_newer_then(container, time_limit):
                     delete = True
@@ -896,12 +898,13 @@ class DockerAPI:
         if len(containers) != 1:
             raise ValueError(f"Expected one container: {containers}")
         container = containers[0]
-        try:
+        if  container["State"]["Running"]:
+            started = container["State"].get("StartedAt").split(".")[0]
+            container_datetime = datetime.datetime.strptime(started, "%Y-%m-%dT%H:%M:%S")
+        else:
             # 2026-03-13T14:10:38.199877338Z
             finished = container["State"].get("FinishedAt").split(".")[0]
             container_datetime = datetime.datetime.strptime(finished, "%Y-%m-%dT%H:%M:%S")
-        except Exception:
-            breakpoint()
         now_aware_utc = datetime.datetime.now()
         return int((now_aware_utc - container_datetime).total_seconds())
 
