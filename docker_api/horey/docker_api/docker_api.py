@@ -797,12 +797,19 @@ class DockerAPI:
 
         to_delete_counter = 0
         deleted_counter = 0
-        breakpoint()
 
         for i, container in enumerate(containers):
             try:
-                if self.prune_container_check_time_limit(container, time_limit):
+                delete = False
+                if container["State"] == "dead":
+                    delete = True
+                elif not self.check_container_newer_then(container, time_limit):
+                    delete = True
+
+                if not delete:
                     continue
+
+                breakpoint()
                 to_delete_counter += 1
                 logger.info(f"Removing {to_delete_counter}/{len(containers)} container: {container['ID']}")
                 self.delete_container_by_id_bash(container["ID"], force= True)
@@ -841,7 +848,7 @@ class DockerAPI:
 
 
     @staticmethod
-    def prune_container_check_time_limit(container, time_limit_seconds) -> bool:
+    def check_container_newer_then(container, time_limit_seconds) -> bool:
         """
         Check if container is newer than time_limit
         Return True if the container is newer than time_limit.
