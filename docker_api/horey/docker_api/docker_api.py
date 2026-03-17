@@ -841,13 +841,9 @@ class DockerAPI:
             validator = lambda response: container_dict["ID"].startswith(response["stdout"])
 
         def helper():
-            breakpoint()
             response = BashExecutor.run_bash(command)
             assert validator(response)
 
-
-        helper()
-        breakpoint()
 
         thread = threading.Thread(
             target=helper
