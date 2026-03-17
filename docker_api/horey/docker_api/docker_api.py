@@ -866,21 +866,15 @@ class DockerAPI:
         :return:
         """
 
-        container_seconds = DockerAPI.get_container_age_bash(container["ID"])
-        breakpoint()
-
-
         if "days" in container["Status"]:
             container_seconds = int(container["Status"].split("days")[0].strip().split(" ")[-1])*24*60*60
         elif "minutes" in container["Status"]:
-            breakpoint()
             container_seconds = int(container["Status"].split("minutes")[0].strip().split(" ")[-1])*60
         elif "About a minute ago" in container["Status"]:
             if time_limit_seconds  > 60:
                 container_seconds = 60
             else:
                 container_seconds = DockerAPI.get_container_age_bash(container["ID"])
-            breakpoint()
         else:
             logger.error(f"Unknown container status format: {container['Status']}")
             container_seconds = DockerAPI.get_container_age_bash(container["ID"])
