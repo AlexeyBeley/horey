@@ -496,25 +496,6 @@ class DockerAPI:
         ]
         return ret
 
-    def get_container_ids(self, all_containers=False):
-        """
-        Get all containers.
-
-        @param all_containers:
-        @param image_id:
-        @return:
-        """
-
-        breakpoint()
-        try:
-            ret = self.client.containers.list(all=all_containers)
-            breakpoint()
-        except Exception as inst_error:
-            if "No such container" in str(inst_error):
-                breakpoint()
-                return self.get_containers_bash(all_containers=all_containers)
-            raise
-
     @staticmethod
     def get_containers_bash(all_containers=False, filters=None):
         """
@@ -548,13 +529,13 @@ class DockerAPI:
 
     def remove_image(self, image_id, force=True, wait_to_finish=20 * 60, childless=False):
         """
-        Remove image.
+        Remove image and all its children.
 
-        @param image_id:
-        @param force:
-        @param wait_to_finish:
-        @return:
-        :param childless: Do not look for children - helpful when there are many images.
+        :param image_id:
+        :param force:
+        :param wait_to_finish:
+        :param childless:
+        :return:
         """
 
         logger.info(f"Start removing image: {image_id}")
@@ -798,7 +779,7 @@ class DockerAPI:
         to_delete_counter = 0
         deleted_counter = 0
 
-        for i, container in enumerate(containers):
+        for container in containers:
             try:
                 delete = False
                 if stopped and container["State"] == "running":
@@ -836,15 +817,16 @@ class DockerAPI:
 
         if container_dict["State"] == "dead":
             command = f"sudo ls /var/lib/docker/containers | grep {container_dict['ID']} | xargs sudo rm -rf "
-            validator = lambda response: response["stdout"] == response["stderr"] == ""
+            def validator(response):
+                assert response["stdout"] == response["stderr"] == ""
         else:
-            force_str = "--force" if force else ""
-            command = f"docker container rm {force_str} {container_dict['ID']}"
-            validator = lambda response: container_dict["ID"].startswith(response["stdout"])
+            command = f"docker container rm {'--force' if force else ''} {container_dict['ID']}"
+            def validator(response):
+                assert container_dict["ID"].startswith(response["stdout"])
 
         def helper():
             response = BashExecutor.run_bash(command)
-            assert validator(response)
+            validator(response)
 
 
         thread = threading.Thread(
