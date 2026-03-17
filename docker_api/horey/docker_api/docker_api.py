@@ -809,7 +809,6 @@ class DockerAPI:
                 if not delete:
                     continue
 
-                breakpoint()
                 to_delete_counter += 1
                 logger.info(f"Removing {to_delete_counter}/{len(containers)} container: {container['ID']}")
                 self.delete_container_bash(container, force= True)
@@ -835,7 +834,7 @@ class DockerAPI:
 
         if container_dict["State"] == "dead":
             command = f"sudo ls /var/lib/docker/containers | grep {container_dict['ID']} | xargs sudo rm -rf "
-            validator = lambda response: container_dict["ID"].startswith(response["stdout"])
+            validator = lambda response: response["stdout"] == response["stderr"] == ""
         else:
             force_str = "--force" if force else ""
             command = f"docker container rm {force_str} {container_dict['ID']}"
