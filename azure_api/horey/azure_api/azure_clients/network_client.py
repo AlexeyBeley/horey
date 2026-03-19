@@ -12,6 +12,7 @@ from horey.azure_api.azure_service_entities.network_security_group import (
     NetworkSecurityGroup,
 )
 from horey.azure_api.azure_service_entities.virtual_network import VirtualNetwork
+from horey.azure_api.azure_service_entities.route_table import RouteTable
 
 from horey.h_logger import get_logger
 
@@ -273,3 +274,35 @@ class NetworkClient(AzureClient):
             VirtualNetwork(obj.as_dict())
             for obj in self.client.virtual_networks.list(resource_group.name)
         ]
+
+    def get_all_route_tables(self, resource_group_name=None):
+        """
+        Get route tables
+        :param resource_group_name:
+        :return:
+        """
+
+        if resource_group_name:
+            route_tables = self.client.route_tables.list(resource_group_name)
+        else:
+            route_tables = self.client.route_tables.list_all()
+
+        return [
+            RouteTable(obj.as_dict())
+            for obj in route_tables
+        ]
+
+    def provision_route_table(self, route_table: RouteTable):
+        """
+        Provision route table
+        :param route_table:
+        :return:
+        """
+
+        response = self.client.route_tables.begin_create_or_update(
+            *route_table.generate_create_request()
+        )
+        response.wait()
+        ret =  response.result()
+        return route_table.update_from_raw_response(ret.as_dict())
+
