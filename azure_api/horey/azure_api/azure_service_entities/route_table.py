@@ -1,10 +1,15 @@
-import pdb
-import copy
-
+"""
+Route table module
+"""
 from horey.azure_api.azure_service_entities.azure_object import AzureObject
 
 
 class RouteTable(AzureObject):
+    """
+    Class to handle route tables
+
+    """
+
     def __init__(self, dict_src, from_cache=False):
         self.name = None
         self.type = None
@@ -56,14 +61,6 @@ class RouteTable(AzureObject):
 
         :return:
         """
-
-        subnets = []
-        for subnet in self.subnets:
-            subnet_copy = copy.deepcopy(subnet)
-            subnet_copy["address_prefix"] = subnet_copy[
-                "address_prefix"
-            ].str_address_slash_short_mask()
-            subnets.append(subnet_copy)
 
         ret = [
             self.resource_group_name,
