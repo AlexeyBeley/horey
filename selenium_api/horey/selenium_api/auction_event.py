@@ -119,6 +119,20 @@ class AuctionEvent:
             if lot.current_max is None:
                 breakpoint()
 
+    def init_lot_default_information(self, lot):
+        """
+        Init default lots default values.
+
+        :return:
+        """
+
+        lot.auction_event_id = self.id
+        lot.init_province_and_interested(self.provinces)
+        if not lot.province:
+            raise RuntimeError("Was not able to init")
+        if lot.current_max is None:
+            breakpoint()
+
     def print_interesting_information(self):
         """
         Magic

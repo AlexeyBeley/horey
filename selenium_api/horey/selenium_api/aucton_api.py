@@ -560,6 +560,17 @@ class AuctionAPI:
         self.update_info_auction_event_async(auction_event_id)
 
     def update_info_auction_event_async(self, auction_event_id):
+        """
+        Update info for auction event.
+
+        :param auction_event_id:
+        :return:
+        """
+
+        try:
+            return self.update_auction_event_lots_ng(auction_event_id)
+        except NotImplementedError:
+            logger.warning(f"Not implemented for {auction_event_id}")
         logger.info(f"Started update info for auction_event_id {auction_event_id}")
 
         auction_event = self.init_auction_event_from_db(auction_event_id)
@@ -585,6 +596,44 @@ class AuctionAPI:
             for lot_url, lot in old_lots_by_url.items():
                 if lot_url not in new_lots_by_url:
                     self.delete_db_lot(conn, cursor, lot)
+
+        format_string = "%Y-%m-%d %H:%M:%S.%f"
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+
+        self.update_auction_event(auction_event.id, last_update_time=now.strftime(format_string))
+
+    def update_auction_event_lots_ng(self, auction_event_id):
+        """
+        Yield lot by lot.
+
+        :param auction_event_id:
+        :return:
+        """
+        logger.info(f"Started update info for auction_event_id {auction_event_id}")
+
+        auction_event = self.init_auction_event_from_db(auction_event_id)
+        self.init_providers_from_db()
+
+        for provider in self.providers:
+            if auction_event.provider_id == provider.id:
+                break
+        else:
+            raise RuntimeError(f"Was not able to find {auction_event.provider_id=} in the DB")
+
+        logger.info(f"Updating {auction_event_id=} {auction_event.provider_id=}")
+
+        old_lots_by_url = {lot.url: lot for lot in auction_event.lots}
+        new_lots_by_url = {}
+        for new_lot in provider.yield_auction_event_lots(auction_event):
+            new_lots_by_url[new_lot.url] = new_lot
+            with sqlite3.connect(self.db_file_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("PRAGMA foreign_keys = ON;")
+                self.upsert_db_lot(conn, cursor, new_lot)
+
+        for lot_url, lot in old_lots_by_url.items():
+            if lot_url not in new_lots_by_url:
+                self.delete_db_lot(conn, cursor, lot)
 
         format_string = "%Y-%m-%d %H:%M:%S.%f"
         now = datetime.datetime.now(tz=datetime.timezone.utc)

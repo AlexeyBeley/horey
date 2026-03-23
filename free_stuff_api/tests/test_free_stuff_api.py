@@ -56,10 +56,10 @@ def test_add_free_item_to_db():
 def test_notify_about_new_item():
 
     free_stuff_api = FreeStuffAPI(config)
-    free_item = FreeItem(None, None)
-    free_item.__dict__ = {'name': 'Steinbach, MB',
-                          'url': 'https://www.facebook.com/marketplace/item/1415801513621679/?ref=category_feed&referral_code=null&referral_story_type=listing&tracking=%7B%22qid%22%3A%22-7378121041319857739%22%2C%22mf_story_key%22%3A%2225215904178083416%22%2C%22commerce_rank_obj%22%3A%22%7B%5C%22target_id%5C%22%3A25215904178083416%2C%5C%22target_type%5C%22%3A0%2C%5C%22primary_position%5C%22%3A6%2C%5C%22ranking_signature%5C%22%3A1826639652643357917%2C%5C%22ranking_request_id%5C%22%3A152511885699243976%2C%5C%22commerce_channel%5C%22%3A504%2C%5C%22value%5C%22%3A0.00053615351725688%2C%5C%22candidate_retrieval_source_map%5C%22%3A%7B%5C%2225215904178083416%5C%22%3A3003%7D%7D%22%7D&__tn__=!%3AD', 'image_url': 'https://scontent-ord5-3.xx.fbcdn.net/v/t39.84726-6/637614859_1302615378293184_5630242580355385849_n.jpg?stp=c308.0.540.540a_dst-jpg_p180x540_tt6&_nc_cat=106&ccb=1-7&_nc_sid=92e707&_nc_ohc=oNaNzWhSEmwQ7kNvwGsgT3J&_nc_oc=AdnPGHJKtgdluFs_5WVCJKDuVrh9RVlfg-q93nlwa67InF9YDB9_ESfXbih8jjhBLzc&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=W_UUkKBmurFjuMWxhs-0lQ&oh=00_Afv_vkhSdQq4qHNQ8lpEB0rzqvVjt9DKgoKVlFCbmB4FWw&oe=699F8BF4',
-                          'description': 'Steinbach, MB\nQueen frame'}
+    url = 'https://www.facebook.com/marketplace/item/951081683937401/?ref=category_feed&referral_code=null&referral_story_type=listing&tracking=%7B%22qid%22%3A%22-7208799824235551155%22%2C%22mf_story_key%22%3A%2226591833053762219%22%2C%22commerce_rank_obj%22%3A%22%7B%5C%22target_id%5C%22%3A26591833053762219%2C%5C%22target_type%5C%22%3A0%2C%5C%22primary_position%5C%22%3A36%2C%5C%22ranking_signature%5C%22%3A5258348999073026090%2C%5C%22ranking_request_id%5C%22%3A907753257306275608%2C%5C%22commerce_channel%5C%22%3A504%2C%5C%22value%5C%22%3A0.010212191960216%2C%5C%22candidate_retrieval_source_map%5C%22%3A%7B%5C%2226591833053762219%5C%22%3A3001%7D%7D%22%7D&__tn__=!%3AD'
+    image_url = 'https://scontent-ord5-2.xx.fbcdn.net/v/t39.84726-6/655689552_2096376911202768_5175015685651605039_n.jpg?stp=c0.87.526.526a_dst-jpg_p526x395_tt6&_nc_cat=103&ccb=1-7&_nc_sid=92e707&_nc_ohc=ohuQ_BIylTsQ7kNvwE9l7n4&_nc_oc=Adp85U_yKavgCJ8TR5m_8I_jgBGXxKD41x0i08zHAW6fA0gwl0WA7K4HP2UwmrOfsyI&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=Upe7bcFcJ5AzRRVLGeyEOQ&_nc_ss=7a30f&oh=00_AfwHui_aKVKaDF6THy2XB4Kr9oj70oOUdXlSkDgcufoIeg&oe=69C5136E'
+    description = "test description"
+    free_item = FreeItem("test", url, image_url=image_url, description=description)
     assert free_stuff_api.notify_about_new_item(free_item)
 
 @pytest.mark.unit
@@ -73,6 +73,20 @@ def test_update():
     free_stuff_api = FreeStuffAPI(config)
     assert free_stuff_api.update()
 
+
+@pytest.mark.unit
+def test_provision_db(free_stuff_mac_raw):
+    assert free_stuff_mac_raw.provision_db()
+
+@pytest.mark.unit
+def test_add_platform(free_stuff_mac_raw):
+    assert free_stuff_mac_raw.add_platform(Platform(None,"Facebook"))
+
+@pytest.mark.unit
+def test_delete_platform_items(free_stuff_mac_raw):
+    assert free_stuff_mac_raw.delete_platform_items(free_stuff_mac_raw.platforms[0])
+
+
 @pytest.mark.wip
 def test_main_free_stuff_mac_raw(free_stuff_mac_raw):
     assert free_stuff_mac_raw.main()
@@ -85,10 +99,4 @@ def test_main_free_stuff_linux_amd_docker(linux_amd_docker):
 def test_main_free_stuff_linux_arm_docker(linux_arm_docker):
     assert linux_arm_docker.main()
 
-@pytest.mark.unit
-def test_provision_db(free_stuff_mac_raw):
-    assert free_stuff_mac_raw.provision_db()
 
-@pytest.mark.unit
-def test_add_platform(free_stuff_mac_raw):
-    assert free_stuff_mac_raw.add_platform(Platform("Facebook"))

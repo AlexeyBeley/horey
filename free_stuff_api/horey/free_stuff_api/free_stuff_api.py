@@ -25,17 +25,24 @@ class FreeStuffAPI:
         self.configuration = configuration
         self.selenium_api = SeleniumAPI(chromedriver_path= self.configuration.chromedriver_path,
                                                                    chrome_path=self.configuration.chrome_path)
-        self.platforms = None
-        self.init_platforms()
+        self._platforms = None
         self._db_api = None
         self._environment_api = None
         self._aws_lambda_api = None
+
+    @property
+    def platforms(self):
+        if self._platforms is None:
+            self.init_platforms()
+        return self._platforms
 
     def init_platforms(self):
         """
         Init platforms from DB
         :return:
         """
+        if self._platforms is None:
+            self._platforms = []
 
         platform_apis = [FacebookAPI(selenium_api=self.selenium_api)]
 
@@ -49,9 +56,8 @@ class FreeStuffAPI:
                     if platform_api.NAME == platform_name:
                         platform = Platform(platform_id, platform_name, api=platform_api)
                         self.init_platform_free_items(platform)
-                        if self.platforms is None:
-                            self.platforms = []
-                        self.platforms.append(platform)
+
+                        self._platforms.append(platform)
                         break
 
     def init_platform_free_items(self, platform: Platform):
@@ -61,14 +67,15 @@ class FreeStuffAPI:
         :return:
         """
 
+        time_limit = (datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(weeks=1)).timestamp()
         with sqlite3.connect(self.configuration.db_file_path) as conn:
             cursor = conn.cursor()
-            response = cursor.execute("select * from tbl_free_items where platform_id=?", (platform.id, ))
+            response = cursor.execute("select * from tbl_free_items where platform_id=? and ingestion_time>?", (platform.id, time_limit))
             lines = response.fetchall()
-            platform.free_items = {}
+            platform.free_items = []
             for line in lines:
                 (
-                    _,
+                    _id,
                     _,
                     free_item_name,
                     free_item_description,
@@ -79,8 +86,8 @@ class FreeStuffAPI:
                 ) = line
 
                 ingestion_time = datetime.datetime.fromtimestamp(ingestion_time, tz=datetime.timezone.utc)
-                free_item = FreeItem(free_item_name, free_item_url, image_url=free_item_image_url, description=free_item_description,  address=free_item_address, ingestion_time=ingestion_time)
-                platform.free_items[free_item.url] = free_item
+                free_item = FreeItem(free_item_name, free_item_url, image_url=free_item_image_url, description=free_item_description,  address=free_item_address, ingestion_time=ingestion_time, _id=_id)
+                platform.free_items.append(free_item)
 
     @property
     def environment_api(self):
@@ -276,7 +283,7 @@ class FreeStuffAPI:
         # self.db_api.dispose_dynamo_table(self.configuration.dynamo_table_name)
         self.aws_lambda_api.dispose_docker_lambda()
 
-    def add_free_item_to_db(self, platform, free_item: FreeItem):
+    def add_free_item_to_db(self, platform: Platform, free_item: FreeItem):
         """
         Update or insert free item.
 
@@ -284,11 +291,12 @@ class FreeStuffAPI:
         :param free_item:
         :return:
         """
-        if free_item.url in platform.free_items:
-            logger.info(f"Skipping already known item: {free_item.url}")
-            return False
-        breakpoint()
-        format_string = "%Y-%m-%d %H:%M:%S.%f"
+
+        for known_free_item in platform.free_items:
+            if known_free_item.name == free_item.name:
+                logger.info(f"Skipping already known item: {free_item.url}")
+                return False
+        ingestion_time = datetime.datetime.now(tz=datetime.timezone.utc).timestamp()
 
         sql_insert = """
             INSERT INTO tbl_free_items 
@@ -301,8 +309,7 @@ class FreeStuffAPI:
             cursor.execute("PRAGMA foreign_keys = ON;")
 
             base_tuple = free_item.generate_db_tuple()
-            data_tuple = (platform.id,) + base_tuple + (str(datetime.datetime.now(tz=datetime.timezone.utc).timestamp()),)
-            breakpoint()
+            data_tuple = (platform.id,) + base_tuple + (ingestion_time,)
             try:
                 cursor.execute(sql_insert, data_tuple)
                 conn.commit()
@@ -336,7 +343,6 @@ class FreeStuffAPI:
 
         :return:
         """
-
         with sqlite3.connect(self.configuration.db_file_path) as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -367,7 +373,7 @@ class FreeStuffAPI:
                     url TEXT NOT NULL UNIQUE,
                     image_url TEXT NOT NULL UNIQUE,
                     address TEXT NOT NULL,
-                    ingestion_time TEXT,
+                    ingestion_time INTEGER
                 )
             ''')
             conn.commit()  # Commit changes to the database
@@ -464,3 +470,17 @@ class FreeStuffAPI:
             except requests.exceptions.RequestException as e:
                 logger.exception(e)
                 return False
+
+    def delete_platform_items(self, platform: Platform):
+        """
+        Delete all items of the platform from db.
+
+        :param platform:
+        :return:
+        """
+
+        delete_sql = "DELETE FROM tbl_free_items WHERE platform_id = ?"
+        with sqlite3.connect(self.configuration.db_file_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(delete_sql, [platform.id])
+            conn.commit()

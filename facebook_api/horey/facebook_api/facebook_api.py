@@ -170,21 +170,47 @@ class FacebookAPI:
             url = item_href.get_attribute("href")
 
 
-        unique_lines = {line for text_block in item_text_blocks for line in text_block.text.split("\n")}
+        unique_lines = []
+        for text_block in item_text_blocks:
+            for line in text_block.text.split("\n"):
+                if not line:
+                    continue
+                if line not in unique_lines:
+                    unique_lines.append(line)
+
+        if not unique_lines or unique_lines == [""]:
+            return None
+
         lines = []
+        name = None
         for line in unique_lines:
             if not line:
                 continue
             if line.replace("!", "").lower() == "free":
                 continue
+
+
             lines.append(line)
+            if name:
+                continue
+
+            clean_line = line.strip().lower()
+            cs_line = clean_line.split(",")
+            if len(cs_line)==2 and cs_line[-1].strip() == "mb":
+                continue
+            if clean_line.replace("ca", "").replace("$", "").isdigit():
+                continue
+            name = line
+        if not name:
+            breakpoint()
+        name = name or "Unknown name"
 
         description = "\n".join(lines)
-        return FreeItem("Facebook", url, image_url=image_url, description=description)
+        return FreeItem(name, url, image_url=image_url, description=description)
 
     def close_popup(self):
         """
-        Close the popup that asks to login
+        Close the popup that asks to log in
 
         :return:
         """

@@ -85,3 +85,8 @@ def test_delete_providers_auction_events():
 @pytest.mark.unit
 def test_generate_auction_event_reports():
     auction_api.generate_auction_event_reports()
+
+@pytest.mark.unit
+def test_update_auction_event_lots_ng():
+    auction_api.update_auction_event_lots_ng(369)
+

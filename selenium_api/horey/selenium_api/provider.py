@@ -6,13 +6,13 @@ from horey.selenium_api.auction_event import AuctionEvent
 from horey.selenium_api.lot import Lot
 from horey.h_logger import get_logger
 
-
 logger = get_logger()
 
 
 class Provider:
     _selenium_api = None
-    MONTH_BY_NAME = {"january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "october": 10, "november": 11, " nov ": 11, "december": 12, }
+    MONTH_BY_NAME = {"january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "october": 10, "november": 11,
+                     " nov ": 11, "december": 12, }
 
     def __init__(self):
         self.name = None
@@ -114,29 +114,41 @@ class Provider:
         """
 
         for lot in lots:
-            if lot.description is None:
-                breakpoint()
-            if lot.description is None:
-                breakpoint()
-                raise NotImplementedError("lot.description = lot.raw_text or self.name")
+            self.validate_lot(lot)
 
-            if not isinstance(lot.province, str) or lot.province.count(",") != 0:
-                breakpoint()
-            if not isinstance(lot.province, str) or lot.province.count(",") != 0:
-                breakpoint()
-                raise NotImplementedError("lot.province")
+    def validate_lot(self, lot: Lot):
+        """
+        Validate single lot data.
 
-            if not isinstance(lot.name, str):
-                breakpoint()
-            if not isinstance(lot.name, str):
-                breakpoint()
-                raise NotImplementedError("lot.name")
+        :param lot:
+        :return:
 
-            if not lot.current_max and not lot.starting_bid:
-                breakpoint()
-            if not lot.current_max and not lot.starting_bid:
-                breakpoint()
-                raise NotImplementedError("lot.current_max lot.starting_bid")
+        """
+
+        if lot.description is None:
+            breakpoint()
+        if lot.description is None:
+            breakpoint()
+            raise NotImplementedError("lot.description = lot.raw_text or self.name")
+
+        if not isinstance(lot.province, str) or lot.province.count(",") != 0:
+            breakpoint()
+        if not isinstance(lot.province, str) or lot.province.count(",") != 0:
+            breakpoint()
+            raise NotImplementedError("lot.province")
+
+        if not isinstance(lot.name, str):
+            breakpoint()
+        if not isinstance(lot.name, str):
+            breakpoint()
+            raise NotImplementedError("lot.name")
+
+        if not lot.current_max and not lot.starting_bid:
+            breakpoint()
+        if not lot.current_max and not lot.starting_bid:
+            breakpoint()
+            raise NotImplementedError("lot.current_max lot.starting_bid")
+
 
     def load_auction_event_lots(self, _):
         """
@@ -146,6 +158,7 @@ class Provider:
         :return:
         """
         raise NotImplementedError()
+
 
     def init_auction_events(self, known_auction_events_by_url):
         """
@@ -159,6 +172,7 @@ class Provider:
             self.validate_auction_event(auction_event)
         return auction_events
 
+
     def load_auction_events(self):
         """
         Per provider.
@@ -167,6 +181,7 @@ class Provider:
         """
 
         raise NotImplementedError()
+
 
     def validate_auction_event(self, auction_event: AuctionEvent):
         """
@@ -188,3 +203,55 @@ class Provider:
             breakpoint()
             raise NotImplementedError("auction_event.province")
 
+
+    def yield_auction_event_lots(self, auction_event: AuctionEvent):
+        """
+        Init from Web.
+
+        :param auction_event:
+        :return:
+        """
+
+        logger.info(f"Starting initializing '{auction_event.id}' auction event lots")
+        map_old_lots = {lot.url: lot for lot in auction_event.lots}
+
+        new_lots = []
+        for new_lot in self._yield_auction_event_lots(auction_event):
+            auction_event.init_lot_default_information(new_lot)
+            self.validate_lot(new_lot)
+
+            old_lot = map_old_lots.get(new_lot.url)
+            if old_lot is not None:
+                new_lot.id = old_lot.id
+                new_lot.starting_bid = old_lot.starting_bid
+                if new_lot.current_max < 0:
+                    new_lot.current_max = old_lot.current_max
+
+            if new_lot.current_max is None:
+                breakpoint()
+
+            if new_lot.starting_bid is None:
+                new_lot.starting_bid = 0
+
+            logger.info(f"Finished {len(new_lots)} auction event lots")
+            yield new_lot
+
+        auction_event.lots = new_lots
+        self.disconnect()
+        return auction_event.lots
+
+    def _yield_auction_event_lots(self, auction_event):
+        """
+        Per provider.
+
+        :param auction_event:
+        :return:
+        """
+
+        raise NotImplementedError()
+
+    class ThrottlingError(RuntimeError):
+        """
+        Throttling error.
+        """
+        pass

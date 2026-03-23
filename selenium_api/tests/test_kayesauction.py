@@ -10,7 +10,7 @@ from horey.selenium_api.auction_event import AuctionEvent
 # pylint: disable= missing-function-docstring
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_init_auction_events():
     auction = Kayesauction()
     assert auction.init_auction_events(None)
