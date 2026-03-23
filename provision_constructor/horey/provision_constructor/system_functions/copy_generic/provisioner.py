@@ -55,6 +55,10 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
+        self.remoter = remoter
+
+        if self.action == "download":
+            return self.remote_download()
         parent = str(Path(self.dst).parent)
         command = f"mkdir -p {parent}"
         if self.sudo:
@@ -67,3 +71,12 @@ class Provisioner(SystemFunctionCommon):
         remoter.put_file(self.src, self.dst, sudo=self.sudo)
 
         return True
+
+    def remote_download(self):
+        """
+        Download file from server
+
+        :return:
+        """
+
+        return self.remoter.get_file(self.src, self.dst, sudo=self.sudo)
