@@ -761,7 +761,7 @@ class DockerAPI:
         """
         Deleted old containers
 
-        :param dead:
+        :param stopped:
         :param container_log_attrs:
         :param time_limit: default is an hour
         :return:
@@ -779,12 +779,14 @@ class DockerAPI:
         to_delete_counter = 0
         deleted_counter = 0
 
+        restart_docker = False
         for container in containers:
             try:
                 delete = False
                 if stopped and container["State"] == "running":
                     delete = False
                 elif container["State"] == "dead":
+                    restart_docker = True
                     delete = True
                 elif not self.check_container_newer_then(container, time_limit):
                     delete = True
@@ -802,6 +804,10 @@ class DockerAPI:
 
         logger.info(
             f"Finished deleting {deleted_counter=} {to_delete_counter=} containers after {perf_counter() - start}")
+
+        if restart_docker:
+            logger.info("Restarting docker")
+            BashExecutor.run_bash("sudo service docker restart")
 
         return True
 
