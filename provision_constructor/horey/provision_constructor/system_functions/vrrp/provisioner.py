@@ -64,6 +64,8 @@ class Provisioner(SystemFunctionCommon):
 
         ret = self.remoter.execute("ls /etc/keepalived")
         config_file_path = self.generate_config_file()
+        return self.remoter.put_file(config_file_path, Path("/etc/keepalived") / config_file_path.name , sudo=True)
+
         breakpoint()
 
     def generate_config_file(self) -> Path:
