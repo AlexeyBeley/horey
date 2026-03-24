@@ -820,7 +820,6 @@ class DockerAPI:
                 command = f"sudo ls /var/lib/docker/containers | grep {container_dict['ID']}"
                 response = BashExecutor.run_bash(command, ignore_on_error_callback= lambda _response:  _response["stdout"] == _response["stderr"] == "" and _response["code"] == 1)
                 dir_name = response["stdout"]
-                breakpoint()
                 if not dir_name:
                     raise RuntimeError(f"Can not find dead container directory: {container_dict['ID']}")
                 command = f"sudo rm -rf /var/lib/docker/containers/{dir_name}"
@@ -831,9 +830,6 @@ class DockerAPI:
                 command = f"docker container rm {'--force' if force else ''} {container_dict['ID']}"
                 response = BashExecutor.run_bash(command)
                 assert container_dict["ID"].startswith(response["stdout"])
-
-        helper()
-        breakpoint()
 
         thread = threading.Thread(
             target=helper
