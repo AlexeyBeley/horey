@@ -816,18 +816,18 @@ class DockerAPI:
         """
 
         if container_dict["State"] == "dead":
-            command = f"sudo ls /var/lib/docker/containers | grep {container_dict['ID']} | xargs sudo rm -rf "
-            def validator(response):
-                assert response["stdout"] == response["stderr"] == ""
+            def helper():
+                command = f"sudo ls /var/lib/docker/containers | grep {container_dict['ID']}"
+                response = BashExecutor.run_bash(command)
+                breakpoint()
         else:
-            command = f"docker container rm {'--force' if force else ''} {container_dict['ID']}"
-            def validator(response):
+            def helper():
+                command = f"docker container rm {'--force' if force else ''} {container_dict['ID']}"
+                response = BashExecutor.run_bash(command)
                 assert container_dict["ID"].startswith(response["stdout"])
 
-        def helper():
-            response = BashExecutor.run_bash(command)
-            validator(response)
-
+        helper()
+        breakpoint()
 
         thread = threading.Thread(
             target=helper
