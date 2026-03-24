@@ -804,7 +804,6 @@ class DockerAPI:
 
         logger.info(
             f"Finished deleting {deleted_counter=} {to_delete_counter=} containers after {perf_counter() - start}")
-        breakpoint()
         if restart_docker:
             logger.info("Restarting docker")
             BashExecutor.run_bash("sudo service docker restart")
@@ -888,13 +887,16 @@ class DockerAPI:
         if len(containers) != 1:
             raise ValueError(f"Expected one container: {containers}")
         container = containers[0]
-        if  container["State"]["Running"]:
-            started = container["State"].get("StartedAt").split(".")[0]
-            container_datetime = datetime.datetime.strptime(started, "%Y-%m-%dT%H:%M:%S")
-        else:
-            # 2026-03-13T14:10:38.199877338Z
-            finished = container["State"].get("FinishedAt").split(".")[0]
-            container_datetime = datetime.datetime.strptime(finished, "%Y-%m-%dT%H:%M:%S")
+
+        # 2026-03-13T14:10:38.199877338Z
+        time_string = container["State"].get("FinishedAt")
+        if not time_string or "0001" in time_string:
+            time_string = container["State"].get("StartedAt")
+        if not time_string or "0001" in time_string:
+            time_string = container["Created"]
+
+        subtime = container["State"].get("StartedAt").split(".")[0]
+        container_datetime = datetime.datetime.strptime(subtime, "%Y-%m-%dT%H:%M:%S")
         now_aware_utc = datetime.datetime.now()
         return int((now_aware_utc - container_datetime).total_seconds())
 
