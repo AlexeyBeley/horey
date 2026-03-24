@@ -895,8 +895,8 @@ class DockerAPI:
         if not time_string or "0001" in time_string:
             time_string = container["Created"]
 
-        subtime = container["State"].get("StartedAt").split(".")[0]
-        container_datetime = datetime.datetime.strptime(subtime, "%Y-%m-%dT%H:%M:%S")
+        sub_time = time_string.split(".")[0]
+        container_datetime = datetime.datetime.strptime(sub_time, "%Y-%m-%dT%H:%M:%S")
         now_aware_utc = datetime.datetime.now()
         return int((now_aware_utc - container_datetime).total_seconds())
 
