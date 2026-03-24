@@ -804,7 +804,7 @@ class DockerAPI:
 
         logger.info(
             f"Finished deleting {deleted_counter=} {to_delete_counter=} containers after {perf_counter() - start}")
-
+        breakpoint()
         if restart_docker:
             logger.info("Restarting docker")
             BashExecutor.run_bash("sudo service docker restart")
