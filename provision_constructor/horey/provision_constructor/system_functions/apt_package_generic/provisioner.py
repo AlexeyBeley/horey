@@ -165,7 +165,7 @@ class Provisioner(SystemFunctionCommon):
 
         self.update_packages_remote()
         if not self.remoter.get_state()["APT_PACKAGES"]:
-            stdout, stderr, errcode = self.remoter.execute("dpkg-query -W -f='${binary:Package}\\n'")
+            stdout, _, _ = self.remoter.execute("dpkg-query -W -f='${binary:Package}\\n'", retries=5)
             lines = [line.strip("\n") for line in stdout if line]
             self.remoter.get_state()["APT_PACKAGES"] = self.init_apt_packages_from_output(lines)
 
@@ -185,7 +185,7 @@ class Provisioner(SystemFunctionCommon):
             return True
 
         self.unlock_dpckg_lock_remote()
-        stdout, stderr, errcode = self.remoter.execute("sudo DEBIAN_FRONTEND=noninteractive apt update"
+        stdout, _, _ = self.remoter.execute("sudo DEBIAN_FRONTEND=noninteractive apt update"
                                                        " --allow-releaseinfo-change"
                                                        " -o Dpkg::Options::=\"--force-confdef\""
                                                        " -o Dpkg::Options::=\"--force-confnew\"", retries=5)
@@ -223,7 +223,7 @@ class Provisioner(SystemFunctionCommon):
         if not self.remoter.get_state().get("APT_REPOSITORIES"):
             self.remoter.get_state()["APT_REPOSITORIES"] = self.init_apt_repositories_from_file_remote(Path("/etc/apt/sources.list"))
             dir_name = "/etc/apt/sources.list.d"
-            ret = self.remoter.execute(f'find {dir_name} -name "*.list"')
+            ret = self.remoter.execute(f'find {dir_name} -name "*.list"', retries=5)
             for line in reversed(ret[0]):
                 if not line.startswith(dir_name):
                     break
@@ -242,7 +242,7 @@ class Provisioner(SystemFunctionCommon):
         """
 
         lst_ret = []
-        ret = self.remoter.execute(f"echo 'Start cat {file_path}'; cat {file_path}")
+        ret = self.remoter.execute(f"echo 'Start cat {file_path}'; cat {file_path}", retries=5)
 
         for line in reversed(ret[0]):
             if line.startswith(f"Start cat {file_path}"):

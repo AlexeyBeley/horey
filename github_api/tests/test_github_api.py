@@ -37,6 +37,7 @@ class TestConfigs(ConfigurationPolicy):
         super().__init__()
         self._src_repo_name = None
         self._dst_repo_name = None
+        self._dst_repo_names = None
         self._pat = None
         self._owner = None
 
