@@ -57,12 +57,21 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
+
+        self.install_keepalived_remote()
+        self.configure_nftables_remote()
+
+    def install_keepalived_remote(self):
         """
+        Install keepalived
+
+        :return:
+        """
+
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir,
                                                                           self.force, self.upgrade,
                                                                           package_names=["keepalived",
                                                                                          ]).provision_remote(self.remoter)
-        """
 
         interfaces = self.get_interfaces_remote()
         for interface_name, interface in interfaces.items():
@@ -81,11 +90,43 @@ class Provisioner(SystemFunctionCommon):
         else:
             raise ValueError(f"Host address {host_address} is neither master nor backup")
 
-        virtual_address_with_subnet = self.kwargs.get("virtual_address") + "/" + interface["ip"].split("/")[1]
+        virtual_address_with_subnet = self.kwargs.get("virtual_ip_address") + "/" + interface["ip"].split("/")[1]
         config_file_path = self.generate_config_file(state, interface_name, virtual_address_with_subnet)
 
-        breakpoint()
         return self.remoter.put_file(config_file_path, Path("/etc/keepalived") / config_file_path.name, sudo=True)
+
+    def configure_nftables_remote(self):
+        """
+        Configure nftables to allow vrrp traffic
+
+        :return:
+        """
+
+        self.remoter.execute("sudo apt install nftables -y")
+        self.remoter.execute("sudo systemctl enable nftables")
+        self.remoter.execute("sudo systemctl start nftables")
+
+        # Add rules to allow VRRP traffic
+        self.remoter.execute("sudo nft add table ip filter")
+        self.remoter.execute("sudo nft add chain ip filter INPUT { type filter hook input priority 0 \\; }")
+        self.remoter.execute("sudo nft add chain ip filter FORWARD { type filter hook forward priority 0 \\; }")
+        self.remoter.execute("sudo nft add chain ip filter OUTPUT { type filter hook output priority 0 \\; }")
+
+        # Allow VRRP multicast traffic (224.0.0.18)
+        self.remoter.execute("sudo nft add rule ip filter INPUT ip daddr 224.0.0.18 udp dport 112 vrrp accept")
+        self.remoter.execute("sudo nft add rule ip filter FORWARD ip daddr 224.0.0.18 udp dport 112 vrrp accept")
+        self.remoter.execute("sudo nft add rule ip filter OUTPUT ip daddr 224.0.0.18 udp dport 112 vrrp accept")
+
+        # Allow established and related connections
+        self.remoter.execute("sudo nft add rule ip filter INPUT ct state established,related accept")
+        self.remoter.execute("sudo nft add rule ip filter FORWARD ct state established,related accept")
+
+        # Default drop policy
+        self.remoter.execute("sudo nft add rule ip filter INPUT reject")
+        self.remoter.execute("sudo nft add rule ip filter FORWARD reject")
+
+        # Save the rules
+        self.remoter.execute("sudo nft list ruleset > /etc/nftables.conf")
 
     def get_interfaces_remote(self) -> dict:
         """
@@ -145,6 +186,13 @@ class Provisioner(SystemFunctionCommon):
                  "virtual_ipaddress {",
                  virtual_address_with_subnet,
                  "}",
+                 """
+                 unicast_peer {
+        10.0.0.2
+        10.0.0.3
+    }
+                 """
+                 
                  "}"]
 
         self.deployment_dir.mkdir(exist_ok=True)

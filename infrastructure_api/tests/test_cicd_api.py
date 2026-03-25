@@ -763,7 +763,7 @@ def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, e
         cicd_api_integration.run_remote_provision_constructor(target_master,
                                                               "vrrp",
                                                               action="install",
-                                                              virtual_ipaddress=virtual_ip_address,
+                                                              virtual_ip_address=virtual_ip_address,
                                                               master = target_master.deployment_target_address,
                                                               backups = [target_backup.deployment_target_address]
                                                               )
@@ -774,7 +774,7 @@ def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, e
         cicd_api_integration.run_remote_provision_constructor(target_master,
                                                               "vrrp",
                                                               action="install",
-                                                              virtual_ipaddress=virtual_ip_address,
+                                                              virtual_ip_address=virtual_ip_address,
                                                               master = target_master.deployment_target_address,
                                                               backups = [target_backup.deployment_target_address]
                                                               )
