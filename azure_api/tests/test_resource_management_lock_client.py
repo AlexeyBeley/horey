@@ -9,7 +9,7 @@ from horey.azure_api.azure_clients.resource_management_lock_client import Resour
 # pylint: disable= missing-function-docstring
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_client():
     assert ResourceManagementLockClient()
 

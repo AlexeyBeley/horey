@@ -496,15 +496,46 @@ class DockerAPI:
         ]
         return ret
 
+    @staticmethod
+    def get_containers_bash(all_containers=False, filters=None):
+        """
+        Get all containers via bash.
+
+        Example filters:
+        ! until is not working with 'ps'
+
+        filters=["status=exited", "until=60m" ] -> becomes
+        -> '--filter "status=exited" --filter "until=60m"'
+
+        :param filters:
+        :param all_containers:
+        :return:
+        """
+
+        all_containers_str = "" if not all_containers else " --all"
+        if filters:
+            filters_str = ' --filter "' + '" --filter "'.join(filters) + '"'
+        else:
+            filters_str = ""
+        command = f'docker ps --format json {all_containers_str}{filters_str}'
+        response_str =   BashExecutor.run_bash(command)["stdout"]
+        ret_containers = []
+        for line in response_str.split("\n"):
+            if line:
+                response_dict = json.loads(line)
+                ret_containers.append(response_dict)
+        return ret_containers
+
+
     def remove_image(self, image_id, force=True, wait_to_finish=20 * 60, childless=False):
         """
-        Remove image.
+        Remove image and all its children.
 
-        @param image_id:
-        @param force:
-        @param wait_to_finish:
-        @return:
-        :param childless: Do not look for children - helpful when there are many images.
+        :param image_id:
+        :param force:
+        :param wait_to_finish:
+        :param childless:
+        :return:
         """
 
         logger.info(f"Start removing image: {image_id}")
@@ -726,60 +757,149 @@ class DockerAPI:
 
         return return_dict
 
-    def prune_stopped_containers(self, time_limit=60, container_log_attrs=None):
+    def prune_containers(self, time_limit=60*60, container_log_attrs=None, stopped=True):
         """
         Deleted old containers
 
+        :param stopped:
         :param container_log_attrs:
-        :param time_limit:
+        :param time_limit: default is an hour
         :return:
         """
 
         container_dir_name = "pruner"
-        try:
-            return BashExecutor.run_bash(f"docker container prune --force --filter \"until={time_limit}m\"")
-        except Exception as inst_error:
-            DockerAPI.log_to_container_file(container_dir_name,
-                                            f"Pruning error: 'docker container prune' failed with error {repr(inst_error)}", attrs=container_log_attrs)
 
         start = perf_counter()
         try:
-            all_containers = self.client.containers.list(all=True)
+            containers = self.get_containers_bash(all_containers=True)
         except Exception as inst_error:
-            DockerAPI.prune_dead_containers()
-            logger.info("Going to sleep - allowing docker service to gracefully start")
-            time.sleep(5)
-            try:
-                all_containers = self.client.containers.list(all=True)
-            except Exception:
-                DockerAPI.log_to_container_file(container_dir_name, f"Pruning error: {repr(inst_error)}", attrs=container_log_attrs)
-                raise
+            DockerAPI.log_to_container_file(container_dir_name, f"Pruning error: {repr(inst_error)}", attrs=container_log_attrs)
+            raise
 
         to_delete_counter = 0
         deleted_counter = 0
 
-        time_limit = datetime.datetime.now() - datetime.timedelta(minutes=time_limit)
-        for i, container in enumerate(all_containers):
-            logger.info(f"Checking {i}/{len(all_containers)} container: {container.id}")
+        restart_docker = False
+        for container in containers:
             try:
-                if container.attrs["State"]["Status"].lower() == "running":
+                delete = False
+                if stopped and container["State"] == "running":
+                    delete = False
+                elif container["State"] == "dead":
+                    restart_docker = True
+                    delete = True
+                elif not self.check_container_newer_then(container, time_limit):
+                    delete = True
+
+                if not delete:
                     continue
-                str_finished_date = container.attrs["State"]["FinishedAt"]
-                str_finished_date = str_finished_date[:str_finished_date.rfind(".")]
-                time_finished = datetime.datetime.strptime(str_finished_date, "%Y-%m-%dT%H:%M:%S")
-                if time_limit > time_finished:
-                    to_delete_counter += 1
-                    logger.info(f"Removing container: {container.id}")
-                    container.remove(force=True)
-                    deleted_counter += 1
+
+                to_delete_counter += 1
+                logger.info(f"Removing {to_delete_counter}/{len(containers)} container: {container['ID']}")
+                self.delete_container_bash(container, force= True)
+                deleted_counter += 1
             except Exception as inst_error:
                 DockerAPI.log_to_container_file(container_dir_name,
-                                                f"Pruning error deleting container {container.id}: {repr(inst_error)}", attrs=container_log_attrs)
+                                                f"Pruning error deleting container {container['ID']}: {repr(inst_error)}", attrs=container_log_attrs)
 
         logger.info(
             f"Finished deleting {deleted_counter=} {to_delete_counter=} containers after {perf_counter() - start}")
+        if restart_docker:
+            logger.info("Restarting docker")
+            BashExecutor.run_bash("sudo service docker restart")
 
         return True
+
+    @staticmethod
+    def delete_container_bash(container_dict: dict, force: bool = False):
+        """
+        Delete container by id.
+
+        :param container_dict:
+        :param force:
+        :return:
+        """
+
+        if container_dict["State"] == "dead":
+            def helper():
+                command = f"sudo ls /var/lib/docker/containers | grep {container_dict['ID']}"
+                response = BashExecutor.run_bash(command, ignore_on_error_callback= lambda _response:  _response["stdout"] == _response["stderr"] == "" and _response["code"] == 1)
+                dir_name = response["stdout"]
+                if not dir_name:
+                    raise RuntimeError(f"Can not find dead container directory: {container_dict['ID']}")
+                command = f"sudo rm -rf /var/lib/docker/containers/{dir_name}"
+                response = BashExecutor.run_bash(command, sudo=True)
+                assert response["stdout"] == ""
+        else:
+            def helper():
+                command = f"docker container rm {'--force' if force else ''} {container_dict['ID']}"
+                response = BashExecutor.run_bash(command)
+                assert container_dict["ID"].startswith(response["stdout"])
+
+        thread = threading.Thread(
+            target=helper
+        )
+
+        thread.start()
+        time.sleep(0.1)
+
+
+    @staticmethod
+    def check_container_newer_then(container, time_limit_seconds) -> bool:
+        """
+        Check if container is newer than time_limit
+        Return True if the container is newer than time_limit.
+
+        'Exited (127) 4 days ago'
+
+        :param container:
+        :param time_limit_seconds:
+        :return:
+        """
+
+        if "days" in container["Status"]:
+            container_seconds = int(container["Status"].split("days")[0].strip().split(" ")[-1])*24*60*60
+        elif "minutes" in container["Status"]:
+            container_seconds = int(container["Status"].split("minutes")[0].strip().split(" ")[-1])*60
+        elif "About a minute ago" in container["Status"]:
+            if time_limit_seconds  > 60:
+                container_seconds = 60
+            else:
+                container_seconds = DockerAPI.get_container_age_bash(container["ID"])
+        else:
+            logger.error(f"Unknown container status format: {container['Status']}")
+            container_seconds = DockerAPI.get_container_age_bash(container["ID"])
+
+        return container_seconds < time_limit_seconds
+
+    @staticmethod
+    def get_container_age_bash(container_id:str) -> int:
+        """
+        Return seconds.
+
+        :param container_id:
+        :return:
+        """
+
+        command = f"docker container inspect --format json {container_id}"
+        response = BashExecutor.run_bash(command)
+        containers = json.loads(response["stdout"])
+        if len(containers) != 1:
+            raise ValueError(f"Expected one container: {containers}")
+        container = containers[0]
+
+        # 2026-03-13T14:10:38.199877338Z
+        time_string = container["State"].get("FinishedAt")
+        if not time_string or "0001" in time_string:
+            time_string = container["State"].get("StartedAt")
+        if not time_string or "0001" in time_string:
+            time_string = container["Created"]
+
+        sub_time = time_string.split(".")[0]
+        container_datetime = datetime.datetime.strptime(sub_time, "%Y-%m-%dT%H:%M:%S")
+        now_aware_utc = datetime.datetime.now()
+        return int((now_aware_utc - container_datetime).total_seconds())
+
 
     @staticmethod
     def log_to_container_file(dir_name, log_line, attrs=None):

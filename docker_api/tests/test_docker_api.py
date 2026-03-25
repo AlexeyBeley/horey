@@ -8,7 +8,10 @@ import os
 import pytest
 from horey.docker_api.docker_api import DockerAPI
 from horey.common_utils.common_utils import CommonUtils
-from horey.aws_api.aws_api import AWSAPI
+try:
+    from horey.aws_api.aws_api import AWSAPI
+except Exception:
+    pass
 
 src_aws_region = "us-west-2"
 dst_aws_region = "us-west-2"
@@ -297,3 +300,25 @@ def test_log_to_container_file_with_attrs():
     """
 
     assert DockerAPI.log_to_container_file("test", "Pruning error: blabla", attrs={"tag": "test_tag"})
+
+
+@pytest.mark.unit
+def test_get_containers_bash():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    assert DockerAPI().get_containers_bash(all_containers=True,  filters=["status=exited"])
+
+
+@pytest.mark.wip
+def test_prune_containers():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    assert DockerAPI().prune_containers(time_limit=60*5, stopped=True)

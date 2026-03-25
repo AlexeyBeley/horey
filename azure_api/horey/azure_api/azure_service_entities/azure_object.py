@@ -178,6 +178,7 @@ class AzureObject:
                 raise self.UnknownKeyError(
                     "\n".join(composed_errors)
                 ) from caught_exception
+        return True
 
     def _init_from_cache(self, dict_src, dict_options):
         """

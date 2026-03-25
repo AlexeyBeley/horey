@@ -24,4 +24,5 @@ from .crowdstrike import *
 from .raw import *
 from .hardening import *
 from .hushlogin import *
+from .vrrp import *
 from .github_agent import *

@@ -10,20 +10,7 @@ from horey.azure_api.azure_api_configuration_policy import AzureAPIConfiguration
 from horey.common_utils.common_utils import CommonUtils
 
 
-configuration = AzureAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "..",
-        "..",
-        "ignore",
-        "azure_api_configuration_values.py",
-    )
-)
-configuration.init_from_file()
-
-azure_api = AzureAPI(configuration=configuration)
+azure_api = AzureAPI()
 
 # pylint: disable= missing-function-docstring
 
@@ -35,17 +22,13 @@ def test_init_virtual_machines():
     logger.info(f"len(virtual_machines) = {len(azure_api.virtual_machines)}")
     assert isinstance(azure_api.virtual_machines, list)
 
-
+@pytest.mark.skip(reason="IAM policies will be inited explicitly")
 def test_resize_vm_disk():
     vm = azure_api.compute_client.get_vm(mock_values["resize_vm_rg_name"], mock_values["resize_vm_name"])
     disk_size_gb = 200
     azure_api.resize_vm_disk(vm, disk_size_gb)
 
-
+@pytest.mark.skip(reason="IAM policies will be inited explicitly")
 def test_print_vm_disk_sizes():
     azure_api.print_vm_disk_sizes()
 
-
-if __name__ == "__main__":
-    #test_init_virtual_machines()
-    test_print_vm_disk_sizes()

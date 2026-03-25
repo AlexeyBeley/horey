@@ -52,17 +52,19 @@ class SSHRemoter(Remoter):
         """
         return self._state
 
-    def execute(self, command: str, *output_validators: List[Any]) -> Tuple[List[str], List[str], int]:
+    def execute(self, command: str, *output_validators: List[Any], timeout:int=60*60, retries:int=1) -> Tuple[List[str], List[str], int]:
         """
         Remote command.
 
+        :param retries:
+        :param timeout:
         :param command:
         :param output_validators:
         :return:
         """
 
         errors = []
-        _, lst_stdout, lst_stderr, status_code = self.executor(command)
+        _, lst_stdout, lst_stderr, status_code = self.executor(command, timeout=timeout, retries=retries)
 
         for output_validator in output_validators:
             try:
@@ -469,14 +471,16 @@ class RemoteDeployer:
         return True
 
     @staticmethod
-    def execute_remote_shell(channel: paramiko.Channel, cmd:str, remote_address:str, timeout=60, stdin=None):
+    def execute_remote_shell(channel: paramiko.Channel, cmd:str, remote_address:str, timeout=60*60, stdin=None, retries=1, retry_on_exception=True):
         """
         Execute command using remote shell.
 
+        :param retry_on_exception:
+        :param retries:
         :param stdin:
         :param channel:
         :param remote_address:
-        :param timeout: in minutes
+        :param timeout: in seconds
         :param cmd: the command to be executed on the remote computer
         :examples:  execute('ls')
                     execute('finger')
@@ -487,15 +491,45 @@ class RemoteDeployer:
             channel.setblocking(0)
             stdin = stdin or channel.makefile("wb")
 
-        logger.info(f"[{remote_address} REMOTE->] {cmd}")
-        end_time = datetime.datetime.now() + datetime.timedelta(minutes=timeout)
+        logger.info(f"[{remote_address} REMOTE->] ({timeout=}, {retries=}) {cmd}")
+        end_time = datetime.datetime.now() + datetime.timedelta(seconds=timeout)
 
         cmd = cmd.strip('\n')
         finish = 'eNdofstdOUTbuffer. exit status'
         echo_cmd = f"echo {finish} $?"
+        inst_error = None
+        for i in range(retries):
+            inst_error = None
+            try:
+                stdin.write(f"{cmd} ; {echo_cmd}\n")
+                stdin.flush()
+                shout, exit_code = RemoteDeployer.fetch_remote_shell_output(channel, cmd, echo_cmd, finish, end_time, remote_address)
+                return stdin, shout, [], exit_code
+            except TimeoutError:
+                logger.warning(f"{remote_address} retrying to execute {i+1}/{retries}")
+                time.sleep(1)
+            except Exception as inst_error_tmp:
+                inst_error = inst_error_tmp
+                if not retry_on_exception:
+                    raise
+                logger.warning(f"{remote_address} retrying to execute {i + 1}/{retries}")
+                time.sleep(1)
+        raise RemoteDeployer.DeployerError(f"{remote_address} Reached timeout waiting for SSH response") from inst_error
 
-        stdin.write(f"{cmd} ; {echo_cmd}\n")
-        stdin.flush()
+
+    @staticmethod
+    def fetch_remote_shell_output(channel, cmd, echo_cmd, finish, end_time, remote_address):
+        """
+        Wait for the output of a command executed via remote shell.
+
+        :param channel:
+        :param cmd:
+        :param echo_cmd:
+        :param finish:
+        :param end_time:
+        :param remote_address:
+        :return:
+        """
 
         shout = []
         raw_data_aggregator = None
@@ -524,19 +558,19 @@ class RemoteDeployer:
                     shout = []
                 elif str(line).startswith(finish):
                     exit_code = RemoteDeployer.extract_ssh_command_exit_code_from_finish_line(line)
-                    return stdin, shout, [], exit_code
+                    return shout, exit_code
                 # It sporadically splits the output to 2 lines
                 elif shout and str(shout[-1]+line).startswith(finish):
                     status_line = str(shout.pop(-1)+line)
                     exit_code =  RemoteDeployer.extract_ssh_command_exit_code_from_finish_line(status_line)
-                    return stdin, shout, [], exit_code
+                    return shout, exit_code
                 # empty line
                 elif not line:
                     continue
                 else:
                     shout.append(line)
 
-        raise RemoteDeployer.DeployerError(f"{remote_address} Reached timeout waiting: {timeout} minutes")
+        raise TimeoutError(f"{remote_address} Reached timeout waiting for SSH response")
 
     @staticmethod
     def clean_line(line:str) -> str:
@@ -575,10 +609,11 @@ class RemoteDeployer:
         return exit_code
 
     @staticmethod
-    def execute_windows(ssh_client:paramiko.SSHClient, cmd, remote_address, timeout=60):
+    def execute_windows(ssh_client:paramiko.SSHClient, cmd, remote_address, timeout=60, retries=1):
         """
         Execute command using remote shell.
 
+        :param retries:
         :param remote_address:
         :param timeout: in minutes
         :param cmd: the command to be executed on the remote computer
@@ -1421,11 +1456,11 @@ class RemoteDeployer:
                 self.sftp_clients[key] = client
         return client
 
-    def get_remoter(self, target, windows=False, timeout=60) -> SSHRemoter:
+    def get_remoter(self, target, windows=False, default_timeout=60*60) -> SSHRemoter:
         """
         Create remoter.
 
-        :param timeout:
+        :param default_timeout:
         :param windows:
         :param target:
         :return:
@@ -1448,26 +1483,33 @@ class RemoteDeployer:
             silent_shell_command = 'export PS1=""'
 
             stdin, shout, [], exit_status = self.execute_remote_shell(channel, silent_shell_command, target.deployment_target_address)
-            def executor(command):
+            def executor(command:str, timeout:int=None, retries=1):
                 """
                 Reuse channel
 
+                :param retries:
+                :param timeout:
                 :param command:
                 :return:
                 """
-                return self.execute_remote_shell(channel, command, target.deployment_target_address, stdin=stdin)
+                timeout = timeout or default_timeout
+                return self.execute_remote_shell(channel, command, target.deployment_target_address, stdin=stdin, timeout=timeout, retries=retries)
 
             return executor
 
-        def executor_windows(command):
+        def executor_windows(command, timeout:int =60*60, retries=1):
             """
             Execute remotely
 
+            :param retries:
+            :param timeout:
             :param command:
             :return:
             """
 
-            return self.execute_windows(ssh_client, command, target.deployment_target_address, timeout=timeout)
+            timeout = timeout or default_timeout
+
+            return self.execute_windows(ssh_client, command, target.deployment_target_address, timeout=timeout, retries=retries)
 
 
         ret = SSHRemoter(executor_windows if windows else init_executor_linux(), sftp_client,  target.remote_deployment_dir_path)

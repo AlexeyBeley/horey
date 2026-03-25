@@ -1,5 +1,5 @@
 """
-Init and cache AWS objects.
+test cicd
 
 """
 import shutil
@@ -51,6 +51,8 @@ class Configuration(ConfigurationPolicy):
         self._bastion_chain = None
         self._windows_ssh_key = None
         self._windows_hostname = None
+        self._ec2_vrrp_master = None
+        self._ec2_vrrp_backup = None
         self._github_api_configuration_file_secret_name = None
         self._github_hagent_runner_name = None
         self._github_hagent_repo_name = None
@@ -77,6 +79,24 @@ class Configuration(ConfigurationPolicy):
     @github_api_configuration_file_secret_name.setter
     def github_api_configuration_file_secret_name(self, value):
         self._github_api_configuration_file_secret_name = value
+        self._github_api_configuration_file_secret_name = None
+
+    @property
+    def ec2_vrrp_master(self):
+        return self._ec2_vrrp_master
+
+    @ec2_vrrp_master.setter
+    def ec2_vrrp_master(self, value):
+        self._ec2_vrrp_master = value
+
+
+    @property
+    def ec2_vrrp_backup(self):
+        return self._ec2_vrrp_backup
+
+    @ec2_vrrp_backup.setter
+    def ec2_vrrp_backup(self, value):
+        self._ec2_vrrp_backup = value
 
     @property
     def bastion_chain(self):
@@ -787,3 +807,41 @@ def test_provision_github_hagent_dockerized(cicd_api_integration, ec2_api_mgmt_i
                                                         repository_name=Configuration.TEST_CONFIG.github_hagent_repo_name,
                                                         horey_repo_path = Path(__file__).parent.parent.parent
                                                         )
+
+@pytest.mark.wip
+def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+
+    target_master = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.ec2_vrrp_master,
+                                                               bastions=ec2_instances
+                                                              )[0]
+
+    target_backup = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.ec2_vrrp_backup,
+                                                                     bastions=ec2_instances
+                                                                     )[0]
+    virtual_ip_address = ".".join(target_backup.deployment_target_address.split(".")[:3]) + ".253"
+    # master
+    def entrypoint():
+        cicd_api_integration.run_remote_provision_constructor(target_master,
+                                                              "vrrp",
+                                                              action="install",
+                                                              virtual_ip_address=virtual_ip_address,
+                                                              master = target_master.deployment_target_address,
+                                                              backups = [target_backup.deployment_target_address]
+                                                              )
+
+    target_master.append_remote_step("Test", entrypoint)
+    # backup
+    def entrypoint():
+        cicd_api_integration.run_remote_provision_constructor(target_master,
+                                                              "vrrp",
+                                                              action="install",
+                                                              virtual_ip_address=virtual_ip_address,
+                                                              master = target_master.deployment_target_address,
+                                                              backups = [target_backup.deployment_target_address]
+                                                              )
+
+    target_master.append_remote_step("Test", entrypoint)
+
+    assert cicd_api_integration.run_remote_deployer_deploy_targets([target_master, target_backup], asynchronous=False)
