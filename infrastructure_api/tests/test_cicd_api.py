@@ -798,7 +798,7 @@ def test_provision_github_hagent(cicd_api_integration, ec2_api_mgmt_integration,
                                                         repository_name=Configuration.TEST_CONFIG.github_hagent_repo_name
                                                         )
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_provision_github_hagent_dockerized(cicd_api_integration, ec2_api_mgmt_integration, github_api):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]

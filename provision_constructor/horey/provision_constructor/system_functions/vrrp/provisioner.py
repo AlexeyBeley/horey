@@ -72,28 +72,37 @@ class Provisioner(SystemFunctionCommon):
                                                                           self.force, self.upgrade,
                                                                           package_names=["keepalived",
                                                                                          ]).provision_remote(self.remoter)
-
+        virtual_address = self.kwargs.get("virtual_ip_address")
         interfaces = self.get_interfaces_remote()
+        breakpoint()
+
         for interface_name, interface in interfaces.items():
-            network = ipaddress.IPv4Network(interface["ip"], strict=False)
+            for ip_address in interface["ip"]:
+                if ip_address.split("/")[0] != virtual_address:
+                    break
+            else:
+                raise RuntimeError("Was not able to find address different from virtual one")
+
+
+            network = ipaddress.IPv4Network(ip_address, strict=False)
             master_ip = ipaddress.IPv4Address(self.kwargs.get("master"))
             if master_ip in network:
+                host_real_address = interface["ip"].split("/")[0]
                 break
         else:
             raise ValueError(f"master ip {self.kwargs.get('master')} is not in any of the interfaces")
 
         unicast_peers = [self.kwargs.get("master"), *self.kwargs.get("backups")]
 
-        host_address = interface["ip"].split("/")[0]
-        if host_address == self.kwargs.get("master"):
+        if host_real_address == self.kwargs.get("master"):
             state = "MASTER"
-        elif host_address in self.kwargs.get("backups"):
+        elif host_real_address in self.kwargs.get("backups"):
             state = "BACKUP"
         else:
             breakpoint()
-            raise ValueError(f"Host address {host_address} is neither master nor backup")
+            raise ValueError(f"Host address {host_real_address} is neither master nor backup")
 
-        unicast_peers.remove(host_address)
+        unicast_peers.remove(host_real_address)
         virtual_address_with_subnet = self.kwargs.get("virtual_ip_address") + "/" + interface["ip"].split("/")[1]
         config_file_path = self.generate_config_file(state, interface_name, virtual_address_with_subnet, unicast_peers)
         breakpoint()
@@ -158,11 +167,12 @@ class Provisioner(SystemFunctionCommon):
         interface_lines[interface_name] = aggregator
 
         interface_dicts = {}
+
         for interface_name, lines in interface_lines.items():
-            interface_dicts[interface_name] = {"lines": lines}
+            interface_dicts[interface_name] = {"lines": lines, "ip": []}
             for line in lines:
                 if "inet " in line:
-                    interface_dicts[interface_name]["ip"] = line.strip().split()[1]
+                    interface_dicts[interface_name]["ip"].append(line.strip().split()[1])
                 elif "ether " in line:
                     interface_dicts[interface_name]["mac"] = line.strip().split()[1]
 
