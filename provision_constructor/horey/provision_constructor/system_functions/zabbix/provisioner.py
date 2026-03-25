@@ -78,12 +78,17 @@ class Provisioner(SystemFunctionCommon):
                             self.last_line_validator(" saved "),
                               self.last_line_validator(zabbix_agent_version))
 
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
+                                                                          action="unlock_dpckg").provision_remote(
+            remoter)
+
         remoter.execute(f"sudo dpkg -i {remote_deb_file_path}", self.last_line_validator("Setting up zabbix-release "))
         SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
                                                                           action="update_packages").provision_remote(
             remoter)
-
-        remoter.execute("sudo apt install zabbix-agent2 -y")
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force, self.upgrade,
+                                                                          package_names=["zabbix-agent2"]).provision_remote(
+            remoter)
 
         local_file_path = self.deployment_dir / "zabbix_agent2.conf"
         remote_file_path = Path("/etc/zabbix/zabbix_agent2.conf")
