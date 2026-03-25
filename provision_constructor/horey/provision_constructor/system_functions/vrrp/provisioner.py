@@ -74,9 +74,10 @@ class Provisioner(SystemFunctionCommon):
                                                                                          ]).provision_remote(self.remoter)
         virtual_address = self.kwargs.get("virtual_ip_address")
         interfaces = self.get_interfaces_remote()
-        breakpoint()
 
         for interface_name, interface in interfaces.items():
+            if len(interface["ip"]) == 0:
+                continue
             for ip_address in interface["ip"]:
                 if ip_address.split("/")[0] != virtual_address:
                     break
@@ -87,7 +88,7 @@ class Provisioner(SystemFunctionCommon):
             network = ipaddress.IPv4Network(ip_address, strict=False)
             master_ip = ipaddress.IPv4Address(self.kwargs.get("master"))
             if master_ip in network:
-                host_real_address = interface["ip"].split("/")[0]
+                host_real_address, vrrp_interface_mask = ip_address.split("/")
                 break
         else:
             raise ValueError(f"master ip {self.kwargs.get('master')} is not in any of the interfaces")
@@ -103,9 +104,8 @@ class Provisioner(SystemFunctionCommon):
             raise ValueError(f"Host address {host_real_address} is neither master nor backup")
 
         unicast_peers.remove(host_real_address)
-        virtual_address_with_subnet = self.kwargs.get("virtual_ip_address") + "/" + interface["ip"].split("/")[1]
+        virtual_address_with_subnet = self.kwargs.get("virtual_ip_address") + "/" + vrrp_interface_mask
         config_file_path = self.generate_config_file(state, interface_name, virtual_address_with_subnet, unicast_peers)
-        breakpoint()
 
         return self.remoter.put_file(config_file_path, Path("/etc/keepalived") / config_file_path.name, sudo=True)
 
