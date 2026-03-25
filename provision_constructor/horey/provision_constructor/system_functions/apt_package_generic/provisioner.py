@@ -188,7 +188,7 @@ class Provisioner(SystemFunctionCommon):
         stdout, stderr, errcode = self.remoter.execute("sudo DEBIAN_FRONTEND=noninteractive apt update"
                                                        " --allow-releaseinfo-change"
                                                        " -o Dpkg::Options::=\"--force-confdef\""
-                                                       " -o Dpkg::Options::=\"--force-confnew\"")
+                                                       " -o Dpkg::Options::=\"--force-confnew\"", retries=5)
 
         lines = [line.strip("\n") for line in stdout]
         self.validate_apt_update_output(lines)

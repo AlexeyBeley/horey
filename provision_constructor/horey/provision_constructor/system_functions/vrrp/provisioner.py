@@ -82,16 +82,21 @@ class Provisioner(SystemFunctionCommon):
         else:
             raise ValueError(f"master ip {self.kwargs.get('master')} is not in any of the interfaces")
 
+        unicast_peers = [self.kwargs.get("master"), *self.kwargs.get("backups")]
+
         host_address = interface["ip"].split("/")[0]
         if host_address == self.kwargs.get("master"):
             state = "MASTER"
-        elif host_address in self.kwargs.get("backup"):
+        elif host_address in self.kwargs.get("backups"):
             state = "BACKUP"
         else:
+            breakpoint()
             raise ValueError(f"Host address {host_address} is neither master nor backup")
 
+        unicast_peers.remove(host_address)
         virtual_address_with_subnet = self.kwargs.get("virtual_ip_address") + "/" + interface["ip"].split("/")[1]
-        config_file_path = self.generate_config_file(state, interface_name, virtual_address_with_subnet)
+        config_file_path = self.generate_config_file(state, interface_name, virtual_address_with_subnet, unicast_peers)
+        breakpoint()
 
         return self.remoter.put_file(config_file_path, Path("/etc/keepalived") / config_file_path.name, sudo=True)
 
@@ -164,9 +169,10 @@ class Provisioner(SystemFunctionCommon):
         return interface_dicts
 
 
-    def generate_config_file(self, state, interface_name, virtual_address_with_subnet) -> Path:
+    def generate_config_file(self, state, interface_name, virtual_address_with_subnet, unicast_peers) -> Path:
         """
         Generate file
+        Protocol 112
 
         :return:
         """
@@ -186,13 +192,9 @@ class Provisioner(SystemFunctionCommon):
                  "virtual_ipaddress {",
                  virtual_address_with_subnet,
                  "}",
-                 """
-                 unicast_peer {
-        10.0.0.2
-        10.0.0.3
-    }
-                 """
-                 
+                 "unicast_peer {",
+                 *unicast_peers,
+                 "}",
                  "}"]
 
         self.deployment_dir.mkdir(exist_ok=True)

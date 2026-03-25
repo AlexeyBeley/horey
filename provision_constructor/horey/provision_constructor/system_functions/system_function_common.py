@@ -1477,8 +1477,8 @@ class SystemFunctionCommon:
         """
 
         ret = self.remoter.execute(
-            "sudo lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}'"
-        )
+            "sudo lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}'",
+        retries=5)
 
         if ret[0]:
             try:
@@ -1486,10 +1486,10 @@ class SystemFunctionCommon:
             except ValueError:
                 return True
             self.remoter.execute(
-                f'sudo kill -s 9 {pid} || true'
+                f'sudo kill -s 9 {pid} || true', retries=5
             )
             # if "sudo dpkg --configure -a" in repr(inst_error):
-            self.remoter.execute("yes n | sudo DEBIAN_FRONTEND=noninteractive dpkg --configure -a")
+            self.remoter.execute("yes n | sudo DEBIAN_FRONTEND=noninteractive dpkg --configure -a", retries=5)
         return True
 
     def ls_remote(self, path, sudo=False) -> List[Path]:

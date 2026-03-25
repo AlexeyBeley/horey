@@ -471,10 +471,11 @@ class RemoteDeployer:
         return True
 
     @staticmethod
-    def execute_remote_shell(channel: paramiko.Channel, cmd:str, remote_address:str, timeout=60*60, stdin=None, retries=1):
+    def execute_remote_shell(channel: paramiko.Channel, cmd:str, remote_address:str, timeout=60*60, stdin=None, retries=1, retry_on_exception=True):
         """
         Execute command using remote shell.
 
+        :param retry_on_exception:
         :param retries:
         :param stdin:
         :param channel:
@@ -496,8 +497,9 @@ class RemoteDeployer:
         cmd = cmd.strip('\n')
         finish = 'eNdofstdOUTbuffer. exit status'
         echo_cmd = f"echo {finish} $?"
-
+        inst_error = None
         for i in range(retries):
+            inst_error = None
             try:
                 stdin.write(f"{cmd} ; {echo_cmd}\n")
                 stdin.flush()
@@ -506,7 +508,13 @@ class RemoteDeployer:
             except TimeoutError:
                 logger.warning(f"{remote_address} retrying to execute {i+1}/{retries}")
                 time.sleep(1)
-        raise RemoteDeployer.DeployerError(f"{remote_address} Reached timeout waiting for SSH response")
+            except Exception as inst_error_tmp:
+                inst_error = inst_error_tmp
+                if not retry_on_exception:
+                    raise
+                logger.warning(f"{remote_address} retrying to execute {i + 1}/{retries}")
+                time.sleep(1)
+        raise RemoteDeployer.DeployerError(f"{remote_address} Reached timeout waiting for SSH response") from inst_error
 
 
     @staticmethod
