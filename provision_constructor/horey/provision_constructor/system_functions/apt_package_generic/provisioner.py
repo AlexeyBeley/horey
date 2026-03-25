@@ -87,16 +87,19 @@ class Provisioner(SystemFunctionCommon):
             return self.update_packages_remote()
         if self.action == "check_repository_exists":
             return self.apt_check_repository_exists_remote()
+        if self.action == "unlock_dpckg":
+            return self.unlock_dpckg_lock_remote()
 
         return self.apt_install_remote(package_names=self.package_names, needrestart_mode=self.needrestart_mode)
 
     def apt_install_remote(self, package_names=None, needrestart_mode="a"):
         """
         Run apt install or upgrade.
-         Y or I  : install the package maintainer's version
+
+        Y or I  : install the package maintainer's version
         N or O  : keep your currently-installed version
         D     : show the differences between the versions
-             Z     : start a shell to examine the situation
+        Z     : start a shell to examine the situation
         The default action is to keep your current version.
 
 
@@ -104,11 +107,11 @@ class Provisioner(SystemFunctionCommon):
         vs
         -o Dpkg::Options::="--force-confold"
 
-        @param package_name:
-        @param package_names:
-        @return:
+        :param package_names: lst
         :param needrestart_mode:
+        :return:
         """
+
 
         self.init_apt_packages_remote()
 
@@ -138,6 +141,7 @@ class Provisioner(SystemFunctionCommon):
 
             return True
 
+        self.unlock_dpckg_lock_remote()
         self.remoter.execute(
             command, raise_on_error_callback
         )
