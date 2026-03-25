@@ -162,6 +162,7 @@ class GitAPI:
                     line = line.replace("  ", " ")
                 if not line.startswith("*"):
                     continue
+                logger.info(f"Checking line: '{line}'")
                 line_static_star, line_static_branch, line_branch_name, line_arrow, line_static_fetch_head = line.split(" ")
                 if line_static_star != "*":
                     raise ValueError(f"Incorrect star in '{line}'")
