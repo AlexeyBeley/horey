@@ -86,18 +86,21 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.remoter = remoter
-        if self.action == "install":
-            return self.provision_remote_install_logstash_from_binary()
 
-        if self.action == "install_plugin":
-            return self.provision_remote_install_plugin()
+        match self.action:
+            case "install":
+                return self.provision_remote_install_logstash_from_binary(wait_for_service_uptime=self.kwargs.get("wait_for_service_uptime", True))
+            case "install_plugin":
+                return self.provision_remote_install_plugin()
+            case "restart":
+                return self.provision_remote_restart()
+            case "wait_for_service_uptime":
+                return self.wait_for_service_uptime_remote()
+            case _:
+                raise NotImplementedError(self.action)
 
-        if self.action == "restart":
-            return self.provision_remote_restart()
 
-        raise NotImplementedError(self.action)
-
-    def provision_remote_install_logstash_from_binary(self):
+    def provision_remote_install_logstash_from_binary(self, wait_for_service_uptime=True):
         """
         Provision logstash from binary.
 
@@ -174,6 +177,8 @@ class Provisioner(SystemFunctionCommon):
         self.remoter.put_file(logstash_yaml_file, Path("/etc/logstash/logstash.yml"), sudo=True)
         self.remoter.execute("sudo systemctl daemon-reload")
         self.remoter.execute("sudo systemctl enable logstash")
+        if wait_for_service_uptime:
+            self.wait_for_service_uptime_remote()
 
     def provision_remote_install_plugin(self):
         """
@@ -258,3 +263,16 @@ class Provisioner(SystemFunctionCommon):
             self.remoter.execute(f"sudo kill -s 9 {int(logstash_pid)}")
 
         self.systemctl_restart_service_and_wait_remote("logstash")
+
+    def wait_for_service_uptime_remote(self):
+        """
+        Wait for service to be up and running.
+
+        :return:
+        """
+
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["systemd"](self.deployment_dir, self.force,
+                                                                          self.upgrade,
+                                                                          action="wait_for_service_uptime",
+                                                                         service_name="logstash").provision_remote(
+            self.remoter)

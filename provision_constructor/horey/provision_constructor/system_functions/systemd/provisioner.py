@@ -39,6 +39,8 @@ class Provisioner(SystemFunctionCommon):
                 return self.restart_service_remote()
             case "provision_service":
                 return self.provision_service_remote()
+            case "wait_for_service_uptime":
+                return self.wait_for_service_uptime_remote()
             case _:
                 raise NotImplementedError(f"{self.action}")
 
@@ -53,9 +55,21 @@ class Provisioner(SystemFunctionCommon):
         if not service_name:
             raise ValueError("service_name was not set")
         self.remoter.execute(f"sudo systemctl restart {service_name}")
-        self.check_systemd_service_status_remote(service_name, 60)
+        if self.kwargs.get("wait_for_uptime", True):
+            self.check_systemd_service_status_remote(service_name, 60)
         return True
 
+    def wait_for_service_uptime_remote(self):
+        """
+        Provision remotely
+
+        :return:
+        """
+
+        service_name = self.kwargs.get("service_name")
+        timeout = self.kwargs.get("timeout", 60)
+        self.check_systemd_service_status_remote(service_name, timeout)
+        return True
 
     def provision_service_remote(self):
         """

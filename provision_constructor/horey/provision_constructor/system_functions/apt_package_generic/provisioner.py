@@ -27,15 +27,7 @@ class Provisioner(SystemFunctionCommon):
     # pylint: disable= too-many-arguments
     def __init__(self, deployment_dir, force, upgrade, package_name=None, package_names=None, needrestart_mode="a", **kwargs):
         super().__init__(deployment_dir, force, upgrade, **kwargs)
-
-        if package_name is not None:
-            self.package_names = [package_name]
-        elif package_names is not None:
-            self.package_names = package_names
-        else:
-            if self.action not in ["update_packages", "check_repository_exists"]:
-                raise ValueError("package_name/package_names not set")
-
+        self.package_names = package_names or [package_name]
         self.needrestart_mode = needrestart_mode
 
     def test_provisioned(self):
@@ -89,6 +81,9 @@ class Provisioner(SystemFunctionCommon):
             return self.apt_check_repository_exists_remote()
         if self.action == "unlock_dpckg":
             return self.unlock_dpckg_lock_remote()
+
+        if not self.package_names:
+            raise ValueError("package_name/package_names not set")
 
         return self.apt_install_remote(package_names=self.package_names, needrestart_mode=self.needrestart_mode)
 

@@ -62,6 +62,8 @@ class Provisioner(SystemFunctionCommon):
         match self.action:
             case "install_falcon_sensor":
                 return self.provision_remote_install_falcon_sensor()
+            case "wait_for_service_uptime":
+                return self.wait_for_service_uptime_remote()
             case _:
                 raise NotImplementedError(f"{self.action}")
 
@@ -115,6 +117,18 @@ class Provisioner(SystemFunctionCommon):
         self.remoter.execute("sudo systemctl enable falcon-sensor", self.grep_validator("Executing: /lib/systemd/systemd-sysv-install enable falcon-sensor"))
         return True
 
+    def wait_for_service_uptime_remote(self):
+        """
+        Wait for service to be up and running.
+
+        :return:
+        """
+
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["systemd"](self.deployment_dir, self.force,
+                                                                          self.upgrade,
+                                                                          action="wait_for_service_uptime",
+                                                                         service_name="falcon-sensor").provision_remote(
+            self.remoter)
 
     def init_cpu_data_remote(self)-> str:
         """
