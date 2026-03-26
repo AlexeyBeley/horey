@@ -127,20 +127,21 @@ class Provisioner(SystemFunctionCommon):
         self.remoter.execute("sudo nft add chain ip filter OUTPUT { type filter hook output priority 0 \\; }")
 
         # Allow VRRP multicast traffic (224.0.0.18)
-        self.remoter.execute("sudo nft add rule ip filter INPUT ip daddr 224.0.0.18 udp dport 112 vrrp accept")
-        self.remoter.execute("sudo nft add rule ip filter FORWARD ip daddr 224.0.0.18 udp dport 112 vrrp accept")
-        self.remoter.execute("sudo nft add rule ip filter OUTPUT ip daddr 224.0.0.18 udp dport 112 vrrp accept")
+        self.remoter.execute("sudo nft add rule ip filter INPUT ip daddr 224.0.0.18 ip protocol 112 accept")
+        self.remoter.execute("sudo nft add rule ip filter FORWARD ip daddr 224.0.0.18 ip protocol 112 accept")
+        self.remoter.execute("sudo nft add rule ip filter OUTPUT ip daddr 224.0.0.18 ip protocol 112 accept")
 
         # Allow established and related connections
         self.remoter.execute("sudo nft add rule ip filter INPUT ct state established,related accept")
         self.remoter.execute("sudo nft add rule ip filter FORWARD ct state established,related accept")
 
         # Default drop policy
-        self.remoter.execute("sudo nft add rule ip filter INPUT reject")
-        self.remoter.execute("sudo nft add rule ip filter FORWARD reject")
+        #self.remoter.execute("sudo nft add rule ip filter INPUT reject")
+        #self.remoter.execute("sudo nft add rule ip filter FORWARD reject")
 
         # Save the rules
-        self.remoter.execute("sudo nft list ruleset > /etc/nftables.conf")
+        breakpoint()
+        self.remoter.execute("sudo sh -c 'nft list ruleset > /etc/nftables.conf'")
 
     def get_interfaces_remote(self) -> dict:
         """
