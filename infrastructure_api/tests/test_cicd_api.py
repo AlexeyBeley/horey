@@ -808,7 +808,7 @@ def test_provision_github_hagent_dockerized(cicd_api_integration, ec2_api_mgmt_i
                                                         horey_repo_path = Path(__file__).parent.parent.parent
                                                         )
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
@@ -834,7 +834,7 @@ def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, e
     target_master.append_remote_step("Test", entrypoint)
     # backup
     def entrypoint():
-        cicd_api_integration.run_remote_provision_constructor(target_master,
+        cicd_api_integration.run_remote_provision_constructor(target_backup,
                                                               "vrrp",
                                                               action="install",
                                                               virtual_ip_address=virtual_ip_address,
@@ -842,6 +842,37 @@ def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, e
                                                               backups = [target_backup.deployment_target_address]
                                                               )
 
-    target_master.append_remote_step("Test", entrypoint)
-
+    target_backup.append_remote_step("Test", entrypoint)
+    assert cicd_api_integration.run_remote_deployer_deploy_targets([target_backup], asynchronous=False)
     assert cicd_api_integration.run_remote_deployer_deploy_targets([target_master, target_backup], asynchronous=False)
+
+
+
+@pytest.mark.todo
+def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+
+    target_master = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.ec2_vrrp_master,
+                                                                     bastions=ec2_instances
+                                                                     )[0]
+
+    target_backup = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.ec2_vrrp_backup,
+                                                                     bastions=ec2_instances
+                                                                     )[0]
+    virtual_ip_address1 = ".".join(target_backup.deployment_target_address.split(".")[:3]) + ".253"
+    virtual_ip_address2 = ".".join(target_backup.deployment_target_address.split(".")[:3]) + ".252"
+
+    # master
+    def entrypoint():
+        cicd_api_integration.run_remote_provision_constructor(target_master,
+                                                              "vrrp",
+                                                              action="install",
+                                                              architechture="active_active",
+                                                              address_map={
+                                                                  virtual_ip_address1: target_master.deployment_target_address,
+                                                                  virtual_ip_address2: target_backup.deployment_target_address},
+                                                              )
+
+    target_master.append_remote_step("Test", entrypoint)
+    assert cicd_api_integration.run_remote_deployer_deploy_targets([target_master], asynchronous=False)
