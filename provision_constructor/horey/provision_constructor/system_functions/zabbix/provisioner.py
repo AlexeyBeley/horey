@@ -45,9 +45,9 @@ class Provisioner(SystemFunctionCommon):
             case _:
                 zabbix_server_address = self.kwargs.get("zabbix_server_address")
                 hostname = self.kwargs.get("hostname")
-                return self.install_remote(zabbix_server_address=zabbix_server_address, hostname=hostname)
+                return self.install_remote(zabbix_server_address=zabbix_server_address, hostname=hostname, wait_for_service_uptime=self.kwargs.get("wait_for_service_uptime", True))
 
-    def install_remote(self, zabbix_server_address=None, hostname=None):
+    def install_remote(self, zabbix_server_address=None, hostname=None, wait_for_service_uptime=True):
         """
         Install zabbix agent
 
@@ -112,7 +112,8 @@ class Provisioner(SystemFunctionCommon):
             self.remoter.execute("sudo systemctl restart zabbix-agent2")
 
         self.remoter.execute("sudo systemctl enable zabbix-agent2", self.grep_validator("Executing: /usr/lib/systemd/systemd-sysv-install enable zabbix-agent2"))
-        self.check_systemd_service_status_remote("zabbix-agent2")
+        if wait_for_service_uptime:
+            self.wait_for_service_uptime_remote()
         return True
 
     def check_file_permissions_remote(self, remote_file_path, permissions=None, owner=None, group=None):
