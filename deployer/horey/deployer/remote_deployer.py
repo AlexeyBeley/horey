@@ -1164,11 +1164,20 @@ class RemoteDeployer:
                 for target in targets
                 if check_finished_callback(target)
             ]
+
             unfinished_targets = [
                 target.deployment_target_address
                 for target in targets
                 if not check_finished_callback(target)
             ]
+
+            for finished_target in finished_targets:
+                if finished_target.status_code in [finished_target.StatusCode.FAILURE, finished_target.StatusCode.ERROR]:
+                    for target in unfinished_targets:
+                        target.status_code = target.StatusCode.ERROR
+                        target.status = f"Marked as error dew to neighbor failure: {finished_target.deployment_target_address}"
+
+
             logger.info(
                 f"Finished {len(finished_targets)}: {finished_targets}"
                 f", not finished {len(unfinished_targets)}: {unfinished_targets}"
