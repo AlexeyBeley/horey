@@ -1160,15 +1160,25 @@ class RemoteDeployer:
                 break
 
             finished_targets = [
-                target.deployment_target_address
+                target
                 for target in targets
                 if check_finished_callback(target)
+            ]
+
+            finished_target_addresses = [
+                target.deployment_target_address
+                for target in finished_targets
             ]
 
             unfinished_targets = [
                 target.deployment_target_address
                 for target in targets
                 if not check_finished_callback(target)
+            ]
+
+            unfinished_target_addresses = [
+                target.deployment_target_address
+                for target in unfinished_targets
             ]
 
             for finished_target in finished_targets:
@@ -1179,8 +1189,8 @@ class RemoteDeployer:
 
 
             logger.info(
-                f"Finished {len(finished_targets)}: {finished_targets}"
-                f", not finished {len(unfinished_targets)}: {unfinished_targets}"
+                f"Finished {len(finished_targets)}: {finished_target_addresses}"
+                f", not finished {len(unfinished_targets)}: {unfinished_target_addresses}"
             )
             logger.info(
                 f"Deployer is going to sleep for {sleep_time} seconds"
