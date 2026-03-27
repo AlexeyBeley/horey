@@ -675,7 +675,7 @@ class CICDAPI:
         """
 
         if target.status_code in [target.StatusCode.FAILURE, target.StatusCode.ERROR]:
-            raise self.remote_deployer.DeployerError(f"Target {target} failed")
+            raise self.remote_deployer.DeployerError(f"Target deployment stopped: {target.deployment_target_address}")
 
         logger.info(f"run_remote_provision_constructor {timeout=}, {windows=}")
         try:
