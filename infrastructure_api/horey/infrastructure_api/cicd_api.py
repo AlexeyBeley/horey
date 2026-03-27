@@ -811,6 +811,9 @@ class CICDAPI:
         :return:
         """
 
+        if target.status_code in [target.StatusCode.FAILURE, target.StatusCode.ERROR]:
+            raise self.remote_deployer.DeployerError(f"Target deployment stopped: {target.deployment_target_address}")
+
         logger.info(f"run_remote_provision_constructor {timeout=}, {windows=}")
         try:
             s3_deployment_uri = kwargs.pop("s3_deployment_uri")

@@ -56,13 +56,15 @@ class BashExecutor:
         Timeout is used fot stuck commands - for example if the command expects for user input.
         Like dpkg installation approve - happens all the time with logstash package.
 
-        @param timeout: In seconds. Default 10 minutes
-        @param debug: print return code, stdout and stderr
-        @param command:
-        @param ignore_on_error_callback:
-        @param logger:
-        @return:
-        :param sudo:
+        :param command:
+        :param ignore_on_error_callback: function that allows you to ignore
+                                         warnings or codes different from 0
+        :param timeout: In seconds. Default 10 minutes
+        :param debug: print return code, stdout and stderr
+        :param logger: use custom logger (format the log lines as you wish)
+        :param sudo: run the command with sudo
+
+        :return: {"stdout": str, "stderr": str, "code": int}
         """
 
         if not logger:
@@ -90,8 +92,9 @@ class BashExecutor:
                 "code": 1,
             }
             raise BashExecutor.BashError(json.dumps(return_dict))
+        finally:
+            os.remove(file_name)
 
-        os.remove(file_name)
         return_dict = {
             "stdout": ret.stdout.decode().strip("\n"),
             "stderr": ret.stderr.decode().strip("\n"),
