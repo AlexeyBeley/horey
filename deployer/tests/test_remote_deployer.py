@@ -12,14 +12,10 @@ import pytest
 from horey.deployer.remote_deployer import RemoteDeployer
 from horey.deployer.deployment_target import DeploymentTarget
 from horey.deployer.deployment_step import DeploymentStep
-from horey.common_utils.common_utils import CommonUtils
 from horey.deployer.deployment_step_configuration_policy import (
     DeploymentStepConfigurationPolicy,
 )
 
-mock_values_file_path = Path(__file__).parent.parent.parent.parent / "ignore" / "horey" / "test_deployer" / "mock_values.py"
-
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 deployer = RemoteDeployer()
 
@@ -404,3 +400,63 @@ def test_wait_to_finish_step_with_proxy(target):
     deployer.deploy_target_step(target, step, asynchronous=True)
     deployer.wait_to_finish_step(target, step)
     assert step.status_code == step.StatusCode.SUCCESS
+
+@pytest.mark.wipwip
+def test_analyze_three_line_shell_execution_finish_1():
+    finish = "eNdofstdOUTbuffer. exit status"
+    return_code, line_index = deployer.analyze_three_line_shell_execution_finish("eNdofstdOUTbuffer.", " exit status ", "0", finish)
+    assert return_code == 0
+    assert line_index == 0
+
+@pytest.mark.wipwip
+def test_analyze_three_line_shell_execution_finish_2():
+    finish = "eNdofstdOUTbuffer. exit status"
+    return_code, line_index = deployer.analyze_three_line_shell_execution_finish("eNdofstdOUTbuffer. exit status ", "0", "", finish)
+    assert return_code == 0
+    assert line_index == 0
+
+@pytest.mark.wipwip
+def test_analyze_three_line_shell_execution_finish_3():
+    finish = "eNdofstdOUTbuffer. exit status"
+    return_code, line_index = deployer.analyze_three_line_shell_execution_finish("eNdofstdOUTbuffer. ", "exit status 0", "", finish)
+    assert return_code == 0
+    assert line_index == 0
+
+@pytest.mark.wipwip
+def test_analyze_three_line_shell_execution_finish_4():
+    finish = "eNdofstdOUTbuffer. exit status"
+    return_code, line_index = deployer.analyze_three_line_shell_execution_finish("", "eNdofstdOUTbuffer.", " exit status 0", finish)
+    assert return_code == 0
+    assert line_index == 1
+
+@pytest.mark.wipwip
+def test_analyze_three_line_shell_execution_finish_5():
+    finish = "eNdofstdOUTbuffer. exit status"
+    return_code, line_index = deployer.analyze_three_line_shell_execution_finish("", "", "eNdofstdOUTbuffer. exit status 0", finish)
+    assert return_code == 0
+    assert line_index == 2
+
+@pytest.mark.wipwip
+def test_analyze_three_line_shell_execution_finish_6():
+    finish = "eNdofstdOUTbuffer. exit status"
+    return_code, line_index = deployer.analyze_three_line_shell_execution_finish("", "", "eNdofstdOUTbuffer. exit status ", finish)
+    assert return_code is None
+    assert line_index is None
+
+@pytest.mark.wipwip
+def test_analyze_three_line_shell_execution_finish_7():
+    finish = "eNdofstdOUTbuffer. exit status"
+    with pytest.raises(ValueError, match="invalid literal"):
+        return_code, line_index = deployer.analyze_three_line_shell_execution_finish("", "", "eNdofstdOUTbuffer. exit status a", finish)
+
+    with pytest.raises(ValueError, match="invalid literal"):
+        return_code, line_index = deployer.analyze_three_line_shell_execution_finish("", "eNdofstdOUTbuffer. ","exit status a", finish)
+
+    with pytest.raises(ValueError, match="invalid literal"):
+        return_code, line_index = deployer.analyze_three_line_shell_execution_finish("eNdofstdOUTbuffer. ","exit status ", "a", finish)
+
+@pytest.mark.wip
+def test_analyze_three_line_shell_execution_finish_8():
+    finish = "eNdofstdOUTbuffer. exit status"
+    with pytest.raises(ValueError, match="invalid literal"):
+        return_code, line_index = deployer.analyze_three_line_shell_execution_finish("eNdofstdOUTbuffer. exit status ", "a", "", finish)

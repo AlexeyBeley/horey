@@ -495,7 +495,7 @@ class RemoteDeployer:
         end_time = datetime.datetime.now() + datetime.timedelta(seconds=timeout)
 
         cmd = cmd.strip('\n')
-        finish = 'eNdofstdOUTbuffer. exit status'
+        finish = "eNdofstdOUTbuffer. exit status"
         echo_cmd = f"echo {finish} $?"
         inst_error = None
         for i in range(retries):
@@ -531,46 +531,149 @@ class RemoteDeployer:
         :return:
         """
 
-        shout = []
-        raw_data_aggregator = None
+        shell_output = []
+        data_chunk_aggregator = bytes()
         while datetime.datetime.now() < end_time:
             if not channel.recv_ready():
                 time.sleep(0.01)
                 continue
             raw_data = channel.recv(4096)
-            if raw_data_aggregator is None:
-                raw_data_aggregator = raw_data
-            else:
-                raw_data_aggregator += raw_data
+            data_chunk_aggregator += raw_data
             try:
-                data = raw_data_aggregator.decode('utf-8')
-                raw_data_aggregator = None
+                data = data_chunk_aggregator.decode('utf-8')
             except Exception:
                 logger.error(f"Could not decode: {raw_data}")
-                time.sleep(5)
+                time.sleep(1)
                 continue
 
-            for line in data.splitlines():
-                line = RemoteDeployer.clean_line(line)
-                logger.info(f"[{remote_address} REMOTE<-] '{line}'")
-                # sometimes the command sent over SSH is printed in stdout. We do not need it.
-                if str(line).startswith(cmd) or str(line).startswith(echo_cmd):
-                    shout = []
-                elif str(line).startswith(finish):
-                    exit_code = RemoteDeployer.extract_ssh_command_exit_code_from_finish_line(line)
-                    return shout, exit_code
-                # It sporadically splits the output to 2 lines
-                elif shout and str(shout[-1]+line).startswith(finish):
-                    status_line = str(shout.pop(-1)+line)
-                    exit_code =  RemoteDeployer.extract_ssh_command_exit_code_from_finish_line(status_line)
-                    return shout, exit_code
-                # empty line
-                elif not line:
-                    continue
-                else:
-                    shout.append(line)
+            shell_output_tmp, exit_code, exit_code_line_index = RemoteDeployer.parse_shell_output_chunk(data, cmd, finish, remote_address, echo_cmd, shell_output[-2:])
+            if shell_output_tmp:
+                # Augmented assignment operator behaves like extend()
+                shell_output += shell_output_tmp
+                data_chunk_aggregator = bytes()
+            if exit_code is not None:
+                while exit_code_line_index != 0:
+                    # Time complexity O(1)
+                    shell_output.pop()
+                    exit_code_line_index += 1
+
+                return shell_output, exit_code
 
         raise TimeoutError(f"{remote_address} Reached timeout waiting for SSH response")
+
+    @staticmethod
+    def parse_shell_output_chunk(data:str, cmd:str, finish:str, remote_address:str, echo_cmd:str, recent_output:List[str]):
+        """
+        Parse SSH shell output chunk of data
+
+        :param recent_output:
+        :param data:
+        :param cmd:
+        :param finish:
+        :param remote_address:
+        :param echo_cmd:
+        :return: (
+                  shell_output <None if failed to parse>,
+                  exit_code <None if there was no exit code in the output>
+                  exit_code_line_index: last line of the command output, ignore the rest,
+                                        <0 if the finish line was not added to the bulk
+                  )
+        """
+
+        shell_output = []
+        lines = data.splitlines()
+
+        for line in lines:
+            line = RemoteDeployer.clean_line(line)
+            logger.info(f"[{remote_address} REMOTE<-] '{line}'")
+
+            # empty line
+            if not line:
+                continue
+            str_line = str(line)
+
+            # sometimes the command sent over SSH is printed in stdout. We do not need it.
+            if str_line.startswith(cmd) or str_line.startswith(echo_cmd):
+                shell_output = []
+                continue
+
+            exit_code_line_index = 0
+            try:
+                line_1 = shell_output[-1]
+            except IndexError:
+                try:
+                    line_1 = recent_output[-1]
+                    exit_code_line_index -= 1
+                except IndexError:
+                    line_1 = ""
+
+            try:
+                line_0 = shell_output[-3]
+            except IndexError:
+                try:
+                    line_0 = recent_output[-2]
+                    exit_code_line_index -= 1
+                except IndexError:
+                    line_0 = ""
+
+            exit_code, line_number = RemoteDeployer.analyze_three_line_shell_execution_finish(line_0, line_1, str_line, finish)
+            if exit_code is not None:
+                # [end, of] [line]
+                #  -2
+                return shell_output, exit_code, min(exit_code_line_index+line_number, 0)
+
+            shell_output.append(line)
+
+        return shell_output, None, None
+
+
+    @staticmethod
+    def analyze_three_line_shell_execution_finish(line_0, line_1, line_2, finish):
+        """
+        Analyze command finish status in multi-line output
+
+        :param line_0:
+        :param line_1:
+        :param line_2:
+        :param finish:
+        :return:
+        """
+
+        if line_2.startswith(finish):
+            try:
+                exit_code = RemoteDeployer.extract_ssh_command_exit_code_from_finish_line(line_2)
+                return exit_code, 2
+            except RemoteDeployer.IncompleteOutput:
+                return None, None
+
+        line = line_1 + line_2
+        if line.startswith(finish):
+            try:
+                exit_code = RemoteDeployer.extract_ssh_command_exit_code_from_finish_line(line)
+                return exit_code, 1
+            except RemoteDeployer.IncompleteOutput:
+                return None, None
+
+        line = line_0 + line_1
+        if line.startswith(finish):
+            try:
+                exit_code = RemoteDeployer.extract_ssh_command_exit_code_from_finish_line(line)
+                return exit_code, 0
+            except RemoteDeployer.IncompleteOutput:
+                # if finish line beginning is in line_0, it must end at line 2 at most
+                line = line_0 + line_1 + line_2
+                exit_code = RemoteDeployer.extract_ssh_command_exit_code_from_finish_line(line)
+                return exit_code, 0
+
+        line = line_0 + line_1 + line_2
+        if line.startswith(finish):
+            try:
+                exit_code = RemoteDeployer.extract_ssh_command_exit_code_from_finish_line(line)
+                return exit_code, 0
+            except RemoteDeployer.IncompleteOutput:
+                return None, None
+        return None, None
+
 
     @staticmethod
     def clean_line(line:str) -> str:
@@ -584,9 +687,10 @@ class RemoteDeployer:
         while "\x08" in line:
             backspace_index = line.find("\x08")
             line = line[:backspace_index - 1] + line[backspace_index + 1:]
-        line = (RemoteDeployer.REGEX_CLEANER.sub('', line).
-                replace('\b', '').
-                replace('\r', '').
+        line = (RemoteDeployer.REGEX_CLEANER.sub("", line).
+                replace('\b', "").
+                replace('\r', "").
+                replace('\n', "").
                 replace('\x1b8', "").
                 replace('\x1b7', "").
                 replace("\x1b>", "").
@@ -594,7 +698,7 @@ class RemoteDeployer:
         return line
 
     @staticmethod
-    def extract_ssh_command_exit_code_from_finish_line(finish_line):
+    def extract_ssh_command_exit_code_from_finish_line(finish_line:str):
         """
         Extract return code from finish line
 
@@ -602,7 +706,14 @@ class RemoteDeployer:
         :return:
         """
 
-        exit_code = int(str(finish_line).rsplit(maxsplit=1)[1])
+        try:
+            exit_code = int(finish_line.rsplit(maxsplit=1)[1])
+        except ValueError:
+            if finish_line.strip().rsplit(maxsplit=1)[1] == "status":
+                logger.warning(f"Incomplete output: {finish_line}")
+                raise RemoteDeployer.IncompleteOutput()
+            raise
+
         if exit_code != 0:
             raise RemoteDeployer.DeployerError(f"Exit Code: {exit_code}")
 
@@ -1342,6 +1453,11 @@ class RemoteDeployer:
     class DeployerError(RuntimeError):
         """
         Error occurred while deploying.
+        """
+
+    class IncompleteOutput(ValueError):
+        """
+        Wait for more output
         """
 
     @staticmethod
