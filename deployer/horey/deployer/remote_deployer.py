@@ -1171,7 +1171,7 @@ class RemoteDeployer:
             ]
 
             unfinished_targets = [
-                target.deployment_target_address
+                target
                 for target in targets
                 if not check_finished_callback(target)
             ]
