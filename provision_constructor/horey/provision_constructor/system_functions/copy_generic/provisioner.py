@@ -70,13 +70,14 @@ class Provisioner(SystemFunctionCommon):
 
         remoter.put_file(self.src, self.dst, sudo=self.sudo)
 
+        sudo = "sudo " if self.sudo else ""
         chmod = self.kwargs.get("chmod")
         if chmod:
-            self.remoter.execute(f"chmod -R {chmod} {self.dst}")
+            self.remoter.execute(f"{sudo}chmod -R {chmod} {self.dst}")
 
         chown = self.kwargs.get("chown")
         if chown:
-            self.remoter.execute(f"chown -R {chown} {self.dst}")
+            self.remoter.execute(f"{sudo}chown -R {chown} {self.dst}")
 
         return True
 
