@@ -70,6 +70,14 @@ class Provisioner(SystemFunctionCommon):
 
         remoter.put_file(self.src, self.dst, sudo=self.sudo)
 
+        chmod = self.kwargs.get("chmod")
+        if chmod:
+            self.remoter.execute(f"chmod -R {chmod} {self.dst}")
+
+        chown = self.kwargs.get("chown")
+        if chown:
+            self.remoter.execute(f"chown -R {chown} {self.dst}")
+
         return True
 
     def remote_download(self):
