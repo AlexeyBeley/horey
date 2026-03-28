@@ -27,7 +27,7 @@ class Provisioner(SystemFunctionCommon):
         super().__init__(deployment_dir, force, upgrade, **kwargs)
         self.src = kwargs["src"]
         self.dst = kwargs["dst"]
-        self.sudo = kwargs["sudo"]
+        self.sudo = kwargs.get("sudo")
 
     def test_provisioned(self):
         """
