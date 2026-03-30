@@ -57,6 +57,9 @@ class Disk(AzureObject):
             "supports_hibernation": self.init_default_attr,
             "public_network_access": self.init_default_attr,
             "last_ownership_update_time": self.init_default_attr,
+            "max_shares" : self.init_default_attr,
+            "disk_iops_read_only": self.init_default_attr,
+            "disk_m_bps_read_only": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
