@@ -111,11 +111,14 @@ class Disk(AzureObject):
             "creation_data": {"create_option": DiskCreateOption.empty},
             "tags": self.tags,
         }
+
         if self.disk_iops_read_write:
-            dict_ret["disk_iops_read_write=7500"]= self.disk_iops_read_write
+            dict_ret["sku"] = {"name": "PremiumV2_LRS", "tier": "Premium"}
+            dict_ret["disk_iops_read_write"]= self.disk_iops_read_write
 
         if self.disk_m_bps_read_write:
-            dict_ret["disk_m_bps_read_write=7500"] = self.disk_m_bps_read_write
+            dict_ret["sku"] = {"name": "PremiumV2_LRS", "tier": "Premium"}
+            dict_ret["disk_m_bps_read_write"] = self.disk_m_bps_read_write
 
         return [
             self.resource_group_name,
