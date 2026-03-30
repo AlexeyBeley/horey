@@ -732,28 +732,20 @@ class DockerAPI:
 
         return_dict = BashExecutor.run_bash("docker ps --all -q -f status=dead")
         dead_container_ids = return_dict["stdout"].split("\n")
-        for container_id in dead_container_ids:
-            try:
-                BashExecutor.run_bash(f"docker container rm -f {container_id}")
-            except Exception as inst_error:
-                logger.exception(inst_error)
+        containers_dir = Path("/var/lib/docker/containers")
+        stdout = BashExecutor.run_bash(f"sudo ls {containers_dir}")["stdout"]
+        container_directory_names = stdout.split("\n")
 
-            try:
-                containers_dir = Path("/var") / "lib" / "docker" / "containers"
-                stdout = BashExecutor.run_bash(f"sudo ls {str(containers_dir)}")["stdout"]
-                container_directory_names = stdout.split("\n")
-                for container_directory_name in container_directory_names:
-                    if container_id in container_directory_name:
-                        BashExecutor.run_bash(f"sudo rm -rf {str(containers_dir / container_directory_name)}")
-                        break
-            except Exception as inst_error:
-                logger.exception(inst_error)
+        for container_id in dead_container_ids:
+            BashExecutor.run_bash(f"docker container rm -f {container_id}", ignore_on_error_callback=lambda _: True)
+
+            for container_directory_name in container_directory_names:
+                if container_id in container_directory_name:
+                    BashExecutor.run_bash(f"sudo rm -rf {containers_dir / container_directory_name}", ignore_on_error_callback=lambda _: True)
+                    break
 
         if dead_container_ids:
-            try:
-                BashExecutor.run_bash("sudo service docker restart")
-            except Exception as inst_error:
-                logger.exception(inst_error)
+            BashExecutor.run_bash("sudo service docker restart")
 
         return return_dict
 
@@ -828,7 +820,7 @@ class DockerAPI:
                 if not dir_name:
                     raise RuntimeError(f"Can not find dead container directory: {container_dict['ID']}")
                 command = f"sudo rm -rf /var/lib/docker/containers/{dir_name}"
-                response = BashExecutor.run_bash(command, sudo=True)
+                response = BashExecutor.run_bash(command)
                 assert response["stdout"] == ""
         else:
             def helper():

@@ -21,6 +21,8 @@ class Disk(AzureObject):
         self._resource_group_name = None
         self.disk_size_gb = None
         self.unique_id = None
+        self.disk_iops_read_write = None
+        self.disk_m_bps_read_write = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -98,28 +100,27 @@ class Disk(AzureObject):
 
     def generate_create_request(self):
         """
-        return list:
+        Generate create request
 
-
-        'my_resource_group',
-        'my_disk_name',
-        {
-            'location': 'eastus',
-            'disk_size_gb': 20,
-            'creation_data': {
-                'create_option': DiskCreateOption.empty
-            }
-        }
+        :return:
         """
+
+        dict_ret = {
+            "location": self.location,
+            "disk_size_gb": self.disk_size_gb,
+            "creation_data": {"create_option": DiskCreateOption.empty},
+            "tags": self.tags,
+        }
+        if self.disk_iops_read_write:
+            dict_ret["disk_iops_read_write=7500"]= self.disk_iops_read_write
+
+        if self.disk_m_bps_read_write:
+            dict_ret["disk_m_bps_read_write=7500"] = self.disk_m_bps_read_write
+
         return [
             self.resource_group_name,
             self.name,
-            {
-                "location": self.location,
-                "disk_size_gb": self.disk_size_gb,
-                "creation_data": {"create_option": DiskCreateOption.empty},
-                "tags": self.tags,
-            }
+            dict_ret
         ]
 
     def update_after_creation(self, disk):
