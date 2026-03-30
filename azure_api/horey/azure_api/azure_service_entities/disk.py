@@ -23,6 +23,7 @@ class Disk(AzureObject):
         self.unique_id = None
         self.disk_iops_read_write = None
         self.disk_m_bps_read_write = None
+        self.tier = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -113,11 +114,9 @@ class Disk(AzureObject):
         }
 
         if self.disk_iops_read_write:
-            dict_ret["sku"] = {"name": "PremiumV2_LRS", "tier": "Premium"}
             dict_ret["disk_iops_read_write"]= self.disk_iops_read_write
 
         if self.disk_m_bps_read_write:
-            dict_ret["sku"] = {"name": "PremiumV2_LRS", "tier": "Premium"}
             dict_ret["disk_m_bps_read_write"] = self.disk_m_bps_read_write
 
         return [
@@ -136,3 +135,20 @@ class Disk(AzureObject):
 
         self.id = disk.id
         self.unique_id = disk.unique_id
+
+    def generate_update_request(self):
+        """
+        Update disk
+
+        :return:
+        """
+        return [
+            self.resource_group_name,
+            self.name,
+            {
+                "location": self.location,
+                "disk_size_gb": self.disk_size_gb,
+                "tags": self.tags,
+                "tier": self.tier,
+            }
+        ]

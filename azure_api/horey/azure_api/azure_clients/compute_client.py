@@ -302,3 +302,18 @@ class ComputeClient(AzureClient):
                                                                 publisher_name="Canonical",
                                                                 offer=offer_name, skus=sku.name))
         return ret
+
+    def update_disk(self, disk:Disk):
+        """
+        Resize disk tier with new size, IOPS, throughput, or SKU.
+
+        :param disk: Disk
+        :return: Updated disk object
+        """
+
+        lst_args = disk.generate_update_request()
+
+        logger.info(f"Begin disk update: '{disk.name}'")
+        response = self.client.disks.begin_update(*lst_args)
+        response.wait()
+        return disk.update_after_creation(response.result())
