@@ -89,6 +89,7 @@ class EC2SecurityGroup(AwsObject):
         @return:
         :param force: Force deletion of all rules.
         """
+
         add_request, revoke_request, update_description = [], [], []
         self_permissions_counter = 0
         for self_permission in self.split_permissions(self.ip_permissions):
@@ -155,6 +156,39 @@ class EC2SecurityGroup(AwsObject):
 
         return add_request, revoke_request, update_description
 
+    def generate_revoke_by_comment_requests(self, desired_group):
+        """
+        Revoke all rules with specific comment.
+
+        :param desired_group:
+        :return:
+        """
+        breakpoint()
+        revoke_requests = []
+        self_permissions_counter = 0
+        for self_permission in self.split_permissions(self.ip_permissions):
+            self_permissions_counter += 1
+            if not any(
+                    (
+                            self.check_permissions_equal(
+                                self_permission,
+                                target_permission,
+                                check_without_description=True,
+                            )
+                            for target_permission in self.split_permissions(
+                        desired_group.ip_permissions
+                    )
+                    )
+            ):
+                revoke_requests.append(self_permission)
+
+        revoke_request = (
+            {"GroupId": self.id, "IpPermissions": revoke_requests}
+            if revoke_requests
+            else None
+        )
+
+        return revoke_request
     @staticmethod
     def split_permissions(permissions):
         """
