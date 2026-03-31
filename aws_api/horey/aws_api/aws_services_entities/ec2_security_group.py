@@ -166,14 +166,28 @@ class EC2SecurityGroup(AwsObject):
         revoke_requests = []
         self_permissions = self.split_permissions(self.ip_permissions)
         desired_permissions = self.split_permissions(desired_group.ip_permissions)
+        seen_self_descriptions = []
         for self_permission in self_permissions:
             self_rule_description = self.get_permission_description(self_permission)
+            if not self_rule_description:
+                raise ValueError(f"No description for rule: {self_permission}")
+            if self_rule_description in seen_self_descriptions:
+                raise ValueError("Multiple rules with same description!")
+            seen_self_descriptions.append(self_rule_description)
 
             for desired_permission in desired_permissions:
                 if desired_permission == self_permission:
                     continue
                 desired_rule_description = self.get_permission_description(desired_permission)
-                breakpoint()
+                if desired_rule_description == self_rule_description:
+                    revoke_requests.append(self_permission)
+
+        return  (
+            {"GroupId": self.id, "IpPermissions": revoke_requests}
+            if revoke_requests
+            else None
+        )
+
 
     @staticmethod
     def get_permission_description(permission):
