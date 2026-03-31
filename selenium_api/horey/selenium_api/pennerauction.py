@@ -72,7 +72,7 @@ class Pennerauction(Provider):
         if "High Bid" not in lot_element.text:
             if "Bidding opens in" in lot_element.text:
                 lot.current_max = 0
-                lot.starting_bid = 0
+                lot.starting_bid = 1
                 return lot
 
             logger.error(f"Can not find high bid in {lot.url} text: {lot_element.text}")

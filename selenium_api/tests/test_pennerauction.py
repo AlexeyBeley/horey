@@ -29,5 +29,5 @@ def test_init_auction_event_lots():
     auction = Pennerauction()
     auction_event = AuctionEvent()
     auction_event.provinces = "manitoba"
-    auction_event.url = "https://pennerauctions.hibid.com/catalog/710766"
+    auction_event.url = "https://pennerauctions.hibid.com/catalog/710766/april-16th--spring-estate-and-consignment-auction---morden--mb"
     assert auction.init_auction_event_lots(auction_event)
