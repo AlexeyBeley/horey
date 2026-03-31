@@ -89,6 +89,7 @@ class EC2SecurityGroup(AwsObject):
         @return:
         :param force: Force deletion of all rules.
         """
+
         add_request, revoke_request, update_description = [], [], []
         self_permissions_counter = 0
         for self_permission in self.split_permissions(self.ip_permissions):
@@ -154,6 +155,76 @@ class EC2SecurityGroup(AwsObject):
         )
 
         return add_request, revoke_request, update_description
+
+    def generate_revoke_by_comment_requests(self, desired_group):
+        """
+        Revoke all rules with specific comment.
+
+        :param desired_group:
+        :return:
+        """
+        revoke_requests = []
+        self_permissions = self.split_permissions(self.ip_permissions)
+        desired_permissions = self.split_permissions(desired_group.ip_permissions)
+        seen_self_descriptions = []
+        for self_permission in self_permissions:
+            self_rule_description = self.get_permission_description(self_permission)
+            if not self_rule_description:
+                raise ValueError(f"No description for rule: {self.id} '{self_permission}'")
+            if self_rule_description in seen_self_descriptions:
+                raise ValueError(f"Multiple rules with same description: {self.id} '{self_rule_description}'")
+            seen_self_descriptions.append(self_rule_description)
+
+            for desired_permission in desired_permissions:
+                if desired_permission == self_permission:
+                    continue
+                desired_rule_description = self.get_permission_description(desired_permission)
+                if desired_rule_description == self_rule_description:
+                    revoke_requests.append(self_permission)
+
+        return  (
+            {"GroupId": self.id, "IpPermissions": revoke_requests}
+            if revoke_requests
+            else None
+        )
+
+
+    @staticmethod
+    def get_permission_description(permission):
+        """
+        Get description of a permission.
+        If no description - return empty string.
+
+        @param permission:
+        @return:
+        """
+
+        descriptions = []
+        for key, value in permission.items():
+            if key == "IpRanges":
+                for ip_range in value:
+                    if "Description" in ip_range:
+                        descriptions.append(ip_range["Description"])
+            elif key == "Ipv6Ranges":
+                for ip_range in value:
+                    if "Description" in ip_range:
+                        descriptions.append(ip_range["Description"])
+            elif key == "UserIdGroupPairs":
+                for ip_range in value:
+                    if "Description" in ip_range:
+                        descriptions.append(ip_range["Description"])
+            elif key == "PrefixListIds":
+                for ip_range in value:
+                    if "Description" in ip_range:
+                        descriptions.append(ip_range["Description"])
+
+        if len(descriptions) > 1:
+            raise ValueError(
+                f"Multiple descriptions for one rule: {descriptions}, {permission}"
+            )
+        if len(descriptions) == 0:
+            raise ValueError(f"No descriptions for rule: {permission}")
+        return descriptions[0]
 
     @staticmethod
     def split_permissions(permissions):

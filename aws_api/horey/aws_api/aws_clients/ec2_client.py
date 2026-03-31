@@ -387,11 +387,15 @@ class EC2Client(Boto3Client):
             desired_security_group, force=force
         )
 
+        revoke_by_comment_request = existing_security_group.generate_revoke_by_comment_requests(desired_security_group)
+        if revoke_by_comment_request:
+            self.revoke_security_group_ingress_raw(desired_security_group.region, revoke_request)
+
         if add_request:
             self.authorize_security_group_ingress_raw(desired_security_group.region, add_request)
 
         if declarative and revoke_request:
-            self.revoke_security_group_ingress_raw(revoke_request)
+            self.revoke_security_group_ingress_raw(desired_security_group.region, revoke_request)
 
         if update_rules_description:
             self.update_security_group_rule_descriptions_ingress_raw(desired_security_group.region,
@@ -479,14 +483,15 @@ class EC2Client(Boto3Client):
                 raise NotImplementedError(response)
             self.clear_cache(EC2SecurityGroup)
             return response
+        return None
 
-    def revoke_security_group_ingress_raw(self, request_dict, region=None):
+    def revoke_security_group_ingress_raw(self, region, request_dict):
         """
         Revoke permission
 
-        @param request_dict:
-        @return:
         :param region:
+        :param request_dict:
+        :return:
         """
 
         logger.info(f"Revoking security group ingress: {request_dict}")
@@ -502,6 +507,7 @@ class EC2Client(Boto3Client):
                 raise RuntimeError(response)
 
             return response
+        return None
 
     def update_security_group_rule_descriptions_ingress_raw(self, region, request_dict):
         """
@@ -924,17 +930,17 @@ class EC2Client(Boto3Client):
                     )
                 vpc.id = vpc_exists.id
                 for request in vpc_exists.generate_modify_vpc_attribute_requests(desired=vpc):
-                    self.modify_vpc_attribute_raw(request)
+                    self.modify_vpc_attribute_raw(vpc.region, request)
                 return
 
         if vpc.id is None:
-            response = self.provision_vpc_raw(vpc.generate_create_request())
+            response = self.provision_vpc_raw(vpc.region, vpc.generate_create_request())
             vpc.update_from_raw_create(response)
 
             for request in vpc.generate_modify_vpc_attribute_requests():
-                self.modify_vpc_attribute_raw(request)
+                self.modify_vpc_attribute_raw(vpc.region, request)
 
-    def provision_vpc_raw(self, request, region=None):
+    def provision_vpc_raw(self,region, request):
         """
         Standard.
 
@@ -942,13 +948,15 @@ class EC2Client(Boto3Client):
         @return:
         :param region:
         """
+
         for response in self.execute(
                 self.get_session_client(region=region).create_vpc, "Vpc", filters_req=request
         ):
             self.clear_cache(VPC)
             return response
+        return None
 
-    def modify_vpc_attribute_raw(self, request, region=None):
+    def modify_vpc_attribute_raw(self, region, request):
         """
         Standard.
 
@@ -992,7 +1000,7 @@ class EC2Client(Boto3Client):
             if subnet.id is not None:
                 continue
             try:
-                response = self.provision_subnet_raw(subnet.generate_create_request())
+                response = self.provision_subnet_raw(subnet.region, subnet.generate_create_request())
                 subnet.id = response["SubnetId"]
             except Exception as exception_inst:
                 if "conflicts with another subnet" in repr(exception_inst):
@@ -1034,11 +1042,11 @@ class EC2Client(Boto3Client):
             if subnet.id is None:
                 raise RuntimeError(f"Subnet ID is None for subnet {subnet.get_tagname()}")
 
-            self.delete_subnet_raw({"SubnetId": subnet.id})
+            self.delete_subnet_raw(subnet.region, {"SubnetId": subnet.id})
 
         return True
 
-    def delete_subnet_raw(self, request, region=None):
+    def delete_subnet_raw(self, region, request):
         """
         Standard.
 
@@ -1089,11 +1097,11 @@ class EC2Client(Boto3Client):
             if route_table.id is None:
                 raise RuntimeError(f"Route_table ID is None for route_table {route_table.get_tagname()}")
 
-            self.delete_route_table_raw({"RouteTableId": route_table.id})
+            self.delete_route_table_raw(route_table.region, {"RouteTableId": route_table.id})
 
         return True
 
-    def delete_route_table_raw(self, request, region=None):
+    def delete_route_table_raw(self, region, request):
         """
         Standard.
 
@@ -1140,10 +1148,10 @@ class EC2Client(Boto3Client):
             if security_group.id is None:
                 raise RuntimeError(f"security_group ID is None for security_group {security_group.get_tagname()}")
 
-            self.delete_security_group_raw({"GroupId": security_group.id})
+            self.delete_security_group_raw(security_group.region, {"GroupId": security_group.id})
         return True
 
-    def delete_security_group_raw(self, request, region=None):
+    def delete_security_group_raw(self, region, request):
         """
         Standard.
 
@@ -1162,7 +1170,7 @@ class EC2Client(Boto3Client):
 
         return None
 
-    def provision_subnet_raw(self, request, region=None):
+    def provision_subnet_raw(self, region, request):
         """
         Standard.
 
@@ -1973,14 +1981,14 @@ class EC2Client(Boto3Client):
                 current_launch_template_version.generate_create_request(launch_template)
             )
             if provision_version_request:
-                response = self.provision_launch_template_version_raw(
+                response = self.provision_launch_template_version_raw(launch_template.region,
                     provision_version_request
                 )
                 current_launch_template_version.update_from_raw_response(response)
                 request = launch_template.generate_modify_launch_template_request(
                     str(current_launch_template_version.version_number)
                 )
-                response = self.modify_launch_template_raw(request)
+                response = self.modify_launch_template_raw(launch_template.region, request)
                 launch_template.update_from_raw_response(response)
             else:
                 region_object = self.find_launch_template(launch_template.region,
@@ -1988,13 +1996,13 @@ class EC2Client(Boto3Client):
                 launch_template.update_from_raw_response(region_object.dict_src)
             return
 
-        response = self.provision_launch_template_raw(
+        response = self.provision_launch_template_raw(launch_template.region,
             launch_template.generate_create_request()
         )
 
         launch_template.update_from_raw_response(response)
 
-    def provision_launch_template_raw(self, request_dict, region=None):
+    def provision_launch_template_raw(self, region, request_dict):
         """
         Standard
 
@@ -2009,7 +2017,7 @@ class EC2Client(Boto3Client):
         ):
             return response
 
-    def provision_launch_template_version_raw(self, request_dict, region=None):
+    def provision_launch_template_version_raw(self, region, request_dict):
         """
         Standard
 
@@ -2027,13 +2035,14 @@ class EC2Client(Boto3Client):
                 raise RuntimeError(response)
             return response["LaunchTemplateVersion"]
 
-    def modify_launch_template_raw(self, request_dict, region=None):
+    def modify_launch_template_raw(self, region, request_dict):
         """
         Standard
 
         @param request_dict:
         @return:
         """
+
         logger.info(f"Modifying Launch Template Version: {request_dict}")
         for response in self.execute(
                 self.get_session_client(region=region).modify_launch_template,
@@ -2041,6 +2050,7 @@ class EC2Client(Boto3Client):
                 filters_req=request_dict,
         ):
             return response
+        return None
 
     def update_nat_gateway_information(self, nat_gateway):
         """
@@ -2398,12 +2408,12 @@ class EC2Client(Boto3Client):
             self, ec2_instance: EC2Instance, wait_until_active=False, tagname_uid=True,
     ):
         """
-        Standard
+        Provision EC2 instance if not exists.
 
-        @param ec2_instance:
-        @param wait_until_active:
-        @return:
+        :param ec2_instance:
+        :param wait_until_active:
         :param tagname_uid:
+        :return:
         """
 
         if tagname_uid:
@@ -2430,7 +2440,7 @@ class EC2Client(Boto3Client):
                 raise RuntimeError("Filter by tag Name did not work.")
 
         try:
-            response = self.provision_ec2_instance_raw(
+            response = self.provision_ec2_instance_raw(ec2_instance.region,
                 ec2_instance.generate_create_request()
             )
             ec2_instance.update_from_raw_response(response)
@@ -2496,17 +2506,19 @@ class EC2Client(Boto3Client):
 
         ami.update_from_raw_response(ami_new.dict_src)
 
-    def provision_ec2_instance_raw(self, request_dict, region=None):
+    def provision_ec2_instance_raw(self, region, request_dict):
         """
         Standard
 
         @param request_dict:
         @return:
         """
+
         for response in self.execute(
                 self.get_session_client(region=region).run_instances, "Instances", filters_req=request_dict
         ):
             return response
+        return None
 
     def update_key_pair_information(self, key_pair: KeyPair):
         """
@@ -2536,11 +2548,11 @@ class EC2Client(Boto3Client):
                 key_pair.id = region_key_pair.id
                 return None
 
-        response = self.provision_key_pair_raw(key_pair.generate_create_request())
+        response = self.provision_key_pair_raw(key_pair.region, key_pair.generate_create_request())
         key_pair.update_from_raw_response(response)
         return response
 
-    def provision_key_pair_raw(self, request_dict, region=None):
+    def provision_key_pair_raw(self, region, request_dict):
         """
         Standard
 
@@ -2553,14 +2565,16 @@ class EC2Client(Boto3Client):
                 self.get_session_client(region=region).create_key_pair, None, filters_req=request_dict, raw_data=True
         ):
             return response
+        return None
 
-    def associate_elastic_address_raw(self, request_dict, region=None):
+    def associate_elastic_address_raw(self, region, request_dict):
         """
         Standard
 
         @param request_dict:
         @return:
         """
+
         for response in self.execute(
                 self.get_session_client(region=region).associate_address, None, filters_req=request_dict, raw_data=True
         ):
@@ -2734,7 +2748,7 @@ class EC2Client(Boto3Client):
         self.update_volume_information(current_volume)
 
         if current_volume.id is None:
-            response = self.create_volume_raw(desired_volume.generate_create_request())
+            response = self.create_volume_raw(desired_volume.region, desired_volume.generate_create_request())
             desired_volume.update_from_raw_response(response)
             self.wait_for_status(
                 desired_volume,
@@ -2763,7 +2777,7 @@ class EC2Client(Boto3Client):
             raise ValueError(f"Volume '{current_volume.id}' is in {current_volume.get_state()} state")
         request = current_volume.generate_modify_request(desired_volume)
         if request is not None:
-            response = self.modify_volume_raw(request)
+            response = self.modify_volume_raw(current_volume.region, request)
             modification = EC2VolumeModification(response)
             modification.region = current_volume.region
             modification.volume_id = current_volume.id
@@ -2773,7 +2787,7 @@ class EC2Client(Boto3Client):
 
         self.update_volume_information(desired_volume)
 
-    def create_volume_raw(self, dict_request, region=None):
+    def create_volume_raw(self, region, dict_request):
         """
         Standard.
 
@@ -2786,18 +2800,21 @@ class EC2Client(Boto3Client):
             del response["ResponseMetadata"]
             self.clear_cache(EC2Volume)
             return response
+        return None
 
-    def modify_volume_raw(self, dict_request, region=None):
+    def modify_volume_raw(self, region, dict_request):
         """
         Standard.
 
         :param dict_request:
         :return:
         """
+
         for response in self.execute(self.get_session_client(region=region).modify_volume, "VolumeModification",
                                      filters_req=dict_request, instant_raise=True):
             self.clear_cache(EC2Volume)
             return response
+        return None
 
     def dispose_volume(self, volume):
         """
@@ -2873,9 +2890,9 @@ class EC2Client(Boto3Client):
             "VolumeId": volume.id
         }
 
-        return self.attach_volume_raw(dict_req)
+        return self.attach_volume_raw( volume.region, dict_req)
 
-    def attach_volume_raw(self, dict_req, region=None):
+    def attach_volume_raw(self, region, dict_req):
         """
         Device='string',
         InstanceId='string',
