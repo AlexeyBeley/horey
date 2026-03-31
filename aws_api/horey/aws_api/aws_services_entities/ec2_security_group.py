@@ -170,9 +170,9 @@ class EC2SecurityGroup(AwsObject):
         for self_permission in self_permissions:
             self_rule_description = self.get_permission_description(self_permission)
             if not self_rule_description:
-                raise ValueError(f"No description for rule: {self_permission}")
+                raise ValueError(f"No description for rule: {self.id} '{self_permission}'")
             if self_rule_description in seen_self_descriptions:
-                raise ValueError(f"Multiple rules with same description: '{self_rule_description}'")
+                raise ValueError(f"Multiple rules with same description: {self.id} '{self_rule_description}'")
             seen_self_descriptions.append(self_rule_description)
 
             for desired_permission in desired_permissions:
