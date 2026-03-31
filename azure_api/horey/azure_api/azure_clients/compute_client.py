@@ -305,10 +305,12 @@ class ComputeClient(AzureClient):
                                                                 offer=offer_name, skus=sku.name))
         return ret
 
-    def update_disk(self, disk:Disk, asynchronous=False):
+    def update_disk(self, disk:Disk, asynchronous=False, sleep_time=5, timeout=600):
         """
         Resize disk tier with new size, IOPS, throughput, or SKU.
 
+        :param timeout:
+        :param sleep_time:
         :param asynchronous:
         :param disk: Disk
         :return: Updated disk object
@@ -317,7 +319,20 @@ class ComputeClient(AzureClient):
         lst_args = disk.generate_update_request()
 
         logger.info(f"Begin disk update: '{disk.name}'")
-        response = self.client.disks.begin_update(*lst_args)
+
+        for _ in range(int(timeout/sleep_time)):
+            try:
+                response = self.client.disks.begin_update(*lst_args)
+                break
+            except Exception as inst_error:
+                logger.info(f"Failed to update disk '{disk.name}': '{repr(inst_error)}'")
+                if "another operation" not in repr(inst_error):
+                    raise
+                logger.info(f"Failed to update disk '{disk.name}': '{repr(inst_error)}'. Retrying...")
+                time.sleep(sleep_time)
+        else:
+            raise TimeoutError(f"Failed to update disk '{disk.name}' in {timeout} seconds")
+
         if asynchronous:
             return response
         response.wait()
