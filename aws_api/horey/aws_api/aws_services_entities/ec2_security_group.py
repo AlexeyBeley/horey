@@ -163,32 +163,55 @@ class EC2SecurityGroup(AwsObject):
         :param desired_group:
         :return:
         """
-        breakpoint()
         revoke_requests = []
-        self_permissions_counter = 0
-        for self_permission in self.split_permissions(self.ip_permissions):
-            self_permissions_counter += 1
-            if not any(
-                    (
-                            self.check_permissions_equal(
-                                self_permission,
-                                target_permission,
-                                check_without_description=True,
-                            )
-                            for target_permission in self.split_permissions(
-                        desired_group.ip_permissions
-                    )
-                    )
-            ):
-                revoke_requests.append(self_permission)
+        self_permissions = self.split_permissions(self.ip_permissions)
+        desired_permissions = self.split_permissions(desired_group.ip_permissions)
+        for self_permission in self_permissions:
+            self_rule_description = self.get_permission_description(self_permission)
 
-        revoke_request = (
-            {"GroupId": self.id, "IpPermissions": revoke_requests}
-            if revoke_requests
-            else None
-        )
+            for desired_permission in desired_permissions:
+                if desired_permission == self_permission:
+                    continue
+                desired_rule_description = self.get_permission_description(desired_permission)
+                breakpoint()
 
-        return revoke_request
+    @staticmethod
+    def get_permission_description(permission):
+        """
+        Get description of a permission.
+        If no description - return empty string.
+
+        @param permission:
+        @return:
+        """
+
+        descriptions = []
+        for key, value in permission.items():
+            if key == "IpRanges":
+                for ip_range in value:
+                    if "Description" in ip_range:
+                        descriptions.append(ip_range["Description"])
+            elif key == "Ipv6Ranges":
+                for ip_range in value:
+                    if "Description" in ip_range:
+                        descriptions.append(ip_range["Description"])
+            elif key == "UserIdGroupPairs":
+                for ip_range in value:
+                    if "Description" in ip_range:
+                        descriptions.append(ip_range["Description"])
+            elif key == "PrefixListIds":
+                for ip_range in value:
+                    if "Description" in ip_range:
+                        descriptions.append(ip_range["Description"])
+
+        if len(descriptions) > 1:
+            raise ValueError(
+                f"Multiple descriptions for one rule: {descriptions}, {permission}"
+            )
+        if len(descriptions) == 0:
+            raise ValueError(f"No descriptions for rule: {permission}")
+        return descriptions[0]
+
     @staticmethod
     def split_permissions(permissions):
         """
