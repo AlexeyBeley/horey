@@ -387,11 +387,15 @@ class EC2Client(Boto3Client):
             desired_security_group, force=force
         )
 
+        revoke_by_comment_request = existing_security_group.generate_revoke_by_comment_requests(desired_security_group)
+        if revoke_by_comment_request:
+            self.revoke_security_group_ingress_raw(desired_security_group.region, revoke_request)
+
         if add_request:
             self.authorize_security_group_ingress_raw(desired_security_group.region, add_request)
 
         if declarative and revoke_request:
-            self.revoke_security_group_ingress_raw(revoke_request)
+            self.revoke_security_group_ingress_raw(desired_security_group.region, revoke_request)
 
         if update_rules_description:
             self.update_security_group_rule_descriptions_ingress_raw(desired_security_group.region,
@@ -479,14 +483,15 @@ class EC2Client(Boto3Client):
                 raise NotImplementedError(response)
             self.clear_cache(EC2SecurityGroup)
             return response
+        return None
 
-    def revoke_security_group_ingress_raw(self, request_dict, region=None):
+    def revoke_security_group_ingress_raw(self, region, request_dict):
         """
         Revoke permission
 
-        @param request_dict:
-        @return:
         :param region:
+        :param request_dict:
+        :return:
         """
 
         logger.info(f"Revoking security group ingress: {request_dict}")
@@ -502,6 +507,7 @@ class EC2Client(Boto3Client):
                 raise RuntimeError(response)
 
             return response
+        return None
 
     def update_security_group_rule_descriptions_ingress_raw(self, region, request_dict):
         """

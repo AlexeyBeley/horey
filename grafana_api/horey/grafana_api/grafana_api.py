@@ -3,6 +3,7 @@ Grafana api
 """
 
 import json
+import time
 
 import requests
 from horey.h_logger import get_logger
@@ -260,16 +261,25 @@ class GrafanaAPI:
         self.post("/dashboard.grafana.app/v1beta1/namespaces/default/dashboards", dict_dashboard)
         logger.info(f"Created Dashboard '{dict_dashboard['spec']['title']}'")
 
-    def update_dashboard_raw(self, dict_dashboard):
+    def update_dashboard_raw(self, dict_dashboard, timeout=300, sleep_time=5):
         """
         Create the dashboard from raw dict
         @param dict_dashboard:
         @return: None
         """
 
-        self.put(f"/dashboard.grafana.app/v1beta1/namespaces/default/dashboards/{dict_dashboard['metadata']['name']}", dict_dashboard)
-        logger.info(f"Updated Dashboard '{dict_dashboard['spec']['title']}'")
-        return True
+        for _ in range(int(timeout/sleep_time)):
+            try:
+                self.put(f"/dashboard.grafana.app/v1beta1/namespaces/default/dashboards/{dict_dashboard['metadata']['name']}", dict_dashboard)
+                logger.info(f"Updated Dashboard '{dict_dashboard['spec']['title']}'")
+                return True
+            except Exception as inst_err:
+                if "50" not in repr(inst_err):
+                    raise
+                logger.info(f"Got error: {inst_err}. Will retry in {sleep_time} seconds.")
+                time.sleep(sleep_time)
+
+        raise TimeoutError(f"Could not update dashboard: {dict_dashboard['metadata']['name']}")
 
     def create_rule_raw(self, dict_request, namespace):
         """
