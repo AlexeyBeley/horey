@@ -243,7 +243,8 @@ class CICDAPI:
         td.set_ports(container_port=8080, host_port=8080)
 
         self.jenkins_master_ecs_api.provision_ecs_task_definition_ng(td)
-        target_group = self.loadbalancer_api.get_targetgroup(name=f"tg-cluster-{self.environment_api.configuration.project_name_abbr}-dev-mgmt-jenkins")
+        target_group = self.loadbalancer_api.get_targetgroup(name=f"tg-cluster-{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level_abbr}-mgmt-jenkins")
+        breakpoint()
         self.jenkins_master_ecs_api.provision_ecs_service(td, target_groups=[target_group])
         breakpoint()
 
@@ -286,17 +287,17 @@ class CICDAPI:
 
         :return:
         """
-        breakpoint()
         self.jenkins_master_ecs_api.provision_service_log_group()
         master_service_security_group = self.ec2_api.provision_security_group(f"sg_{self.environment_api.configuration.environment_level}-jenkins-master-service")
         load_balancer_security_group = self.ec2_api.provision_internal_alb_security_group()
         self.ec2_api.security_group_add_rule(master_service_security_group, source_group=load_balancer_security_group, port_range=(8080, 8080))
         jenkins_master_efs_security_group_name, jenkins_master_access_point_name, jenkins_master_efs_file_system_name = self.generate_jenkins_master_efs_component_names()
 
-        self.provision_efs(jenkins_master_efs_security_group_name,
-                           jenkins_master_access_point_name,
-                           jenkins_master_efs_file_system_name)
-        self.ec2_api.security_group_add_rule(self.ec2_api.get_security_group(efs_master_security_group_name), source_group=master_service_security_group, port_range=(2049, 2049))
+        # todo: uncomment when ready
+        # self.provision_efs(jenkins_master_efs_security_group_name,
+        #                   jenkins_master_access_point_name,
+        #                   jenkins_master_efs_file_system_name)
+        # self.ec2_api.security_group_add_rule(self.ec2_api.get_security_group(jenkins_master_efs_security_group_name), source_group=master_service_security_group, port_range=(2049, 2049))
         assume_role_policy_document = json.dumps({
             "Version": "2012-10-17",
             "Statement": [
@@ -321,7 +322,7 @@ class CICDAPI:
         policy_text = self.iam_api.generate_ecr_repository_policy(ecs_task_execution_role=exec_role)
 
         self.jenkins_master_ecs_api.provision_ecr_repository(repository_policy=policy_text)
-
+        breakpoint()
         cluster_name = (f"{self.environment_api.configuration.project_name_abbr}-"
                 f"{self.environment_api.configuration.environment_level}-"
                 f"management")

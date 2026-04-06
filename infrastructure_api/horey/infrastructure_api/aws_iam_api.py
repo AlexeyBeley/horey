@@ -71,7 +71,7 @@ class AWSIAMAPI:
         iam_role.name = name or self.configuration.role_name
         iam_role.path = self.environment_api.configuration.iam_path
         if not self.environment_api.aws_api.iam_client.update_role_information(iam_role):
-            raise ValueError(f"Was not able to find role: {iam_role} with path {iam_role.path}")
+            raise ValueError(f"Was not able to find role: '{iam_role.name}' with path {iam_role.path}")
         return iam_role
 
     def generate_inline_policy(self, name, resources, actions):
