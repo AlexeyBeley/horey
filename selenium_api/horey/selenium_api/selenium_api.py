@@ -351,3 +351,28 @@ class SeleniumAPI:
 
         SeleniumAPI.driver.save_screenshot(str(path))
         return path
+
+    def throttled_get(self, url):
+        """
+        Get with throttling.
+
+        :param url:
+        :return:
+        """
+
+        retries = 10
+        for i in range(10):
+            self.get(url)
+            self.wait_for_page_load()
+
+            body = self.get_element(By.TAG_NAME, "body").text
+            if "This page is displayed while the website verifies you are not a bot" in body:
+                self.disconnect()
+                sleep_time = 0.2 * (i+1)
+                logger.info(f"{i}/{retries} Refetching after {sleep_time}")
+                time.sleep(sleep_time)
+                self.connect()
+                continue
+            return True
+        raise TimeoutError(f"Was not able to fetch url: {url}")
+

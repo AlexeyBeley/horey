@@ -687,6 +687,9 @@ class ECSClient(Boto3Client):
         :return:
         """
 
+        if len(str(request_dict)) > 65536:
+            print(f"Task definition request length {len(str(request_dict))} while expected less then 65536")
+
         logger.info(f"Creating ECS task definition: {request_dict}")
         for response in self.execute(
                 self.get_session_client(region=region).register_task_definition,
@@ -695,6 +698,7 @@ class ECSClient(Boto3Client):
         ):
             self.clear_cache(ECSTaskDefinition)
             return response
+        return None
 
     @staticmethod
     def get_cluster_from_arn(cluster_arn):

@@ -93,6 +93,16 @@ class ECSAPI:
             self._build_api = build_api
         return self._build_api
 
+    def set_ecr_repository_name(self, repo_name:str):
+        """
+        Set repo name.
+
+        :param repo_name:
+        :return:
+        """
+
+        self.configuration.ecr_repository_name = f"repo_{self.environment_api.configuration.environment_level}_jenkins_master"
+
     def init_ecr_repository_name(self):
         """
         If ecr repo name slug set - init the ecr repo name based on it
@@ -587,7 +597,7 @@ class ECSAPI:
 
         return task_definition
 
-    def provision_ecs_service(self, ecs_task_definition):
+    def provision_ecs_service(self, ecs_task_definition, target_groups=None):
         """
         Provision component's ECS service.
 
@@ -599,19 +609,24 @@ class ECSAPI:
         except self.configuration.UndefinedValueError:
             security_groups = []
 
+
         if self.loadbalancer_api:
             security_groups.append(self.configuration.lb_facing_security_group_name)
             target_groups = [self.loadbalancer_api.get_targetgroup()]
         elif self.loadbalancer_dns_api_pairs:
             target_groups = [loadbalancer_api.get_targetgroup() for loadbalancer_api in self.loadbalancer_dns_api_pairs]
         else:
-            target_groups = []
+            target_groups = target_groups or []
 
         security_groups = self.environment_api.get_security_groups(security_groups)
+        if len(ecs_task_definition.container_definitions) != 1:
+            raise ValueError("Only one container per task is supported")
+
+        container_name = ecs_task_definition.container_definitions[0]["name"]
 
         load_blanacer_dicts = [{
             "targetGroupArn": target_group.arn,
-            "containerName": self.configuration.container_name,
+            "containerName": container_name,
             "containerPort": self.configuration.container_definition_port_mappings[0]["containerPort"]
         } for target_group in target_groups
         ]
@@ -619,7 +634,7 @@ class ECSAPI:
         if self.configuration.service_registry_arn:
             service_registry_dicts = [{
                 "registryArn": self.configuration.service_registry_arn,
-                "containerName": self.configuration.container_name,
+                "containerName": container_name,
                 "containerPort": self.configuration.container_definition_port_mappings[0]["containerPort"]
             }]
         else:
@@ -856,15 +871,12 @@ class ECSAPI:
         return self.aws_iam_api.provision_role(policies=policies, role_name=self.configuration.ecs_task_role_name,
                                                assume_role_policy=assume_role_policy_document)
 
-    def provision_execution_role(self):
+    def provision_execution_role(self, name=None):
         """
         Role used by ECS service task running on the container instance to manage containers.
 
         :return:
         """
-
-        if not self.configuration.provision_service and not self.configuration.provision_cron:
-            return True
 
         assume_role_policy_document = json.dumps({
             "Version": "2012-10-17",
@@ -889,7 +901,7 @@ class ECSAPI:
 
         managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"]
         return self.aws_iam_api.provision_role(managed_policies_arns=managed_policies_arns,
-                                               role_name=self.configuration.ecs_task_execution_role_name,
+                                               role_name= name or self.configuration.ecs_task_execution_role_name,
                                                assume_role_policy=assume_role_policy_document,
                                                description="ECS task role used to control containers lifecycle")
 
@@ -1139,10 +1151,18 @@ class ECSAPI:
         ecs_task_definition = ECSTaskDefinition({})
 
         ecs_task_definition.region = self.environment_api.region
+
+        cluster_name = cluster_name or self.configuration.cluster_name
+
+        if not cluster_name:
+            raise ValueError("Cluster name was not set")
+        service_name = service_name or self.configuration.service_name
         if service_name:
             ecs_task_definition.family = f"td-{cluster_name}-{service_name}-{slug}"
+            log_group_name = self.get_ecs_service_log_group_name(cluster_name, service_name)
         else:
             ecs_task_definition.family = f"td-{cluster_name}-{slug}"
+            log_group_name = self.get_ecs_service_log_group_name(cluster_name, slug)
 
         # Why? Because AWS! `Unknown parameter in tags[0]: "Key", must be one of: key, value`
         ecs_task_definition.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
@@ -1154,7 +1174,7 @@ class ECSAPI:
             "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
-                    "awslogs-group": self.get_ecs_service_log_group_name(cluster_name, service_name),
+                    "awslogs-group": log_group_name,
                     "awslogs-region": self.environment_api.configuration.region,
                     "awslogs-stream-prefix": "ecs"
                 }
@@ -1190,23 +1210,7 @@ class ECSAPI:
 
         return ecs_task_definition
 
-    def generate_ecs_task_definition_storage(self, task_definition: ECSTaskDefinition, linux_params=None ):
-        """
-        Add storage.
-
-        :param task_definition:
-        :param linux_params:
-        :return:
-        """
-
-        if linux_params:
-            if len(task_definition.container_definitions) != 1:
-                raise NotImplementedError("Only 1 container is supported for now")
-            task_definition.container_definitions[0]["linuxParameters"] = linux_params
-
-        return True
-
-    def provision_service_log_group(self, cluster_name, service_name):
+    def provision_service_log_group(self, cluster_name=None, service_name=None):
         """
         Provision log group for the service.
 
@@ -1214,7 +1218,8 @@ class ECSAPI:
         :param service_name:
         :return:
         """
-
+        cluster_name = cluster_name or self.configuration.cluster_name
+        service_name = service_name or self.configuration.service_name
         name = self.get_ecs_service_log_group_name(cluster_name, service_name)
         return self.cloudwatch_api.provision_log_group(name)
 
@@ -1226,7 +1231,10 @@ class ECSAPI:
         :param service_name:
         :return:
         """
-
+        if not cluster_name:
+            raise ValueError("cluster_name was not provided")
+        if not service_name:
+            raise ValueError("service_name was not provided")
         return f"/ecs/{cluster_name}/{service_name}"
 
     def attach_capacity_provider_to_ecs_cluster(self, ecs_cluster: ECSCluster, capacity_provider: ECSCapacityProvider):

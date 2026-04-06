@@ -125,3 +125,68 @@ class ECSTaskDefinition(AwsObject):
             raise ValueError(value)
 
         self._region = value
+
+    def set_storage(self,
+                                             linux_params=None,
+                                             volumes=None,
+                                             mount_points=None ):
+        """
+        Add storage.
+
+        :param mount_points:
+        :param volumes:
+        :param linux_params:
+        :return:
+        """
+
+        if linux_params:
+            if len(self.container_definitions) != 1:
+                raise NotImplementedError("Only 1 container is supported for now")
+            self.container_definitions[0]["linuxParameters"] = linux_params
+
+        if volumes:
+            if len(volumes) != 1:
+                raise NotImplementedError("Only 1 volume is supported for now")
+            self.volumes = volumes
+            if len(mount_points) != 1:
+                raise NotImplementedError("Only 1 mount_point is supported for now")
+            self.container_definitions[0]["mountPoints"] = mount_points
+        return True
+
+    def set_roles(self, task_role=None, execution_role=None):
+        """
+        Set roles.
+
+        :param task_role:
+        :param execution_role:
+        :return:
+        """
+
+        if task_role:
+            self.task_role_arn = task_role
+
+        if execution_role:
+            self.execution_role_arn = execution_role
+
+        return True
+
+    def set_ports(self, container_port=None, host_port=None):
+        """
+        Set ports.
+
+        :param container_port:
+        :param host_port:
+        :return:
+        """
+
+        if len(self.container_definitions) != 1:
+            raise NotImplementedError("Only 1 container is supported for now")
+
+        if container_port:
+            self.container_definitions[0]["portMappings"] = [{"containerPort": container_port, "protocol": "tcp"}]
+            if host_port:
+                self.container_definitions[0]["portMappings"][0]["hostPort"] = host_port
+
+        return True
+
+

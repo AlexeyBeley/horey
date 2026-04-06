@@ -60,7 +60,7 @@ class AWSIAMAPI:
         self.environment_api.aws_api.provision_iam_role(iam_role)
         return iam_role
 
-    def get_role(self):
+    def get_role(self, name=None):
         """
         Update role info.
 
@@ -68,7 +68,7 @@ class AWSIAMAPI:
         """
 
         iam_role = IamRole({})
-        iam_role.name = self.configuration.role_name
+        iam_role.name = name or self.configuration.role_name
         iam_role.path = self.environment_api.configuration.iam_path
         if not self.environment_api.aws_api.iam_client.update_role_information(iam_role):
             raise ValueError(f"Was not able to find role: {iam_role} with path {iam_role.path}")

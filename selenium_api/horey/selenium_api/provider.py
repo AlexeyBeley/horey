@@ -203,6 +203,16 @@ class Provider:
             breakpoint()
             raise NotImplementedError("auction_event.province")
 
+    def yield_auction_events(self, known_auction_events_by_url):
+        """
+        Default
+
+        :param known_auction_events_by_url:
+        :return:
+        """
+
+        for auction_event in self.init_auction_events(known_auction_events_by_url):
+            yield auction_event
 
     def yield_auction_event_lots(self, auction_event: AuctionEvent):
         """

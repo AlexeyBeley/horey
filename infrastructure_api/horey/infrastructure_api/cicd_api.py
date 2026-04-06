@@ -55,6 +55,7 @@ class S3StorageService(StorageService):
         self.bucket = bucket
         self.base_path = base_path
 
+
     def upload(self, local_path: Path, remote_path: str):
         """
         Upload file to S3.
@@ -101,7 +102,7 @@ class CICDAPI:
         self.configuration = configuration
         self.environment_api = environment_api
         self._cloudwatch_api = None
-        self._ecs_api = None
+        self._jenkins_master_ecs_api = None
         self._ec2_api = None
         self._dns_api = None
         self._remote_deployer = None
@@ -204,10 +205,80 @@ class CICDAPI:
 
         :return:
         """
-
         self.provision_jenkins_master_infrastructure()
-        self.ecs_api.provision_ecs_task_definition(self.ecs_api.ecr_repo_uri + ":latest")
+        self.update_jenkins_master()
+        self.jenkins_master_ecs_api.provision_ecs_task_definition(self.ecs_api.ecr_repo_uri + ":latest")
         self.cloudwatch_api.provision()
+
+    def update_jenkins_master(self, branch_name=None):
+        """
+        Jenkins Master update.
+
+        :return:
+        """
+
+        build_number = self.jenkins_master_ecs_api.get_next_build_number()
+        image = self.jenkins_master_ecs_api.build_api.run_build_and_upload_image_routine(branch_name, build_number)
+
+        image_registry_reference = image.tags[0]
+        td = self.jenkins_master_ecs_api.generate_ecs_task_definition(image_registry_reference,
+                                                       slug="jenkins-master", requires_compatibilities=["FARGATE"])
+        (_,
+         jenkins_master_access_point_name,
+         jenkins_master_efs_file_system_name) = self.generate_jenkins_master_efs_component_names()
+
+        master_efs = self.get_efs_file_system(jenkins_master_efs_file_system_name)
+        access_point = self.get_efs_access_point(master_efs.id, jenkins_master_access_point_name)
+        volumes, mount_points = self.generate_jenkins_master_volume_and_mount_configuration(master_efs, access_point,
+                                                                             "/var/jenkins_home")
+
+        td.set_storage(volumes=volumes, mount_points=mount_points)
+
+        task_role = self.iam_api.get_role(self.get_task_role_name("jenkins-master")
+                                                )
+
+        exec_role = self.iam_api.get_role(self.get_task_role_name("jenkins-master-exec"))
+
+        td.set_roles(task_role=task_role.arn, execution_role=exec_role.arn)
+        td.set_ports(container_port=8080, host_port=8080)
+
+        self.jenkins_master_ecs_api.provision_ecs_task_definition_ng(td)
+        target_group = self.loadbalancer_api.get_targetgroup(name=f"tg-cluster-{self.environment_api.configuration.project_name_abbr}-dev-mgmt-jenkins")
+        self.jenkins_master_ecs_api.provision_ecs_service(td, target_groups=[target_group])
+        breakpoint()
+
+    def get_efs_file_system(self, file_system_name):
+        """
+        Get EFS file system.
+
+        :return:
+        """
+        file_system = EFSFileSystem({})
+        file_system.region = self.environment_api.region
+        file_system.tags = self.environment_api.configuration.tags
+        file_system.tags = [{"Key": "Name", "Value": file_system_name}]
+        file_system.encrypted = True
+        if not self.environment_api.aws_api.efs_client.update_file_system_information(file_system):
+            raise ValueError("EFS file system was not found")
+
+        return file_system
+
+    def get_efs_access_point(self, file_system_id, access_point_name):
+        """
+        Get EFS access point.
+
+        :return:
+        """
+
+        efs_access_point = EFSAccessPoint({})
+        efs_access_point.region = self.environment_api.region
+        efs_access_point.file_system_id = file_system_id
+        efs_access_point.tags = self.environment_api.configuration.tags
+        efs_access_point.tags = [{"Key": "Name", "Value": access_point_name}]
+        if not self.environment_api.aws_api.efs_client.update_access_point_information(efs_access_point):
+            raise ValueError("EFS access point was not found")
+
+        return efs_access_point
 
     def provision_jenkins_master_infrastructure(self):
         """
@@ -215,24 +286,16 @@ class CICDAPI:
 
         :return:
         """
-
+        breakpoint()
+        self.jenkins_master_ecs_api.provision_service_log_group()
         master_service_security_group = self.ec2_api.provision_security_group(f"sg_{self.environment_api.configuration.environment_level}-jenkins-master-service")
         load_balancer_security_group = self.ec2_api.provision_internal_alb_security_group()
         self.ec2_api.security_group_add_rule(master_service_security_group, source_group=load_balancer_security_group, port_range=(8080, 8080))
+        jenkins_master_efs_security_group_name, jenkins_master_access_point_name, jenkins_master_efs_file_system_name = self.generate_jenkins_master_efs_component_names()
 
-
-        efs_master_security_group_name = f"sg_{self.environment_api.configuration.environment_level}" \
-                                                             f"-jenkins-master"
-
-        efs_master_access_point_name = f"acp_{self.environment_api.configuration.environment_level}" \
-                                                           f"-jenkins-master"
-
-        efs_master_file_system_name = f"fs_{self.environment_api.configuration.environment_level}" \
-                                                      f"-jenkins-master"
-
-        self.provision_efs(efs_master_security_group_name,
-                           efs_master_access_point_name,
-                           efs_master_file_system_name)
+        self.provision_efs(jenkins_master_efs_security_group_name,
+                           jenkins_master_access_point_name,
+                           jenkins_master_efs_file_system_name)
         self.ec2_api.security_group_add_rule(self.ec2_api.get_security_group(efs_master_security_group_name), source_group=master_service_security_group, port_range=(2049, 2049))
         assume_role_policy_document = json.dumps({
             "Version": "2012-10-17",
@@ -251,22 +314,38 @@ class CICDAPI:
         task_role = self.iam_api.provision_role(role_name=self.get_task_role_name("jenkins-master"),
                                                 assume_role_policy=assume_role_policy_document)
 
-        exec_role = self.iam_api.provision_role(role_name=self.get_task_role_name("jenkins-master-exec"),
-                                                assume_role_policy=assume_role_policy_document)
+        exec_role = self.jenkins_master_ecs_api.provision_execution_role(name=self.get_task_role_name("jenkins-master-exec"),
+                                                )
 
 
         policy_text = self.iam_api.generate_ecr_repository_policy(ecs_task_execution_role=exec_role)
-        repo_name = f"repo_{self.environment_api.configuration.environment_level}_jenkins_master"
-        self.ecs_api.provision_ecr_repository(repository_name = repo_name, repository_policy=policy_text)
+
+        self.jenkins_master_ecs_api.provision_ecr_repository(repository_policy=policy_text)
 
         cluster_name = (f"{self.environment_api.configuration.project_name_abbr}-"
                 f"{self.environment_api.configuration.environment_level}-"
                 f"management")
 
-        cluster = self.ecs_api.provision_cluster(cluster_name=cluster_name)
-        self.ecs_api.provision_service_log_group(cluster_name, "jenkins")
-        self.ecs_api.provision_ecs_autoscaling_group_capacity_provider(cluster, "management")
+        cluster = self.jenkins_master_ecs_api.provision_cluster(cluster_name=cluster_name)
+        self.jenkins_master_ecs_api.provision_ecs_autoscaling_group_capacity_provider(cluster, "management")
         return True
+
+    def generate_jenkins_master_efs_component_names(self):
+        """
+        Generate Jenkins master EFS names:
+                jenkins_master_efs_security_group_name
+                jenkins_master_access_point_name
+                jenkins_master_efs_file_system_name
+
+        :return:
+        """
+
+        return (f"sg_{self.environment_api.configuration.environment_level}" \
+                                         f"-jenkins-master",
+               f"acp_{self.environment_api.configuration.environment_level}" \
+                                       f"-management-jenkins",
+               f"fs_{self.environment_api.configuration.environment_level}" \
+                                      f"-management-jenkins")
 
     def get_task_role_name(self, slug):
         """
@@ -431,14 +510,14 @@ class CICDAPI:
 
         efs_security_group = self.ec2_api.provision_security_group(name=security_group_name)
         master_efs = self.provision_master_efs_file_system(file_system_name)
-        pgadmin_access_point = self.provision_master_efs_access_point(master_efs.id, access_point_name)
+        access_point = self.provision_master_efs_access_point(master_efs.id, access_point_name)
         self.provision_efs_mount_targets(master_efs.id, efs_security_group.id)
-        volume, mount_point = self.generate_volume_and_mount_configuration(master_efs, pgadmin_access_point,
+        volume, mount_point = self.generate_jenkins_master_volume_and_mount_configuration(master_efs, access_point,
                                                                              "/var/jenkins_home")
         return volume, mount_point
 
     @staticmethod
-    def generate_volume_and_mount_configuration(efs, access_point, container_path):
+    def generate_jenkins_master_volume_and_mount_configuration(efs, access_point, container_path):
         """
         Generates the EFS volume and mount point configurations for the ECS task definition.
 
@@ -573,7 +652,7 @@ class CICDAPI:
 
         :return:
         """
-        if self._ecs_api is None:
+        if self._jenkins_master_ecs_api is None:
             ecs_api_configuration = ECSAPIConfigurationPolicy()
             ecs_api_configuration.service_name = "jenkins"
             ecs_api = ECSAPI(ecs_api_configuration, self.environment_api)
@@ -582,6 +661,7 @@ class CICDAPI:
             ecs_api_configuration.ecs_task_definition_memory_reservation = 2048
             ecs_api_configuration.autoscaling_max_capacity = 1
             ecs_api_configuration.network_mode = "awsvpc"
+            ecs_api_configuration.cluster_name = f"cluster-{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}"
 
             ecs_api_configuration._container_definition_port_mappings = [
             {
@@ -594,18 +674,15 @@ class CICDAPI:
             ecs_api_configuration.task_definition_desired_count = 1
             ecs_api_configuration.launch_type = "FARGATE"
             ecs_api_configuration.kill_old_containers = False
+            ecs_api_configuration.security_groups = [f"sg_{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-jenkins"]
+            ecs_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_jenkins_master_container_build_directory_callback
 
-            if self.environment_api.git_api is None:
-                configuration = GitAPIConfigurationPolicy()
-                configuration.remote = "git@github.com:AlexeyBeley/horey.git"
-                configuration.ssh_key_file_path = f"/Users/{getpass.getuser()}/.ssh/github_key"
-                configuration.git_directory_path = "/opt/git/"
-                configuration.branch_name = "main"
-                self.environment_api.git_api = GitAPI(configuration)
+            ecs_api.build_api.configuration.docker_repository_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{ecs_api.configuration.ecr_repository_region}.amazonaws.com/{ecs_api_configuration.ecr_repository_name}"
 
-            ecs_api.prepare_container_build_directory_callback = self.prepare_container_build_directory_callback
-            self._ecs_api = ecs_api
-        return self._ecs_api
+            ecs_api.set_ecr_repository_name(f"repo_{self.environment_api.configuration.environment_level}_jenkins_master")
+
+            self._jenkins_master_ecs_api = ecs_api
+        return self._jenkins_master_ecs_api
 
     @property
     def jenkins_hagent_ecs_api(self):
@@ -640,7 +717,7 @@ class CICDAPI:
             self._ecs_api = ecs_api
         return self._ecs_api
 
-    def prepare_container_build_directory_callback(self, dir_path: Path):
+    def prepare_jenkins_master_container_build_directory_callback(self, dir_path: Path):
         """
 
         :param dir_path:
@@ -928,11 +1005,11 @@ class CICDAPI:
             ]
         },
         ]}
-        breakpoint()
-        self.ecs_api.generate_ecs_task_definition_storage(td, linux_params=linux_params)
+        raise NotImplementedError("Not implemented")
+        # self.jenkins_hagent_ecs_api.generate_ecs_task_definition_storage(td, linux_params=linux_params)
 
 
-        self.ecs_api.provision_ecs_task_definition_ng(td)
+        # self.jenkins_hagent_ecs_api.provision_ecs_task_definition_ng(td)
 
     def prepare_hagent_container_build_directory(self, dir_path: pathlib.Path, build_number):
         """
@@ -1031,7 +1108,6 @@ class CICDAPI:
             if image.tags[0] == "github_hagent:latest":
                 break
         else:
-            breakpoint()
             raise NotImplementedError("Not implemented")
 
 

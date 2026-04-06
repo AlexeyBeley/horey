@@ -260,7 +260,7 @@ class LoadbalancerAPI:
             raise RuntimeError(f"Was not able to find loadbalancer '{load_balancer.name }' in region '{load_balancer.region}'")
         return load_balancer
 
-    def get_targetgroup(self):
+    def get_targetgroup(self, name=None):
         """
         Get the object.
 
@@ -269,7 +269,7 @@ class LoadbalancerAPI:
 
         target_group = ELBV2TargetGroup({})
         target_group.region = self.environment_api.region
-        target_group.name = self.configuration.target_group_name
+        target_group.name = name or self.configuration.target_group_name
 
         if not self.environment_api.aws_api.elbv2_client.update_target_group_information(target_group):
             raise RuntimeError(f"Was not able to find target group '{target_group.name }' in region '{target_group.region}'")

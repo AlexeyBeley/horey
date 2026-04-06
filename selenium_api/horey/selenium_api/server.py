@@ -55,7 +55,10 @@ def update_info():
 class Server:
     self = None
 
-    def __init__(self):
+    def __init__(self, proxy=None):
+        if proxy:
+            auction_api.set_proxy(proxy)
+
         self.html_dir_path = Path(__file__).parent / "html"
         self.reports_html_template_name = "reports_page.html"
 

@@ -503,11 +503,7 @@ class AuctionAPI:
 
         known_auction_events_by_url= {auction_event.url: auction_event  for auction_event in provider.auction_events}
 
-        new_auction_events = provider.init_auction_events(known_auction_events_by_url)
-        if new_auction_events is None:
-            return None
-
-        for auction_event in new_auction_events:
+        for auction_event in provider.yield_auction_events(known_auction_events_by_url):
             auction_event.provider_id = provider.id
 
             try:

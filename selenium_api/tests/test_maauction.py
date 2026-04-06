@@ -68,10 +68,8 @@ def test_init_auction_events_from_internal_url():
     assert ret
 
 
-@pytest.mark.done
-def test_init_auction_lots():
+@pytest.mark.wip
+def test_init_auction_events():
     auction = MAauction()
-    ret = auction.init_auction_events()
-    for auction_event in ret:
-        lots = auction.init_auction_event_lots(auction_event)
-        assert isinstance(lots, list)
+    for x in auction.yield_auction_events({}):
+        assert x

@@ -316,7 +316,7 @@ class MAauction(Provider):
         auction_event.url = url
         title_element = self.selenium_api.get_element(By.CLASS_NAME, "infoBoxAuctionTitle")
 
-        self.init_auction_event_name(auction_event, title_element)
+        self.init_auction_event_name(auction_event, title_element.text)
 
         auction_description = self.selenium_api.get_element(By.CLASS_NAME, "auctionDescription")
         auction_event.description = auction_description.text
@@ -362,8 +362,8 @@ class MAauction(Provider):
             return False
 
         if None in [auction_event.start_time, auction_event.end_time]:
-            self.selenium_api.get(lots[0].url)
-            self.selenium_api.wait_for_page_load()
+            self.selenium_api.throttled_get(lots[0].url)
+
 
         if auction_event.start_time is None:
             self.init_auction_event_start_time_from_lot(auction_event, lots[0])
@@ -384,10 +384,6 @@ class MAauction(Provider):
         try:
             start_time_element = self.selenium_api.get_element(By.CLASS_NAME, "startTime")
         except NoSuchElementException:
-            body = self.selenium_api.get_element(By.TAG_NAME, "body").text
-            if "This page is displayed while the website verifies you are not a bot" in body:
-                raise self.ThrottlingError()
-            breakpoint()
             return None
         # '12/3/2025 10:00:00 PM'
         parse_format = '%m/%d/%Y %I:%M:%S %p'
@@ -443,17 +439,17 @@ class MAauction(Provider):
         auction_event.end_time = naive_dt.astimezone(tz)
 
     @staticmethod
-    def init_auction_event_name(auction_event, title_element):
+    def init_auction_event_name(auction_event, element_title_raw_text):
         """
 
         :param auction_event:
-        :param title_element:
+        :param element_title_raw_text:
         :return:
         """
 
         parsed_url = urlparse(auction_event.url)
         query_params = str(parsed_url.query)
-        auction_event.name = title_element.text
+        auction_event.name = element_title_raw_text
         if "filter" in query_params:
             auction_event.name += "-" + query_params.split("=")[1].strip("()").split(":")[1]
 
@@ -835,3 +831,116 @@ class MAauction(Provider):
         # Reconstruct the URL with the new query string
         new_url = urlunparse(parsed_url._replace(query=new_query_string))
         return new_url
+
+    def yield_auction_events(self, known_auction_events_by_url):
+        """
+        Load free items.
+
+        :return:
+        """
+
+        self.connect()
+
+        logger.info(f"Loading provider {self.name} auctions")
+
+        self.selenium_api.get(self.main_page)
+        self.selenium_api.wait_for_page_load()
+        auction_list_element = self.selenium_api.get_element(By.CLASS_NAME, "auctionList")
+        auctions_elements = auction_list_element.find_elements(By.CLASS_NAME, "auction")
+
+        urls = []
+        for i, auctions_element in enumerate(auctions_elements):
+            url_element = auctions_element.find_element(By.TAG_NAME, "a")
+            url = url_element.get_attribute("href")
+            urls.append(url)
+
+        for i, url in enumerate(urls):
+            logger.info(f"Fetching event {i}/{len(urls)}")
+            for auction_event in self.yield_auction_events_from_internal_url(url, known_auction_events_by_url):
+                yield auction_event
+
+        self.disconnect()
+
+    def retry_on_throttling(self, url, function):
+        """
+        Retry
+        :param function:
+        :return:
+        """
+
+        for _ in range(5):
+            try:
+                return function()
+            except NoSuchElementException:
+                body = self.selenium_api.get_element(By.TAG_NAME, "body").text
+                if "This page is displayed while the website verifies you are not a bot" not in body:
+                    raise
+
+                time.sleep(3)
+                self.selenium_api.disconnect()
+                self.selenium_api.get(url)
+                self.selenium_api.wait_for_page_load()
+                continue
+        raise TimeoutError("Was not able to fetch")
+
+
+    def get_rings_sub_urls(self, url):
+        """
+        Get sub urls if the event has multiple rings.
+
+        :return:
+        """
+
+
+        try:
+            self.retry_on_throttling(url, lambda : self.selenium_api.get_element(By.CLASS_NAME, "pagination"))
+        except NoSuchElementException as inst_err:
+            auction_ring_elements = self.selenium_api.get_elements(By.CLASS_NAME, "auction-ring")
+            urls = []
+            for auction_ring_element in auction_ring_elements:
+                btn_element = auction_ring_element.find_element(By.CLASS_NAME, "viewRingCatalogBtn")
+                urls.append(btn_element.get_attribute("href"))
+
+            return urls
+        return []
+
+    def yield_auction_events_from_internal_url(self, url, known_auction_events_by_url):
+        """
+        This provider has multiple events under same base event.
+
+        :param url:
+        :return:
+        """
+
+        self.selenium_api.get(url)
+        self.selenium_api.wait_for_page_load()
+
+
+        urls =  self.get_rings_sub_urls(url)
+        if urls:
+            for url in urls:
+                yield from self.yield_auction_events_from_internal_url(url, known_auction_events_by_url)
+            return True
+
+        auction_event = AuctionEvent()
+        auction_event.url = url
+        try:
+            title_element_text = self.selenium_api.get_element(By.CLASS_NAME, "infoBoxAuctionTitle").text
+            auction_description = self.selenium_api.get_element(By.CLASS_NAME, "auctionDescription").text
+            auction_location = self.selenium_api.get_element(By.CLASS_NAME, "auctionLocation").text
+        except Exception as inst:
+            breakpoint()
+            logger.info("todo: Protect")
+
+        self.init_auction_event_name(auction_event, title_element_text)
+        auction_event.description = auction_description
+        auction_event.address = auction_location
+        auction_event.init_provinces()
+        if not auction_event.provinces:
+            if auction_event.url in known_auction_events_by_url:
+                auction_event.provinces = known_auction_events_by_url[auction_event.url].provinces
+            else:
+                breakpoint()
+        self.init_auction_event_times(auction_event)
+
+        yield auction_event
