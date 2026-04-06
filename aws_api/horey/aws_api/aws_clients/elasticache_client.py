@@ -318,7 +318,7 @@ class ElasticacheClient(Boto3Client):
             if request is None:
                 return desired_replication_group.update_from_attrs(existing_replication_group)
 
-            breakpoint()
+            raise NotImplementedError("Have no idea why there was a breakpoint here")
             self.modify_replication_group_raw(desired_replication_group.region, request)
 
         self.wait_for_status(
