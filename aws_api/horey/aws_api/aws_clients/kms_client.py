@@ -67,7 +67,7 @@ class KMSClient(Boto3Client):
 
                 if obj.key_manager != "CUSTOMER":
                     logger.warning(f"Not supported KMS key manager: {obj.key_manager}")
-                    breakpoint()
+                    raise NotImplementedError("Have no idea")
 
                 # todo: remove the exception because aws managed keys are ignored
                 tags = list(

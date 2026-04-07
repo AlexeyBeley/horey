@@ -389,7 +389,7 @@ class EC2Client(Boto3Client):
 
         revoke_by_comment_request = existing_security_group.generate_revoke_by_comment_requests(desired_security_group)
         if revoke_by_comment_request:
-            self.revoke_security_group_ingress_raw(desired_security_group.region, revoke_request)
+            self.revoke_security_group_ingress_raw(desired_security_group.region, revoke_by_comment_request)
 
         if add_request:
             self.authorize_security_group_ingress_raw(desired_security_group.region, add_request)
