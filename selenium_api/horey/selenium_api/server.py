@@ -4,7 +4,6 @@ from pathlib import Path
 from flask import Flask, render_template_string, jsonify, request
 from horey.selenium_api.aucton_api import AuctionAPI
 
-auction_api = AuctionAPI()
 
 # Initialize the Flask app
 app = Flask(__name__)
@@ -56,9 +55,7 @@ class Server:
     self = None
 
     def __init__(self, proxy=None):
-        if proxy:
-            auction_api.set_proxy(proxy)
-
+        self.auction_api = AuctionAPI(proxy=proxy)
         self.html_dir_path = Path(__file__).parent / "html"
         self.reports_html_template_name = "reports_page.html"
 
@@ -68,7 +65,7 @@ class Server:
     def load_report(self, auction_event_id):
         data = []
 
-        auction_event_reports = auction_api.generate_auction_event_reports()
+        auction_event_reports = self.auction_api.generate_auction_event_reports()
         for auction_event_report in auction_event_reports:
             if auction_event_report.str_auction_event_id != auction_event_id:
                 continue
@@ -91,11 +88,11 @@ class Server:
 
     def update_info(self, auction_event_id=None, provider_id=None):
         if provider_id is not None:
-            auction_api.update_info_provider_auction_events(provider_id, asynchronous=True)
+            self.auction_api.update_info_provider_auction_events(provider_id, asynchronous=True)
             return "Started update_info_provider_auction_events"
 
         if auction_event_id is not None:
-            str_response = auction_api.update_info_auction_event(auction_event_id, asynchronous=True)
+            str_response = self.auction_api.update_info_auction_event(auction_event_id, asynchronous=True)
             return str_response
 
         raise RuntimeError("No update info destination provided")
@@ -122,7 +119,7 @@ class Server:
         reports_navigation = "<table>\n"
         providers_navigation = ""
         known_providers = []
-        auction_event_reports = auction_api.generate_auction_event_reports()
+        auction_event_reports = self.auction_api.generate_auction_event_reports()
         auction_id_btn_text_pairs = []
         for auction_event_report in auction_event_reports:
 

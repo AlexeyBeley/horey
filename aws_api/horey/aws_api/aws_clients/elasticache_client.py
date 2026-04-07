@@ -3,6 +3,7 @@ AWS clietn to handle service API requests.
 """
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
+from horey.aws_api.aws_services_entities.elasticache_serverless_cache import ElasticacheServerlessCache
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.elasticache_cluster import ElasticacheCluster
 from horey.aws_api.aws_services_entities.elasticache_cache_parameter_group import (
@@ -34,6 +35,33 @@ class ElasticacheClient(Boto3Client):
     def __init__(self, aws_account=None):
         client_name = "elasticache"
         super().__init__(client_name, aws_account=aws_account)
+
+    # pylint: disable= too-many-arguments
+    def yield_serverless_caches(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield clusters
+
+        :return:
+        """
+
+        yield from self.regional_service_entities_generator(self.yield_serverless_caches_raw,
+                                                            ElasticacheServerlessCache,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_serverless_caches_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        yield from self.execute(
+                self.get_session_client(region=region).describe_serverless_caches, "ServerlessCaches",
+                filters_req=filters_req
+        )
+
 
     # pylint: disable= too-many-arguments
     def yield_clusters(self, region=None, update_info=False, filters_req=None):

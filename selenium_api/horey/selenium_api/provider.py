@@ -14,22 +14,23 @@ class Provider:
     MONTH_BY_NAME = {"january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "october": 10, "november": 11,
                      " nov ": 11, "december": 12, }
 
-    def __init__(self):
+    def __init__(self, proxy=None):
         self.name = None
         self.id = None
         self.auction_events = []
+        self.proxy = proxy
 
     @property
     def selenium_api(self):
         if Provider._selenium_api is None:
-            Provider.connect()
+            Provider.connect(proxy=self.proxy)
         return Provider._selenium_api
 
     @staticmethod
-    def connect():
+    def connect(proxy=None):
         if Provider._selenium_api is None:
             logger.info("Connecting Selenium in Provider")
-            Provider._selenium_api = SeleniumAPI()
+            Provider._selenium_api = SeleniumAPI(proxy=proxy)
             Provider._selenium_api.connect()
 
     @staticmethod

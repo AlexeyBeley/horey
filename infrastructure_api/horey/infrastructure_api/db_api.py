@@ -424,3 +424,31 @@ class DBAPI:
                 str_ret += f"{path}{k}: added in d2\n"
 
         return str_ret
+
+    def provision_elasticache_serverless(self, name=None):
+        """
+        Provision elasticache
+
+        :return:
+        """
+
+        ret = list(self.environment_api.aws_api.elasticache_client.yield_serverless_caches(region=self.environment_api.region))
+        breakpoint()
+
+
+        name = name or self.configuration.serverless_elasticache_name
+
+        cluster = ElastiCacheCluster({})
+        cluster.region = self.environment_api.region
+        cluster.engine = self.configuration.elasticache_engine
+        cluster.node_type = self.configuration.elasticache_node_type
+        cluster.num_cache_nodes = self.configuration.elasticache_num_cache_nodes
+        cluster.port = self.configuration.elasticache_port
+        cluster.cache_subnet_group_name = self.configuration.elasticache_subnet_group_name
+        cluster.security_group_ids = self.configuration.elasticache_security_group_ids
+        cluster.tags = self.environment_api.configuration.tags
+        cluster.tags.append({"Key": "Name", "Value": self.configuration.elasticache_cluster_name})
+        cluster.cache_cluster_id = self.configuration.elasticache_cluster_name
+
+        self.environment_api.aws_api.provision_elasticache_cluster(cluster)
+        return cluster

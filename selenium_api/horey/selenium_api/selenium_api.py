@@ -25,7 +25,7 @@ logger = get_logger()
 class SeleniumAPI:
     driver = None
     v_display = None
-    def __init__(self, data_dir:Path=None, chromedriver_path:Path=None, chrome_path:Path=None):
+    def __init__(self, data_dir:Path=None, chromedriver_path:Path=None, chrome_path:Path=None, proxy=None):
         self.data_dir = data_dir
         self.chromedriver_path = chromedriver_path
         self.chrome_path = chrome_path

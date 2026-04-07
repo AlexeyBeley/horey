@@ -242,3 +242,8 @@ def test_compare_tables(db_api):
                                            Configuration.TEST_CONFIG.table_name
                                            )
     assert compare
+
+@pytest.mark.wip
+def test_provision_elasticache_serverless(db_api):
+    compare = db_api.provision_elasticache_serverless()
+    assert compare

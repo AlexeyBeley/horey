@@ -190,6 +190,10 @@ class EnvironmentAPI:
 
         subnets = []
         for subnet in self.subnets:
+            # todo: change to tags or something
+            if subnet.get_tagname("Name").endswith("old"):
+                continue
+
             if self.configuration.public_subnets:
                 if subnet.id in self.configuration.public_subnets:
                     subnets.append(subnet)
