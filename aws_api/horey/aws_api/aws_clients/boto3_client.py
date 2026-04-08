@@ -512,13 +512,15 @@ class Boto3Client:
         @param sleep_time:
         @return:
         """
+
         start_time = datetime.datetime.now()
         logger.info(
             f"Starting waiting loop for {observed_object.id} to become one of {desired_statuses}"
         )
 
         for i in range(timeout // sleep_time):
-            update_function(observed_object)
+            if not update_function(observed_object):
+                break
 
             try:
                 object_status = observed_object.get_status()

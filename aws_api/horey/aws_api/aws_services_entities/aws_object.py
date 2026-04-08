@@ -624,21 +624,34 @@ class AwsObject:
 
         :return:
         """
+
         if optional is None:
             optional = []
         elif not isinstance(optional, list):
             raise ValueError(f"'optional' should be list, received: {optional}, {type(optional)=}")
 
+        if required_request_keys is None:
+            required_request_keys = []
+        elif not isinstance(required_request_keys, list):
+            raise ValueError(f"'required_request_keys' should be list, received: {required_request_keys}, {type(required_request_keys)=}")
+
         if request_key_to_attribute_mapping is None:
             request_key_to_attribute_mapping = {}
 
         dict_request = {}
+        errors = []
         for request_key in required_request_keys:
             try:
                 attr_name = request_key_to_attribute_mapping[request_key]
             except KeyError:
                 attr_name = self.format_attr_name(request_key)
-            dict_request[request_key] = getattr(self, attr_name)
+            value = getattr(self, attr_name)
+            if value is None:
+                errors.append(f"Attribute {attr_name} is None")
+            dict_request[request_key] = value
+
+        if errors:
+            raise ValueError(errors)
 
         errors = []
         for request_key in optional:
@@ -702,7 +715,7 @@ class AwsObject:
 
             if self_request.get(optional_key) == desired_request.get(optional_key):
                 continue
-
+            logger.info(f"Changing self.{optional_key}={self_request.get(optional_key)} -> desired.{optional_key}={desired_request.get(optional_key)}")
             request[optional_key] = desired_request.get(optional_key)
 
         return request if len(request) != len(required_request_keys) else None

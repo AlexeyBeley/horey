@@ -58,10 +58,9 @@ class ElasticacheClient(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_serverless_caches, "ServerlessCaches",
-                filters_req=filters_req
+            self.get_session_client(region=region).describe_serverless_caches, "ServerlessCaches",
+            filters_req=filters_req, exception_ignore_callback=lambda err: "ServerlessCacheNotFoundFault" in repr(err)
         )
-
 
     # pylint: disable= too-many-arguments
     def yield_clusters(self, region=None, update_info=False, filters_req=None):
@@ -86,8 +85,8 @@ class ElasticacheClient(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_cache_clusters, "CacheClusters",
-                filters_req=filters_req
+            self.get_session_client(region=region).describe_cache_clusters, "CacheClusters",
+            filters_req=filters_req
         )
 
     def get_all_clusters(self, region=None):
@@ -322,8 +321,8 @@ class ElasticacheClient(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_replication_groups, "ReplicationGroups",
-                filters_req=filters_req
+            self.get_session_client(region=region).describe_replication_groups, "ReplicationGroups",
+            filters_req=filters_req
         )
 
     def provision_replication_group(self, desired_replication_group: ElasticacheReplicationGroup):
@@ -339,8 +338,8 @@ class ElasticacheClient(Boto3Client):
         existing_replication_group.id = desired_replication_group.id
         if not self.update_replication_group_information(existing_replication_group):
             self.provision_replication_group_raw(desired_replication_group.region,
-                                                        desired_replication_group.generate_create_request()
-                                                        )
+                                                 desired_replication_group.generate_create_request()
+                                                 )
         else:
             request = existing_replication_group.generate_modify_request(desired_replication_group)
             if request is None:
@@ -351,7 +350,8 @@ class ElasticacheClient(Boto3Client):
 
         self.wait_for_status(
             desired_replication_group,
-            lambda replication_group:  self.update_replication_group_information(replication_group, full_information=False),
+            lambda replication_group: self.update_replication_group_information(replication_group,
+                                                                                full_information=False),
             [desired_replication_group.Status.AVAILABLE],
             [desired_replication_group.Status.CREATING,
              desired_replication_group.Status.MODIFYING,
@@ -359,7 +359,7 @@ class ElasticacheClient(Boto3Client):
             [
                 desired_replication_group.Status.DELETING,
                 desired_replication_group.Status.CREATE_FAILED,
-            ], timeout=30*60
+            ], timeout=30 * 60
         )
         return True
 
@@ -373,7 +373,8 @@ class ElasticacheClient(Boto3Client):
         """
 
         replication_groups = list(self.yield_replication_groups(region=replication_group.region,
-                                                                filters_req={"ReplicationGroupId":replication_group.id}))
+                                                                filters_req={
+                                                                    "ReplicationGroupId": replication_group.id}))
         if len(replication_groups) == 0:
             return False
 
@@ -389,7 +390,8 @@ class ElasticacheClient(Boto3Client):
 
         replication_group.security_group_ids = []
         for member_cluster_id in replication_group.member_clusters:
-            clusters = list(self.yield_clusters(replication_group.region, update_info=True, filters_req={"CacheClusterId": member_cluster_id}))
+            clusters = list(self.yield_clusters(replication_group.region, update_info=True,
+                                                filters_req={"CacheClusterId": member_cluster_id}))
             if len(clusters) != 1:
                 raise RuntimeError(f"Expected single elasticache cluster, found {len(clusters)=}")
             cluster = clusters[0]
@@ -405,15 +407,18 @@ class ElasticacheClient(Boto3Client):
             replication_group.engine_version = cluster.engine_version
 
             if replication_group.preferred_maintenance_window is not None and replication_group.preferred_maintenance_window != cluster.preferred_maintenance_window:
-                raise ValueError(f"{cluster.id=}, {replication_group.preferred_maintenance_window=}, {cluster.preferred_maintenance_window=}")
+                raise ValueError(
+                    f"{cluster.id=}, {replication_group.preferred_maintenance_window=}, {cluster.preferred_maintenance_window=}")
             replication_group.preferred_maintenance_window = cluster.preferred_maintenance_window
 
             if (cluster.cache_parameter_group["ParameterApplyStatus"] != "in-sync") or \
                     len(cluster.cache_parameter_group["CacheNodeIdsToReboot"]) > 0:
                 raise RuntimeError(f"{cluster.dict_src}")
 
-            if replication_group.cache_parameter_group_name is not None and replication_group.cache_parameter_group_name != cluster.cache_parameter_group["CacheParameterGroupName"]:
-                raise ValueError(f"{cluster.id=}, {replication_group.cache_parameter_group_name=}, {cluster.cache_parameter_group=}")
+            if replication_group.cache_parameter_group_name is not None and replication_group.cache_parameter_group_name != \
+                    cluster.cache_parameter_group["CacheParameterGroupName"]:
+                raise ValueError(
+                    f"{cluster.id=}, {replication_group.cache_parameter_group_name=}, {cluster.cache_parameter_group=}")
             replication_group.cache_parameter_group_name = cluster.cache_parameter_group["CacheParameterGroupName"]
 
         return True
@@ -517,3 +522,141 @@ class ElasticacheClient(Boto3Client):
         if len(ret) != 1:
             raise RuntimeError(ret)
         return ret[0]
+
+    def update_serverless_cache_information(self, cache: ElasticacheServerlessCache) -> bool:
+        """
+        Update live info
+
+        :param cache:
+        :return:
+        """
+
+        objects = list(self.yield_serverless_caches(region=cache.region,
+                                                    filters_req={"ServerlessCacheName": cache.name}))
+        if len(objects) == 0:
+            return False
+
+        if len(objects) != 1:
+            raise ValueError(f"Found more than 1: {objects} by name {cache.name}"
+                             f" in region {cache.region.region_mark}")
+
+        if not cache.update_from_attrs(objects[0]):
+            raise RuntimeError("Was not able to update")
+        return True
+
+    def provision_serverless_cache(self, desired_cache: ElasticacheServerlessCache):
+        """
+        Provision cache.
+
+        :param desired_cache:
+        :return:
+        """
+
+        current_cache = ElasticacheServerlessCache({"name": desired_cache.name})
+        current_cache.region = desired_cache.region
+        if not self.update_serverless_cache_information(current_cache):
+            self.provision_serverless_cache_raw(desired_cache.region,
+                                                           desired_cache.generate_create_request()
+                                                           )
+            self.wait_for_status(
+                desired_cache,
+                self.update_serverless_cache_information,
+                [desired_cache.Status.AVAILABLE],
+                [desired_cache.Status.MODIFYING, desired_cache.Status.CREATING],
+                [desired_cache.Status.CREATE_FAILED, desired_cache.Status.DELETING],
+            )
+            return True
+
+        for attr in ["security_group_ids", "snapshot_retention_limit", "daily_snapshot_time", "major_engine_version"]:
+            if getattr(desired_cache, attr) is None:
+                setattr(desired_cache, attr, getattr(current_cache, attr))
+
+        request = current_cache.generate_update_request(desired_cache)
+
+        if not request:
+            return desired_cache.update_from_attrs(current_cache)
+
+        response = self.modify_serverless_cache_raw(desired_cache.region, request)
+        return desired_cache.update_from_raw_response(response)
+
+
+    def provision_serverless_cache_raw(self, region, request_dict) -> dict:
+        """
+        Provision raw.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Creating: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).create_serverless_cache,
+                "ServerlessCache",
+                filters_req=request_dict,
+        ):
+            self.clear_cache(ElasticacheServerlessCache)
+            return response
+        return None
+
+    def modify_serverless_cache_raw(self, region, request_dict) -> dict:
+        """
+        Provision raw.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Modifying: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).modify_serverless_cache,
+                "ServerlessCache",
+                filters_req=request_dict,
+        ):
+            self.clear_cache(ElasticacheServerlessCache)
+            return response
+        return None
+
+    def dispose_serverless_cache(self, desired_cache: ElasticacheServerlessCache):
+        """
+        Provision cache.
+
+        :param desired_cache:
+        :return:
+        """
+
+
+        if not self.update_serverless_cache_information(desired_cache):
+            return True
+        self.dispose_serverless_cache_raw(desired_cache.region, desired_cache.generate_dispose_request())
+
+        self.wait_for_status(
+            desired_cache,
+            self.update_serverless_cache_information,
+            [],
+            [],
+            [desired_cache.Status.AVAILABLE, desired_cache.Status.CREATING],
+            timeout=30 * 60
+        )
+
+        return True
+
+    def dispose_serverless_cache_raw(self, region, request_dict) -> dict:
+        """
+        Dispose raw.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Deleting: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).delete_serverless_cache,
+                "ServerlessCache",
+                filters_req=request_dict,
+        ):
+            self.clear_cache(ElasticacheServerlessCache)
+            return response
+        return None

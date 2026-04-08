@@ -1,8 +1,10 @@
 """
 AWS object representation
 """
+from enum import Enum
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
+from horey.common_utils.common_utils import CommonUtils
 
 
 # pylint: disable= too-many-instance-attributes
@@ -13,7 +15,17 @@ class ElasticacheServerlessCache(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        self.replication_group_id = None
+        self.subnet_ids = None
+        self.engine = None
+        self.description = None
+        self.status = None
+        self.cache_usage_limits = None
+        self.remove_user_group = None
+        self.user_group_id = None
+        self.security_group_ids = None
+        self.snapshot_retention_limit = None
+        self.daily_snapshot_time = None
+        self.major_engine_version = None
 
         self.request_key_to_attribute_mapping = {"ARN": "arn", "ServerlessCacheName": "name"}
 
@@ -56,6 +68,7 @@ class ElasticacheServerlessCache(AwsObject):
         :param dict_src:
         :return:
         """
+
         options = {}
         self._init_from_cache(dict_src, options)
 
@@ -75,21 +88,66 @@ class ElasticacheServerlessCache(AwsObject):
         :return:
         """
 
-        request = {"CacheClusterId": self.id,
-                   "ReplicationGroupId": self.replication_group_id,
-                   "AZMode": self.az_mode,
-                   "PreferredAvailabilityZones": self.preferred_availability_zones,
-                   "NumCacheNodes": self.num_cache_nodes,
-                   "CacheNodeType": self.cache_node_type,
-                   "Engine": self.engine,
-                   "EngineVersion": self.engine_version,
-                   "Tags": self.tags,
-                   "SecurityGroupIds": self.security_group_ids,
-                   "CacheParameterGroupName": self.cache_parameter_group_name,
-                   "CacheSubnetGroupName": self.cache_subnet_group_name,
-                   "PreferredMaintenanceWindow": self.preferred_maintenance_window,
-                   "AutoMinorVersionUpgrade": self.auto_minor_version_upgrade,
-                   "SnapshotRetentionLimit": self.snapshot_retention_limit,
-                   "SnapshotWindow": self.snapshot_window}
+        required = ["ServerlessCacheName", "Description", "SubnetIds", "Tags", "Engine"]
+        optional = ["SecurityGroupIds"]
+        self_request = self.generate_request(required,
+                                             optional=optional,
+                                             request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
 
-        return request
+        return self_request
+
+    def generate_dispose_request(self):
+        """
+        Standard
+        :return:
+        """
+
+        required = ["ServerlessCacheName"]
+        optional = []
+        self_request = self.generate_request(required,
+                                             optional=optional,
+                                             request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
+
+        return self_request
+
+    def generate_update_request(self, desired_cache):
+        """
+        Generate changes.
+
+        :param desired_cache:
+        :return:
+        """
+
+        required = ["ServerlessCacheName"]
+        optional = ["Description", "CacheUsageLimits", "RemoveUserGroup", "UserGroupId", "SecurityGroupIds", "SnapshotRetentionLimit", "DailySnapshotTime",
+                    "Engine", "MajorEngineVersion"]
+        modify_request = self.generate_request_aws_object_modify(desired_cache, required,
+                                           optional=optional,
+                                           request_key_to_attribute_mapping=self.request_key_to_attribute_mapping,
+                                           )
+
+        return modify_request
+
+    def get_status(self):
+        """
+        State string to enum.
+        CREATING, AVAILABLE, DELETING, CREATE-FAILED and MODIFYING.
+
+        :return:
+        """
+
+        if self.status is None:
+            raise self.UndefinedStatusError()
+        return self.Status.__members__[CommonUtils.camel_case_to_snake_case(self.status.replace("-", "_")).upper()]
+
+    class Status(Enum):
+        """
+            for i, x in enumerate(ret): print(CommonUtils.camel_case_to_snake_case(x).upper() + " = " + str(i))
+
+        """
+
+        CREATING = 0
+        AVAILABLE = 1
+        DELETING = 2
+        CREATE_FAILED =3
+        MODIFYING = 4

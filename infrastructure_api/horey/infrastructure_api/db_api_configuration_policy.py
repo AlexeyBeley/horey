@@ -29,6 +29,7 @@ class DBAPIConfigurationPolicy(ConfigurationPolicy):
         self._serverless_v2_scaling_configuration = None
         self._db_instance_count = None
         self._instance_name_format = None
+        self._slug = None
 
     @property
     def cluster_instance_class(self):
@@ -165,3 +166,14 @@ class DBAPIConfigurationPolicy(ConfigurationPolicy):
     def cluster_name(self, value):
         self._cluster_name = value
 
+    @property
+    def slug(self):
+        return self._slug
+
+    @slug.setter
+    def slug(self, value):
+        self._slug = value
+
+    @property
+    def serverless_elasticache_name(self):
+        return f"svs-cache-{self.slug}"
