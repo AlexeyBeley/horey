@@ -250,7 +250,7 @@ def test_provision_elasticache_serverless(db_api):
     assert cache
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_update_elasticache_serverless(db_api):
     cache = db_api.provision_elasticache_serverless()
     cache.description = "test change description"

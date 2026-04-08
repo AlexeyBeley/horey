@@ -440,9 +440,11 @@ class DBAPI:
             cache = ElasticacheServerlessCache({"name":name})
 
             cache.region = self.environment_api.region
-            cache.subnet_ids = [subnet.id for subnet in self.environment_api.private_subnets]
-            cache.engine = "redis"
+
             cache.description = f"Serverless cache in {self.environment_api.configuration.environment_name}"
+            cache.subnet_ids = [subnet.id for subnet in self.environment_api.private_subnets]
+
+            cache.engine = "redis"
             cache.tags = self.environment_api.configuration.tags
             cache.tags.append({
             "Key": "name",
