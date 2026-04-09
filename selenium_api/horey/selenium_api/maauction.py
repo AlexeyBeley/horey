@@ -20,8 +20,8 @@ logger = get_logger()
 
 
 class MAauction(Provider):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, proxy=None):
+        super().__init__(proxy=proxy)
         self.name = "maauctions"
         self.initial_page = "https://www.maauctions.com/auctions/24839-october-28-2025-sporting-goods-liquidation-timed-auction-manitoba"
         self.main_page = "https://www.maauctions.com/auctions"

@@ -20,7 +20,7 @@ class AuctionAPI:
     def __init__(self, proxy=None):
         self.db_file_path = "/opt/horey/auctions.db"
 
-        self.providers = [Mcsherryauction(), MAauction(), Pennerauction(), Mcdougallauction(), Kayesauction()]
+        self.providers = [Mcsherryauction(), MAauction(proxy=proxy), Pennerauction(), Mcdougallauction(), Kayesauction()]
         self.auction_events = None
         self.lots = None
         self.async_orchestrator = AsyncOrchestrator()

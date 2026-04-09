@@ -15,3 +15,4 @@ CMD ["./socks5-proxy"]
 
 # docker build -t socks5-proxy .
 # docker run -p 1080:1080 socks5-proxy
+# curl --socks5 127.0.0.1:1080 https://google.com

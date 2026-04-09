@@ -29,7 +29,7 @@ class SeleniumAPI:
         self.data_dir = data_dir
         self.chromedriver_path = chromedriver_path
         self.chrome_path = chrome_path
-        self.proxy = None
+        self.proxy = proxy
 
 
     def wait_for_page_load(self, timeout=10):
@@ -62,8 +62,8 @@ class SeleniumAPI:
         logger.info("Connecting diver in SeleniumAPI")
 
         chrome_options = Options()
+
         if self.proxy:
-            #chrome_options.add_argument(f"--proxy-server=http://{self.proxy}")
             chrome_options.add_argument(f"--proxy-server={self.proxy}")
 
         if self.chrome_path:

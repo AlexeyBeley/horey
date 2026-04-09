@@ -25,7 +25,10 @@ class SecretsAPI:
 
     @property
     def region(self):
-        return Region.get_region(self.configuration.region)
+        try:
+            return Region.get_region(self.configuration.region)
+        except self.configuration.UndefinedValueError:
+            return self.environment_api.region
 
     def get_secret_file(self, secret_name: str, file_path: Path):
         """
@@ -37,4 +40,5 @@ class SecretsAPI:
         """
 
         logger.info(f"Tests: Downloading secret {secret_name} to {file_path}")
+        breakpoint()
         return self.environment_api.aws_api.get_secret_file(secret_name, file_path, region=self.region)

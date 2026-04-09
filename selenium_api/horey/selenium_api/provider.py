@@ -23,14 +23,13 @@ class Provider:
     @property
     def selenium_api(self):
         if Provider._selenium_api is None:
-            Provider.connect(proxy=self.proxy)
+            self.connect()
         return Provider._selenium_api
 
-    @staticmethod
-    def connect(proxy=None):
+    def connect(self):
         if Provider._selenium_api is None:
             logger.info("Connecting Selenium in Provider")
-            Provider._selenium_api = SeleniumAPI(proxy=proxy)
+            Provider._selenium_api = SeleniumAPI(proxy=self.proxy)
             Provider._selenium_api.connect()
 
     @staticmethod

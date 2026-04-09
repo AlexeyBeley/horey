@@ -70,6 +70,8 @@ def test_init_auction_events_from_internal_url():
 
 @pytest.mark.wip
 def test_init_auction_events():
-    auction = MAauction()
+    proxy = "socks5://99.79.69.29:1080"
+
+    auction = MAauction(proxy=proxy)
     for x in auction.yield_auction_events({}):
         assert x
