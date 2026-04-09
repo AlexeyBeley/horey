@@ -379,6 +379,21 @@ class EC2Client(Boto3Client):
         if not provision_rules:
             return
 
+        self.provision_security_group_rules(existing_security_group, desired_security_group, declarative, force)
+
+        self.update_security_group_information(desired_security_group)
+
+    def provision_security_group_rules(self, existing_security_group, desired_security_group, declarative, force):
+        """
+        Provision rules.
+
+        :param force:
+        :param existing_security_group:
+        :param desired_security_group:
+        :param declarative:
+        :return:
+        """
+
         (
             add_request,
             revoke_request,
@@ -389,7 +404,8 @@ class EC2Client(Boto3Client):
 
         if not declarative:
             # comments must be uniques
-            revoke_by_comment_request = existing_security_group.generate_revoke_by_comment_requests(desired_security_group)
+            revoke_by_comment_request = existing_security_group.generate_revoke_by_comment_requests(
+                desired_security_group)
             if revoke_by_comment_request:
                 self.revoke_security_group_ingress_raw(desired_security_group.region, revoke_by_comment_request)
 
@@ -403,7 +419,31 @@ class EC2Client(Boto3Client):
             self.update_security_group_rule_descriptions_ingress_raw(desired_security_group.region,
                                                                      update_rules_description)
 
-        self.update_security_group_information(desired_security_group)
+    def upsert_ip_permissions(self, security_group:EC2SecurityGroup, ip_permissions):
+        """
+        Update or insert.
+
+        :param security_group:
+        :param ip_permissions:
+        :return:
+        """
+        breakpoint()
+        if not self.update_security_group_information(security_group):
+            raise ValueError(f"Security group '{security_group.name}' does not exist!")
+
+        desired_permissions_by_comment = {security_group.get_permission_description(permission): permission for permission in ip_permissions}
+        if len(desired_permissions_by_comment) != len(ip_permissions):
+            raise ValueError(f"Multiple permissions with the same comment: {ip_permissions}")
+
+        for i, permission in enumerate(security_group.ip_permissions):
+            current_description = security_group.get_permission_description(permission)
+            if current_description in desired_permissions_by_comment:
+                security_group.ip_permissions[i] = desired_permissions_by_comment[current_description]
+                del desired_permissions_by_comment[current_description]
+
+        security_group.ip_permissions += list(desired_permissions_by_comment.values())
+        self.provision_security_group(security_group, provision_rules=True, declarative=True)
+
 
     def provision_security_group_raw(self, region, request_dict):
         """
@@ -420,6 +460,7 @@ class EC2Client(Boto3Client):
         ):
             self.clear_cache(EC2SecurityGroup)
             return group_id
+        return None
 
     def raw_create_security_group(self, request_dict, region=None):
         """
