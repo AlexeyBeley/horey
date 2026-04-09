@@ -443,10 +443,8 @@ class EC2Client(Boto3Client):
                 security_group_split_permissions[i] = desired_permissions_by_comment[current_description]
                 del desired_permissions_by_comment[current_description]
 
-        breakpoint()
         security_group.ip_permissions = security_group_split_permissions + list(desired_permissions_by_comment.values())
         self.provision_security_group(security_group, provision_rules=True, declarative=True)
-
 
     def provision_security_group_raw(self, region, request_dict):
         """
