@@ -430,8 +430,10 @@ class EC2Client(Boto3Client):
         if not self.update_security_group_information(security_group):
             raise ValueError(f"Security group '{security_group.name}' does not exist!")
 
-        desired_permissions_by_comment = {security_group.get_permission_description(permission): permission for permission in security_group.split_permissions(ip_permissions)}
-        if len(desired_permissions_by_comment) != len(ip_permissions):
+        split_permissions = security_group.split_permissions(ip_permissions)
+
+        desired_permissions_by_comment = {security_group.get_permission_description(permission): permission for permission in split_permissions}
+        if len(desired_permissions_by_comment) != len(split_permissions):
             raise ValueError(f"Multiple permissions with the same comment: {ip_permissions}")
 
         for i, permission in enumerate(security_group.split_permissions(security_group.ip_permissions)):
