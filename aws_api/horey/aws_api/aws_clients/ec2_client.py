@@ -427,20 +427,20 @@ class EC2Client(Boto3Client):
         :param ip_permissions:
         :return:
         """
-        breakpoint()
         if not self.update_security_group_information(security_group):
             raise ValueError(f"Security group '{security_group.name}' does not exist!")
 
-        desired_permissions_by_comment = {security_group.get_permission_description(permission): permission for permission in ip_permissions}
+        desired_permissions_by_comment = {security_group.get_permission_description(permission): permission for permission in security_group.split_permissions(ip_permissions)}
         if len(desired_permissions_by_comment) != len(ip_permissions):
             raise ValueError(f"Multiple permissions with the same comment: {ip_permissions}")
 
-        for i, permission in enumerate(security_group.ip_permissions):
+        for i, permission in enumerate(security_group.split_permissions(security_group.ip_permissions)):
             current_description = security_group.get_permission_description(permission)
             if current_description in desired_permissions_by_comment:
                 security_group.ip_permissions[i] = desired_permissions_by_comment[current_description]
                 del desired_permissions_by_comment[current_description]
 
+        breakpoint()
         security_group.ip_permissions += list(desired_permissions_by_comment.values())
         self.provision_security_group(security_group, provision_rules=True, declarative=True)
 
