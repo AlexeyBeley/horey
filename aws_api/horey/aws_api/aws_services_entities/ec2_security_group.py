@@ -188,9 +188,7 @@ class EC2SecurityGroup(AwsObject):
             else None
         )
 
-
-    @staticmethod
-    def get_permission_description(permission):
+    def get_permission_description(self, permission):
         """
         Get description of a permission.
         If no description - return empty string.
@@ -223,7 +221,7 @@ class EC2SecurityGroup(AwsObject):
                 f"Multiple descriptions for one rule: {descriptions}, {permission}"
             )
         if len(descriptions) == 0:
-            raise ValueError(f"No descriptions for rule: {permission}")
+            raise ValueError(f"No descriptions for rule: [id={self.id or self.name}] {permission}")
         return descriptions[0]
 
     @staticmethod
