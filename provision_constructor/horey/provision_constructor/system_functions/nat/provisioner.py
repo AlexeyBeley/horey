@@ -22,7 +22,7 @@ BashExecutor.set_logger(logger, override=False)
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
     """
-    Provision service.
+    Provision NAT.
 
     """
     LOCK = threading.Lock()
@@ -57,87 +57,71 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-
-        self.install_keepalived_remote()
         self.configure_nftables_remote()
-
-    def install_keepalived_remote(self):
-        """
-        Install keepalived
-
-        :return:
-        """
-
-        SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir,
-                                                                          self.force, self.upgrade,
-                                                                          package_names=["keepalived",
-                                                                                         ]).provision_remote(self.remoter)
-        virtual_address = self.kwargs.get("virtual_ip_address")
-        interfaces = self.get_interfaces_remote()
-
-        for interface_name, interface in interfaces.items():
-            if len(interface["ip"]) == 0:
-                continue
-            for ip_address in interface["ip"]:
-                if ip_address.split("/")[0] != virtual_address:
-                    break
-            else:
-                raise RuntimeError("Was not able to find address different from virtual one")
-
-
-            network = ipaddress.IPv4Network(ip_address, strict=False)
-            master_ip = ipaddress.IPv4Address(self.kwargs.get("master"))
-            if master_ip in network:
-                host_real_address, vrrp_interface_mask = ip_address.split("/")
-                break
-        else:
-            raise ValueError(f"master ip {self.kwargs.get('master')} is not in any of the interfaces")
-
-        unicast_peers = [self.kwargs.get("master"), *self.kwargs.get("backups")]
-
-        if host_real_address == self.kwargs.get("master"):
-            state = "MASTER"
-        elif host_real_address in self.kwargs.get("backups"):
-            state = "BACKUP"
-        else:
-            breakpoint()
-            raise ValueError(f"Host address {host_real_address} is neither master nor backup")
-
-        unicast_peers.remove(host_real_address)
-        virtual_address_with_subnet = self.kwargs.get("virtual_ip_address") + "/" + vrrp_interface_mask
-        config_file_path = self.generate_config_file(state, interface_name, virtual_address_with_subnet, unicast_peers)
-
-        return self.remoter.put_file(config_file_path, Path("/etc/keepalived") / config_file_path.name, sudo=True)
 
     def configure_nftables_remote(self):
         """
-        Configure nftables to allow vrrp traffic
+        Configure nftables to allow NAT traffic
 
         :return:
         """
+
+        interfaces = SystemFunctionFactory.REGISTERED_FUNCTIONS["net"](self.deployment_dir,
+                                                                       self.force,
+                                                                       self.upgrade,
+                                                                       action="get_interfaces"
+                                                                       ).provision_remote(self.remoter)
+
+        interface = SystemFunctionFactory.REGISTERED_FUNCTIONS["net"](self.deployment_dir,
+                                                                      self.force,
+                                                                      self.upgrade,
+                                                                      action="find_interface_by_net",
+                                                                      interfaces=interfaces,
+                                                                      network=self.kwargs.get(
+                                                                          "src_network")).provision_remote(self.remoter)
+        breakpoint()
 
         self.remoter.execute("sudo apt install nftables -y")
         self.remoter.execute("sudo systemctl enable nftables")
         self.remoter.execute("sudo systemctl start nftables")
 
-        # Add rules to allow VRRP traffic
+        # Create NAT table and chains
+        self.remoter.execute("sudo nft add table ip nat")
+        self.remoter.execute("sudo nft add chain ip nat PREROUTING { type nat hook prerouting priority -100 \\; }")
+        self.remoter.execute("sudo nft add chain ip nat POSTROUTING { type nat hook postrouting priority 100 \\; }")
+
+        # Create filter table and chains
         self.remoter.execute("sudo nft add table ip filter")
         self.remoter.execute("sudo nft add chain ip filter INPUT { type filter hook input priority 0 \\; }")
         self.remoter.execute("sudo nft add chain ip filter FORWARD { type filter hook forward priority 0 \\; }")
         self.remoter.execute("sudo nft add chain ip filter OUTPUT { type filter hook output priority 0 \\; }")
 
-        # Allow VRRP multicast traffic (224.0.0.18)
-        self.remoter.execute("sudo nft add rule ip filter INPUT ip daddr 224.0.0.18 ip protocol 112 accept")
-        self.remoter.execute("sudo nft add rule ip filter FORWARD ip daddr 224.0.0.18 ip protocol 112 accept")
-        self.remoter.execute("sudo nft add rule ip filter OUTPUT ip daddr 224.0.0.18 ip protocol 112 accept")
+        # Enable NAT masquerading for traffic from ens5 subnet going out ens6
+        self.remoter.execute("sudo nft add rule ip nat POSTROUTING oifname ens6 ip saddr 10.10.49.0/24 masquerade")
 
-        # Allow established and related connections
-        self.remoter.execute("sudo nft add rule ip filter INPUT ct state established,related accept")
-        self.remoter.execute("sudo nft add rule ip filter FORWARD ct state established,related accept")
+        # Allow forwarding from ens5 to ens6
+        self.remoter.execute(
+            "sudo nft add rule ip filter FORWARD iifname ens5 oifname ens6 ip saddr 10.10.49.0/24 accept")
+        self.remoter.execute(
+            "sudo nft add rule ip filter FORWARD iifname ens6 oifname ens5 ip daddr 10.10.49.0/24 ct state related,established accept")
 
-        # Default drop policy
-        #self.remoter.execute("sudo nft add rule ip filter INPUT reject")
-        #self.remoter.execute("sudo nft add rule ip filter FORWARD reject")
+        # Enable IP forwarding
+        self.remoter.execute("sudo sysctl -w net.ipv4.ip_forward=1")
+
+        # route traffic
+        # Allow input traffic on both interfaces
+        self.remoter.execute("sudo nft add rule ip filter INPUT iifname ens5 accept")
+        self.remoter.execute("sudo nft add rule ip filter INPUT iifname ens6 ct state related,established accept")
+
+        # Allow loopback traffic
+        self.remoter.execute("sudo nft add rule ip filter INPUT iifname lo accept")
+
+        # Set default policies (optional but recommended)
+        self.remoter.execute("sudo nft add rule ip filter INPUT drop")
+        self.remoter.execute("sudo nft add rule ip filter FORWARD drop")
+
+        # Make IP forwarding persistent
+        self.remoter.execute("echo 'net.ipv4.ip_forward=1' | sudo tee -a /etc/sysctl.conf")
 
         # Save the rules
         breakpoint()

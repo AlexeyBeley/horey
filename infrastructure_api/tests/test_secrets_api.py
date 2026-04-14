@@ -74,8 +74,7 @@ def fixture_secrets_api(env_api_integration):
     yield SecretsAPI(secrets_api_configuration, env_api_integration)
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_get_secret(secrets_api):
-    assert secrets_api.get_secret_file("alexey-test", Path("/Users/alexeybeley/.ssh/alexey-test"))
-    breakpoint()
+    assert secrets_api.get_secret_file("test", Path("/tmp/test"))
 

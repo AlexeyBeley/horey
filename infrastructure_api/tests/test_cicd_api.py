@@ -882,3 +882,24 @@ def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, e
 
     target_master.append_remote_step("Test", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets([target_master], asynchronous=False)
+
+
+
+@pytest.mark.wip
+def test_run_remote_deployer_deploy_targets_nat_install(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+
+    target_master = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.ec2_vrrp_master,
+                                                                     bastions=ec2_instances
+                                                                     )[0]
+
+    def entrypoint():
+        cicd_api_integration.run_remote_provision_constructor(target_master,
+                                                              "nat",
+                                                              action="install",
+                                                              src_network=target_master.deployment_target_address
+                                                              )
+
+    target_master.append_remote_step("Test", entrypoint)
+    assert cicd_api_integration.run_remote_deployer_deploy_targets([target_master], asynchronous=False)

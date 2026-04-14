@@ -40,5 +40,4 @@ class SecretsAPI:
         """
 
         logger.info(f"Tests: Downloading secret {secret_name} to {file_path}")
-        breakpoint()
         return self.environment_api.aws_api.get_secret_file(secret_name, file_path, region=self.region)
