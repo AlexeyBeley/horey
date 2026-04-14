@@ -53,6 +53,6 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-        ret = remoter.execute(self.command)
+        ret = remoter.execute(self.command, retries=self.kwargs.get("retries", 1))
 
         return ret
