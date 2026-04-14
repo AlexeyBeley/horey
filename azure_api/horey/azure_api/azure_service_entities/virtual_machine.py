@@ -21,6 +21,7 @@ class VirtualMachine(AzureObject):
         self.storage_profile = None
         self.os_profile = None
         self.network_profile = {}
+        self.zones = None
         self.provisioning_state = None
 
         super().__init__(dict_src, from_cache=from_cache)
@@ -116,6 +117,8 @@ class VirtualMachine(AzureObject):
                 "network_profile": self.network_profile,
                 "tags": self.tags,
             }
+            if self.zones:
+                dict_options["zones"] = self.zones
         else:
             dict_options = {
                 "location": self.location,
