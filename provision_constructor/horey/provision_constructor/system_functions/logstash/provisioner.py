@@ -192,7 +192,7 @@ class Provisioner(SystemFunctionCommon):
             raise ValueError("plugin_name must be specified")
 
         self.remoter.execute(f"sudo /opt/logstash/bin/logstash-plugin install {plugin_name}",
-                             self.last_line_validator("Installation successful"))
+                             self.last_line_validator("Installation successful"), retries=3)
 
         return True
 
