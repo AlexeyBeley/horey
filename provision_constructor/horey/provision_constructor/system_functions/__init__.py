@@ -2,6 +2,7 @@
 Logging package. Log formatting and routing.
 """
 from .common import *
+from .disk import *
 from .logstash import *
 from .systemd import *
 from .swap import *
