@@ -102,6 +102,33 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.remoter = remoter
+        match self.action:
+            case "init_partition":
+                return self.init_partition_remote(self.kwargs.get("partition_path"))
+            case _:
+                return self.provision_remote_main()
+
+    def init_partition_remote(self, partition_path):
+        """
+        Init partition.
+        :param partition_path:
+        :return:
+        """
+
+        self.remoter.execute("sudo swapoff -a")
+        self.remoter.execute(f"sudo mkswap {partition_path}", self.last_line_validator("Setting up swapspace"))
+        self.remoter.execute(f"sudo swapon {partition_path}")
+
+        return self.add_line_to_file_remote(self.remoter, line=f"{partition_path} none swap sw 0 0",
+                                        file_path=Path("/etc/fstab"), sudo=True)
+
+    def provision_remote_main(self):
+        """
+        Default.
+
+        :return:
+        """
+
         if not self.swap_size_in_gb:
             ret = self.remoter.execute("grep MemTotal /proc/meminfo | awk '{print $2}'")
             try:
@@ -119,12 +146,12 @@ class Provisioner(SystemFunctionCommon):
         except self.FailedCheckError:
             pass
 
-        remoter.execute("sudo swapoff -a")
-        remoter.execute(f"sudo fallocate -l {self.swap_size_in_gb}G /swapfile")
-        remoter.execute("sudo chmod 600 /swapfile")
-        remoter.execute("sudo mkswap /swapfile")
-        remoter.execute("sudo swapon /swapfile")
-        return self.add_line_to_file_remote(remoter, line="/swapfile none swap sw 0 0", file_path=Path("/etc/fstab"), sudo=True)
+        self.remoter.execute("sudo swapoff -a")
+        self.remoter.execute(f"sudo fallocate -l {self.swap_size_in_gb}G /swapfile")
+        self.remoter.execute("sudo chmod 600 /swapfile")
+        self.remoter.execute("sudo mkswap /swapfile")
+        self.remoter.execute("sudo swapon /swapfile")
+        return self.add_line_to_file_remote(self.remoter, line="/swapfile none swap sw 0 0", file_path=Path("/etc/fstab"), sudo=True)
 
     def check_provisioned_remote(self):
         """

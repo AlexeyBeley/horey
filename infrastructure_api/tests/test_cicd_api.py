@@ -835,3 +835,48 @@ def test_run_remote_deployer_deploy_targets_disk_install(cicd_api_integration, e
     # backup
 
     assert cicd_api_integration.run_remote_deployer_deploy_targets([target], asynchronous=False)
+
+
+@pytest.mark.unit
+def test_run_remote_deployer_deploy_targets_disk_partition(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+
+    target = cicd_api_integration.generate_deployment_targets("test-instance",
+                                                              bastions=ec2_instances
+                                                              )[0]
+
+    # master
+    def entrypoint():
+        blockdevices = cicd_api_integration.run_remote_provision_constructor(target,
+                                                                             "disk",
+                                                                             action="get_blockdevices",
+                                                                             )
+        for blockdevice in blockdevices:
+            if blockdevice["size"] == "68G":
+                break
+        else:
+            raise ValueError("Was not able to find block device")
+
+        cicd_api_integration.run_remote_provision_constructor(target,
+                                                              "disk",
+                                                              action="partition",
+                                                              blockdevice=blockdevice,
+                                                              parts=[("linux-swap", "1MiB", "32GB"),
+                                                                     ("ext4", "32GB", "52GB"),
+                                                                     ("ext4", "52GB", "100%")],
+                                                              force=True
+                                                              )
+        blockdevices = cicd_api_integration.run_remote_provision_constructor(target,
+                                                                             "disk",
+                                                                             action="get_blockdevices",
+                                                                             blockdevice=blockdevice)
+        blockdevice = blockdevices[0]
+        assert blockdevice
+
+
+    target.append_remote_step("Test", entrypoint)
+    # backup
+
+    assert cicd_api_integration.run_remote_deployer_deploy_targets([target], asynchronous=False)
+

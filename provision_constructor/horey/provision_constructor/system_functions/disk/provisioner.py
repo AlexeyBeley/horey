@@ -39,8 +39,8 @@ class Provisioner(SystemFunctionCommon):
         match self.action:
             case "get_blockdevices":
                 return self.get_blockdevices_remote()
-            case "format":
-                return self.format_remote()
+            case "partition":
+                return self.partition_remote()
             case "mount":
                 return self.mount_remote()
             case _:
@@ -59,7 +59,7 @@ class Provisioner(SystemFunctionCommon):
         output = json.loads("".join(ret[0]))
         return output["blockdevices"]
 
-    def format_remote(self):
+    def partition_remote(self):
         """
         List status
 
@@ -70,16 +70,44 @@ class Provisioner(SystemFunctionCommon):
         blockdevice_path = blockdevice["path"]
         if blockdevice_path != "/dev/nvme1n1":
             raise NotImplementedError(f"Only /dev/nvme1n1 is supported, got {blockdevice_path}")
+
         for child in blockdevice.get("children", []):
-            if child['mountpoint']:
+            mount_point = child.get("mount_point")
+
+            if child.get("fstype") == "swap":
+                part_id = child['path'].replace(blockdevice_path + "p", "")
+                if not part_id.isdigit():
+                    raise RuntimeError(f"Unexpected partition id: {part_id}")
+
+                self.remoter.execute(f"sudo swapoff {child['path']}")
+                self.remoter.execute(f"sudo parted {blockdevice_path} rm {part_id} --script")
+
+                continue
+
+            if mount_point:
                 if self.force:
-                    self.remoter.execute(f"sudo umount {child['mountpoint']}")
+                    self.remoter.execute(f"sudo umount {mount_point}")
                 else:
-                    raise RuntimeError(f"Device {child['name']} is already mounted to {child['mountpoint']}")
+                    raise RuntimeError(f"Device {child['name']} is already mounted to {mount_point}")
 
         self.remoter.execute(f"sudo parted {blockdevice_path} mklabel gpt --script")
-        self.remoter.execute(f"sudo parted {blockdevice_path} mkpart primary ext4 0% 100% --script")
-        self.remoter.execute(f"sudo mkfs.ext4 {'-F' if self.force else ''} {blockdevice_path}p1", self.last_line_validator("done"))
+
+        parts = self.kwargs.get("parts", [("ext4", "1MiB", "100%")])
+        str_parts = ""
+        for part in parts:
+            str_parts += f" mkpart primary {part[0]} {part[1]} {part[2]}"
+        self.remoter.execute(f"sudo parted {blockdevice_path} --script --" + str_parts)
+
+        for i, part in enumerate(parts):
+            partition_path = f"{blockdevice_path}p{i+1}"
+            if part[0] == "ext4":
+                self.remoter.execute(f"sudo mkfs.ext4 {'-F' if self.force else ''} {partition_path}", self.last_line_validator("done"))
+            if part[0] == "linux-swap":
+                SystemFunctionFactory.REGISTERED_FUNCTIONS["swap"](self.deployment_dir, True,
+                                                                                  self.upgrade,
+                                                                                  action="init_partition",
+                                                                   partition_path=partition_path).provision_remote(remoter=self.remoter)
+
         return True
 
     def mount_remote(self):
