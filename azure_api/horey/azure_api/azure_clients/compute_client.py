@@ -205,16 +205,20 @@ class ComputeClient(AzureClient):
             for obj in self.client.virtual_machines.list(resource_group_name)
         ]
 
-    def provision_disk(self, disk: Disk):
+    def provision_disk(self, disk: Disk, asynchronous=False):
         """
         Create or update
 
+        :param asynchronous:
         :param disk:
         :return:
         """
 
         response = self.raw_create_disk(disk.generate_create_request())
-        disk.update_after_creation(response)
+        if asynchronous:
+            return response
+        response.wait()
+        return disk.update_after_creation(response.result())
 
     def raw_create_disk(self, lst_args):
         """
@@ -225,9 +229,7 @@ class ComputeClient(AzureClient):
         """
 
         logger.info(f"Begin disk creation: '{lst_args[1]}'")
-        response = self.client.disks.begin_create_or_update(*lst_args)
-        response.wait()
-        return response.result()
+        return self.client.disks.begin_create_or_update(*lst_args)
 
     def dispose_disk(self, obj_disk: Disk, asynchronous=False):
         """
