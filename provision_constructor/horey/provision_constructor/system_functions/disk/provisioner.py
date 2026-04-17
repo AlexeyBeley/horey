@@ -68,8 +68,8 @@ class Provisioner(SystemFunctionCommon):
 
         blockdevice = self.kwargs.get("blockdevice")
         blockdevice_path = blockdevice["path"]
-        if blockdevice_path != "/dev/nvme1n1":
-            raise NotImplementedError(f"Only /dev/nvme1n1 is supported, got {blockdevice_path}")
+        if not blockdevice_path.startswith("/dev/nvme"):
+            raise NotImplementedError(f"Only /dev/nvme is supported, got {blockdevice_path}")
 
         for child in blockdevice.get("children", []):
             mount_point = child.get("mount_point")
