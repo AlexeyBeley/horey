@@ -24,6 +24,7 @@ class Disk(AzureObject):
         self.disk_iops_read_write = None
         self.disk_m_bps_read_write = None
         self.tier = None
+        self.sku = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -115,6 +116,11 @@ class Disk(AzureObject):
             "creation_data": {"create_option": DiskCreateOption.empty},
             "tags": self.tags,
         }
+
+        if self.sku:
+            dict_ret["sku"] = self.sku
+        else:
+            dict_ret["sku"] = {"name": "PremiumV2_LRS"}
 
         if self.disk_iops_read_write:
             dict_ret["disk_iops_read_write"]= self.disk_iops_read_write
