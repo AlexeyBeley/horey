@@ -25,6 +25,7 @@ class Disk(AzureObject):
         self.disk_m_bps_read_write = None
         self.tier = None
         self.sku = None
+        self.zones = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -121,6 +122,12 @@ class Disk(AzureObject):
             dict_ret["sku"] = self.sku
         else:
             dict_ret["sku"] = {"name": "PremiumV2_LRS"}
+            if not self.zones:
+                raise ValueError(f"Default disk SKU {dict_ret['sku']} requires 'zones' set")
+
+        if self.zones:
+            dict_ret["zones"] = self.zones
+
 
         if self.disk_iops_read_write:
             dict_ret["disk_iops_read_write"]= self.disk_iops_read_write
