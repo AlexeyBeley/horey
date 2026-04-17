@@ -62,6 +62,7 @@ class Disk(AzureObject):
             "max_shares" : self.init_default_attr,
             "disk_iops_read_only": self.init_default_attr,
             "disk_m_bps_read_only": self.init_default_attr,
+            "zones": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
