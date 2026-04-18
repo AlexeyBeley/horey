@@ -13,6 +13,7 @@ import stat
 import traceback
 
 from contextlib import contextmanager
+from logging import exception
 from pathlib import Path
 from typing import List, Any, Tuple
 
@@ -1601,7 +1602,17 @@ class RemoteDeployer:
         :return:
         """
 
-        ssh_client = self.get_deployment_target_ssh_client(target)
+        inst_error = None
+        for _ in range(3):
+            try:
+                ssh_client = self.get_deployment_target_ssh_client(target)
+                break
+            except Exception as inst:
+                inst_error = inst
+                time.sleep(5)
+        else:
+            raise inst_error
+
         sftp_client = self.get_deployment_target_sftp_client(target)
 
 

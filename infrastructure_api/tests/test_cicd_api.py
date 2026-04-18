@@ -71,6 +71,7 @@ class Configuration(ConfigurationPolicy):
     @github_hagent_repo_name.setter
     def github_hagent_repo_name(self, value):
         self._github_hagent_repo_name = value
+        self._github_hagent_runner_name = None
 
     @property
     def github_api_configuration_file_secret_name(self):
@@ -88,7 +89,6 @@ class Configuration(ConfigurationPolicy):
     @ec2_vrrp_master.setter
     def ec2_vrrp_master(self, value):
         self._ec2_vrrp_master = value
-
 
     @property
     def ec2_vrrp_backup(self):
@@ -481,7 +481,7 @@ def test_run_remote_deployer_deploy_targets_logstash_install(cicd_api_integratio
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
     targets = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.hostname,
                                                                bastions=ec2_instances
-                                                              )
+                                                               )
 
     def entrypoint():
         cicd_api_integration.run_remote_provision_constructor(target,
@@ -713,10 +713,10 @@ def test_run_remote_deployer_deploy_targets_docker_prune_old_images(cicd_api_int
                                                               horey_dir_path="/opt/horey",
                                                               image="public.ecr.aws/lambda/python:3.12"
                                                               )
+
     for target in targets:
         target.append_remote_step("Test", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
-
 
 
 @pytest.mark.unit
@@ -737,6 +737,7 @@ def test_run_remote_deployer_deploy_targets_docker_login(cicd_api_integration, e
     for target in targets:
         target.append_remote_step("Test", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
+
 
 @pytest.mark.unit
 def test_run_remote_deployer_deploy_hardening(cicd_api_integration, ec2_api_mgmt_integration):
@@ -771,7 +772,7 @@ def test_run_remote_deployer_deploy_windows_target_raw(cicd_api_integration, ec2
                                                               )
 
     for target in targets:
-        target.deployment_target_user_name= "Administrator"
+        target.deployment_target_user_name = "Administrator"
         target.append_remote_step("Test", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets(targets, asynchronous=False)
 
@@ -815,39 +816,45 @@ def test_provision_github_hagent_dockerized(cicd_api_integration, ec2_api_mgmt_i
                                                         )
 
 @pytest.mark.unit
+@pytest.mark.unit
 def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
 
     target_master = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.ec2_vrrp_master,
-                                                               bastions=ec2_instances
-                                                              )[0]
+                                                                     bastions=ec2_instances
+                                                                     )[0]
 
     target_backup = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.ec2_vrrp_backup,
                                                                      bastions=ec2_instances
                                                                      )[0]
     virtual_ip_address = ".".join(target_backup.deployment_target_address.split(".")[:3]) + ".253"
+
     # master
-    def entrypoint():
+    def entrypoint_1():
         cicd_api_integration.run_remote_provision_constructor(target_master,
                                                               "vrrp",
                                                               action="install",
                                                               virtual_ip_address=virtual_ip_address,
-                                                              master = target_master.deployment_target_address,
-                                                              backups = [target_backup.deployment_target_address]
+                                                              master=target_master.deployment_target_address,
+                                                              backups=[target_backup.deployment_target_address]
                                                               )
 
-    target_master.append_remote_step("Test", entrypoint)
+    target_master.append_remote_step("Test", entrypoint_1)
+
     # backup
+    def entrypoint_2():
+        cicd_api_integration.run_remote_provision_constructor(target_master,
     def entrypoint():
         cicd_api_integration.run_remote_provision_constructor(target_backup,
                                                               "vrrp",
                                                               action="install",
                                                               virtual_ip_address=virtual_ip_address,
-                                                              master = target_master.deployment_target_address,
-                                                              backups = [target_backup.deployment_target_address]
+                                                              master=target_master.deployment_target_address,
+                                                              backups=[target_backup.deployment_target_address]
                                                               )
 
+    target_master.append_remote_step("Test", entrypoint_2)
     target_backup.append_remote_step("Test", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets([target_backup], asynchronous=False)
     assert cicd_api_integration.run_remote_deployer_deploy_targets([target_master, target_backup], asynchronous=False)
@@ -903,3 +910,99 @@ def test_run_remote_deployer_deploy_targets_nat_install(cicd_api_integration, ec
 
     target_master.append_remote_step("Test", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets([target_master], asynchronous=False)
+
+
+@pytest.mark.unit
+def test_run_remote_deployer_deploy_targets_disk_install(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+
+    target = cicd_api_integration.generate_deployment_targets("test-instance",
+                                                              bastions=ec2_instances
+                                                              )[0]
+
+    # master
+    def entrypoint():
+        blockdevices = cicd_api_integration.run_remote_provision_constructor(target,
+                                                                             "disk",
+                                                                             action="get_blockdevices",
+                                                                             )
+        for blockdevice in blockdevices:
+            if blockdevice["size"] == "98G":
+                break
+        else:
+            raise ValueError("Was not able to find block device")
+
+        cicd_api_integration.run_remote_provision_constructor(target,
+                                                              "disk",
+                                                              action="format",
+                                                              blockdevice=blockdevice,
+                                                              force=True
+                                                              )
+        blockdevices = cicd_api_integration.run_remote_provision_constructor(target,
+                                                                             "disk",
+                                                                             action="get_blockdevices",
+                                                                             blockdevice=blockdevice
+                                                                             )
+        blockdevice =  blockdevices[0]
+        if len(blockdevice["children"]) != 1:
+            raise ValueError("Wrong number of children")
+        child = blockdevice["children"][0]
+
+        cicd_api_integration.run_remote_provision_constructor(target,
+                                                              "disk",
+                                                              action="mount",
+                                                              src=Path(child["path"]),
+                                                              dst=Path("/var/lib/my_mount"),
+                                                              chmod="710"
+                                                              )
+
+    target.append_remote_step("Test", entrypoint)
+    # backup
+
+    assert cicd_api_integration.run_remote_deployer_deploy_targets([target], asynchronous=False)
+
+
+@pytest.mark.unit
+def test_run_remote_deployer_deploy_targets_disk_partition(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+
+    target = cicd_api_integration.generate_deployment_targets("test-instance",
+                                                              bastions=ec2_instances
+                                                              )[0]
+
+    # master
+    def entrypoint():
+        blockdevices = cicd_api_integration.run_remote_provision_constructor(target,
+                                                                             "disk",
+                                                                             action="get_blockdevices",
+                                                                             )
+        for blockdevice in blockdevices:
+            if blockdevice["size"] == "68G":
+                break
+        else:
+            raise ValueError("Was not able to find block device")
+
+        cicd_api_integration.run_remote_provision_constructor(target,
+                                                              "disk",
+                                                              action="partition",
+                                                              blockdevice=blockdevice,
+                                                              parts=[("linux-swap", "1MiB", "32GB"),
+                                                                     ("ext4", "32GB", "52GB"),
+                                                                     ("ext4", "52GB", "100%")],
+                                                              force=True
+                                                              )
+        blockdevices = cicd_api_integration.run_remote_provision_constructor(target,
+                                                                             "disk",
+                                                                             action="get_blockdevices",
+                                                                             blockdevice=blockdevice)
+        blockdevice = blockdevices[0]
+        assert blockdevice
+
+
+    target.append_remote_step("Test", entrypoint)
+    # backup
+
+    assert cicd_api_integration.run_remote_deployer_deploy_targets([target], asynchronous=False)
+
