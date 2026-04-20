@@ -177,6 +177,7 @@ class Pennerauction(Provider):
         logger.info(f"Found max page: {max_page}")
         return max_page
 
+
     def init_auction_events(self, known_auction_events_by_url):
         """
         Load free items.
@@ -204,8 +205,9 @@ class Pennerauction(Provider):
             auction_event = AuctionEvent()
             btn = auctions_element.find_element(By.CLASS_NAME, "auction-button")
             auction_event.url = btn.get_attribute("href")
+            if auction_event.url == "https://www.pennerauctionsbid.com/":
+                continue
             auction_events.append(auction_event)
-            continue
 
         for auction_event in auction_events:
             self.init_auction_event(auction_event)
@@ -214,29 +216,31 @@ class Pennerauction(Provider):
         return auction_events
 
     def init_auction_event(self, auction_event: AuctionEvent):
-        self.connect()
+        """
+        Init single event.
+
+        :param auction_event:
+        :return:
+        """
 
         logger.info(f"Loading provider {self.name} auction event {auction_event.url}")
 
         self.selenium_api.get(auction_event.url)
         self.selenium_api.wait_for_page_load()
 
-        self.press_cookies_agree()
-
-        time_format_string = "%m/%d/%Y"  # "11/5/2025"
-
-        for i in range(10):
-            try:
+        def helper():
+            self.press_cookies_agree()
+            for _ in range(10):
                 title_element = self.selenium_api.get_element(By.CLASS_NAME, "auction-title")
                 auction_event.name = title_element.text
                 if auction_event.name:
                     break
-            except StaleElementReferenceException as inst_err:
-                breakpoint()
-                logger.info(f"auction-title was not set in {auction_event.url}, {repr(inst_err)} ")
-                logger.info()
-            logger.info(f"Waiting for auction-title to be set in {auction_event.url}")
-            time.sleep(1)
+                logger.info("Waiting for auction-title")
+                time.sleep(1)
+            return auction_event.name
+        self.selenium_api.retry_on_throttling(auction_event.url, helper)
+
+        time_format_string = "%m/%d/%Y"  # "11/5/2025"
 
         if not auction_event.name:
             breakpoint()
@@ -328,3 +332,47 @@ class Pennerauction(Provider):
 
         self.disconnect()
         return lots
+
+    def yield_auction_events(self, known_auction_events_by_url):
+        """
+            Load free items.
+
+            :return:
+            """
+
+        self.connect()
+
+        logger.info(f"Loading provider {self.name} auctions")
+
+        self.selenium_api.get(self.main_page)
+        self.selenium_api.wait_for_page_load()
+        try:
+            auction_list_element = self.selenium_api.get_element(By.CLASS_NAME, "penner-auctions")
+        except NoSuchElementException as error_inst:
+            logger.exception("Fetch penner-auctions failed: %s: %s", self.main_page, error_inst)
+            self.disconnect()
+            return None
+
+        auctions_elements = auction_list_element.find_elements(By.CLASS_NAME, "auction-card")
+        auction_events = []
+
+        for auctions_element in auctions_elements:
+            auction_event = AuctionEvent()
+            btn = auctions_element.find_element(By.CLASS_NAME, "auction-button")
+            auction_event.url = btn.get_attribute("href")
+            if auction_event.url == "https://www.pennerauctionsbid.com/":
+                continue
+            auction_events.append(auction_event)
+            continue
+
+        for auction_event in auction_events:
+            try:
+                self.init_auction_event(auction_event)
+            except Exception as inst_error:
+                logger.exception(inst_error)
+                breakpoint()
+            yield auction_event
+
+
+        self.disconnect()
+        return None

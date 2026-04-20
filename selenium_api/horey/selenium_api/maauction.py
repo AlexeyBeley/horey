@@ -861,28 +861,6 @@ class MAauction(Provider):
 
         self.disconnect()
 
-    def retry_on_throttling(self, url, function):
-        """
-        Retry
-        :param function:
-        :return:
-        """
-
-        for _ in range(5):
-            try:
-                return function()
-            except NoSuchElementException:
-                body = self.selenium_api.get_element(By.TAG_NAME, "body").text
-                if "This page is displayed while the website verifies you are not a bot" not in body:
-                    raise
-
-                time.sleep(3)
-                self.selenium_api.disconnect()
-                self.selenium_api.get(url)
-                self.selenium_api.wait_for_page_load()
-                continue
-        raise TimeoutError("Was not able to fetch")
-
 
     def get_rings_sub_urls(self, url):
         """
@@ -893,7 +871,7 @@ class MAauction(Provider):
 
 
         try:
-            self.retry_on_throttling(url, lambda : self.selenium_api.get_element(By.CLASS_NAME, "pagination"))
+            self.selenium_api.retry_on_throttling(url, lambda : self.selenium_api.get_element(By.CLASS_NAME, "pagination"))
         except NoSuchElementException as inst_err:
             auction_ring_elements = self.selenium_api.get_elements(By.CLASS_NAME, "auction-ring")
             urls = []
@@ -911,10 +889,6 @@ class MAauction(Provider):
         :param url:
         :return:
         """
-
-        self.selenium_api.get(url)
-        self.selenium_api.wait_for_page_load()
-
 
         urls =  self.get_rings_sub_urls(url)
         if urls:
@@ -944,3 +918,41 @@ class MAauction(Provider):
         self.init_auction_event_times(auction_event)
 
         yield auction_event
+
+    def load_auction_event_lots_remote(self, auction_event: AuctionEvent):
+        """
+        Init from the web.
+
+        :param auction_event:
+        :return:
+        """
+
+        lots = []
+
+        auction_event_address = auction_event.provinces \
+            if auction_event.provinces and "," not in auction_event.provinces \
+            else None
+
+        for page_counter in range(1, self.get_page_count(self.add_query_params(auction_event.url, {"page": 1, "pageSize": 125}))+1):
+            lots += self.load_page_lots(self.add_query_params(auction_event.url, {"page": page_counter, "pageSize": 125}),
+                                                      auction_event_address=auction_event_address)
+
+        for i, lot in enumerate(lots):
+            lot = self.init_lot_remote_request(lot)
+
+        return lots
+
+    def init_lot_remote_request(self, lot):
+        """
+        Init lot from web.
+
+        :param lot:
+        :return:
+        """
+        breakpoint()
+
+    def init_lot_remote_executor(self, url):
+        lot.current_max = self.init_lot_current_bid_from_url(lot.url)
+        lot.starting_bid = self.find_lot_starting_bid(lot) if lot.current_max == 0 else lot.current_max
+
+

@@ -29,7 +29,7 @@ T = TypeVar('T', bound=ConfigurationPolicy)
 data_directory = Path("/tmp/data")
 
 
-class TestConfigs(ConfigurationPolicy):
+class Configs(ConfigurationPolicy):
     def __init__(self):
         super().__init__()
         self._token = None
@@ -63,7 +63,7 @@ class TestConfigs(ConfigurationPolicy):
 
 @pytest.fixture(name="tests_config")
 def fixture_tests_config():
-    configuration = TestConfigs()
+    configuration = Configs()
     configuration.token = test_mock_values.token
     configuration.account = test_mock_values.account
     configuration.api_server = test_mock_values.api_server
@@ -140,7 +140,26 @@ def test_get_tradable_stocks(questrade_api):
     assert questrade_api.get_tradable_stocks()
 
 
-@pytest.mark.wip
-def test_get_all_stocks_history(questrade_api):
+@pytest.mark.unit
+def test_get_all_stocks_daily_history(questrade_api):
     questrade_api.connect()
-    assert questrade_api.get_all_stocks_history()
+    assert questrade_api.get_all_stocks_daily_history()
+
+
+@pytest.mark.unit
+def test_provision_db(questrade_api):
+    assert questrade_api.provision_db_symbols_table()
+    assert questrade_api.provision_db_candles_table()
+
+@pytest.mark.wip
+def test_fetch_symbols_by_max_price(questrade_api):
+    assert questrade_api.fetch_symbols_by_max_price(1)
+
+
+@pytest.mark.wip
+def test_sort_and_print_cheapest_by_price(questrade_api):
+    assert questrade_api.sort_and_print_cheapest_by_price()
+
+@pytest.mark.unit
+def test_check_strategy_one_persent_below_current(questrade_api):
+    assert questrade_api.check_strategy_one_persent_below_current(52015918)

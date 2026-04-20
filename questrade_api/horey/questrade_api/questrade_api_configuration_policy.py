@@ -11,6 +11,10 @@ class QuestradeAPIConfigurationPolicy(ConfigurationPolicy):
         self._data_directory = None
 
     @property
+    def db_file_path(self):
+        return self.data_directory / "questrade.db"
+
+    @property
     def data_directory(self):
         if self._data_directory is None:
             self._data_directory = Path("/opt/horey/questrade")

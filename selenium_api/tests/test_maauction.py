@@ -68,7 +68,7 @@ def test_init_auction_events_from_internal_url():
     assert ret
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_init_auction_events():
     proxy = "socks5://99.79.69.29:1080"
 

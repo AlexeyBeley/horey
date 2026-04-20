@@ -13,9 +13,7 @@ from selenium.webdriver.remote.webelement import WebElement
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.common.exceptions import StaleElementReferenceException
-
-
+from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
 
 from horey.h_logger import get_logger
 
@@ -376,3 +374,42 @@ class SeleniumAPI:
             return True
         raise TimeoutError(f"Was not able to fetch url: {url}")
 
+
+    def retry_on_throttling(self, url, function, get_page=True):
+        """
+        Retry
+
+        :param get_page:
+        :param url:
+        :param function:
+        :return:
+        """
+
+        for _ in range(5):
+            try:
+                if get_page:
+                    self.get(url)
+
+                self.wait_for_page_load()
+
+                ret = function()
+                return ret
+            except StaleElementReferenceException:
+                time.sleep(1)
+                get_page = False
+            except NoSuchElementException:
+                time.sleep(3)
+                body = self.get_element(By.TAG_NAME, "body").text
+                if "This page is displayed while the website verifies you are not a bot" in body:
+                    get_page = True
+                    self.disconnect()
+                elif "you were a bot" in body:
+                    get_page = True
+                    self.disconnect()
+                else:
+                    get_page=False
+                    logger.info(f"Retrying to get data from: {url}")
+                    breakpoint()
+
+        breakpoint()
+        raise TimeoutError(f"Was not able to fetch from: {url}")

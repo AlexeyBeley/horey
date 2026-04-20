@@ -842,10 +842,7 @@ def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, e
 
     target_master.append_remote_step("Test", entrypoint_1)
 
-    # backup
     def entrypoint_2():
-        cicd_api_integration.run_remote_provision_constructor(target_master,
-    def entrypoint():
         cicd_api_integration.run_remote_provision_constructor(target_backup,
                                                               "vrrp",
                                                               action="install",
@@ -855,7 +852,6 @@ def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, e
                                                               )
 
     target_master.append_remote_step("Test", entrypoint_2)
-    target_backup.append_remote_step("Test", entrypoint)
     assert cicd_api_integration.run_remote_deployer_deploy_targets([target_backup], asynchronous=False)
     assert cicd_api_integration.run_remote_deployer_deploy_targets([target_master, target_backup], asynchronous=False)
 

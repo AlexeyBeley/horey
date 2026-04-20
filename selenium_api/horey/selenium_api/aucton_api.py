@@ -4,7 +4,6 @@ import time
 from horey.async_orchestrator.async_orchestrator import AsyncOrchestrator
 from horey.selenium_api.maauction import MAauction
 from horey.selenium_api.mcsherryauction import Mcsherryauction
-from horey.selenium_api.provider import Provider
 from horey.selenium_api.auction_event import AuctionEvent
 from horey.selenium_api.pennerauction import Pennerauction
 from horey.selenium_api.mcdougallauction import Mcdougallauction
