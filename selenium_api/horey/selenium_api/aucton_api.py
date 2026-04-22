@@ -30,7 +30,7 @@ class AuctionAPI:
     @property
     def db_connection(self):
         if self._db_connection is None:
-            self._db_connection = sqlite3.connect(self.db_file_path)
+            self._db_connection = sqlite3.connect(self.db_file_path, check_same_thread=False)
         return self._db_connection
 
     @property

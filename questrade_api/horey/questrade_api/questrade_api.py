@@ -189,16 +189,6 @@ class QuestradeAPI:
         accounts = self.get(f"v1/accounts")
         return accounts
 
-    def get_positions(self):
-        """
-        Get accounts
-
-        :return:
-        """
-
-        positions = self.get(f"v1/accounts/{self.configuration.account}/positions")
-        return positions
-
     def get_position_history(self, position_id, time_start, time_end, output_file=None):
         """
         Get position history.
@@ -783,21 +773,21 @@ class QuestradeAPI:
 
         return [Candle(dict_src) for dict_src in position_candles["candles"]]
 
-    def update_cheap_candles_with_today_data(self):
+    def update_cheap_candles_with_today_data(self, symbol_name=None):
         """
         Update cheap symbols with today data
         :return:
         """
 
         cheapest_stocks = self.sort_and_print_cheapest_by_price()
-        symbol_ids = [symbol[1] for symbol in cheapest_stocks]
+        symbol_ids = [symbol[1] for symbol in cheapest_stocks if (symbol_name is None) or (symbol[0] == symbol_name)]
         self.connect()
         for symbol_id in symbol_ids:
             symbol = self.db_get_symbol(symbol_id)
             self.update_symbol_today_candles(symbol)
         return True
 
-    def make_purchase_plan(self):
+    def make_purchase_plan(self, symbol_name=None):
         """
         Plan purchase
 
@@ -807,7 +797,8 @@ class QuestradeAPI:
         position_symbol_ids = [position.symbol_id for position in self.get_positions()]
 
         cheapest_stocks = self.sort_and_print_cheapest_by_price()
-        symbol_ids = [symbol[1] for symbol in cheapest_stocks if symbol[1] not in position_symbol_ids]
+        symbol_ids = [symbol[1] for symbol in cheapest_stocks if symbol[1] not in position_symbol_ids and
+                      ((symbol_name is None) or (symbol[0] == symbol_name))]
         symbols = []
 
         len_symbol_ids = len(symbol_ids)
@@ -848,7 +839,7 @@ class QuestradeAPI:
         """
 
         response = self.get(f"v1/accounts/{self.configuration.account}/positions")
-        return [Position(dict_src) for dict_src in response["positions"]]
+        return [Position(dict_src) for dict_src in response["positions"] if dict_src["currentMarketValue"] is not None]
 
     @connected
     def get_orders(self):

@@ -805,14 +805,16 @@ def test_provision_github_hagent(cicd_api_integration, ec2_api_mgmt_integration,
                                                         repository_name=Configuration.TEST_CONFIG.github_hagent_repo_name
                                                         )
 
-@pytest.mark.unit
-def test_provision_github_hagent_dockerized(cicd_api_integration, ec2_api_mgmt_integration, github_api):
+@pytest.mark.wip
+def test_provision_github_hagent_dockerized(cicd_api_integration, ec2_api_mgmt_integration, github_api, jenkins_api):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
+
     assert cicd_api_integration.provision_github_hagent_dockerized(github_api,
                                                         bastions=ec2_instances,
                                                         repository_name=Configuration.TEST_CONFIG.github_hagent_repo_name,
-                                                        horey_repo_path = Path(__file__).parent.parent.parent
+                                                        horey_repo_path = Path(__file__).parent.parent.parent,
+                                                        jenkins_api=jenkins_api
                                                         )
 
 @pytest.mark.unit
@@ -887,7 +889,7 @@ def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, e
 
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_remote_deployer_deploy_targets_nat_install(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]

@@ -1080,10 +1080,12 @@ class CICDAPI:
         :return:
         """
 
-        self.hagent_build_api.prepare_docker_image_horey_package_build_directory(_src_dir, "jenkins_api", build_number)
+        build_dir_path = self.hagent_build_api.prepare_docker_image_horey_package_build_directory(_src_dir, "jenkins_api", build_number)
+
+        self.jenkins_api.generate_hagent_action_script(build_dir_path)
         return self.hagent_build_api.docker_build_directory
 
-    def provision_github_hagent_dockerized(self, github_api: GithubAPI, bastions: List[EC2Instance] = None, repository_name=None, horey_repo_path=None):
+    def provision_github_hagent_dockerized(self, github_api: GithubAPI, bastions: List[EC2Instance] = None, repository_name=None, horey_repo_path=None, jenkins_api=None):
         """
         Provision multirunner.
 
@@ -1096,10 +1098,10 @@ class CICDAPI:
         self.hagent_build_api.docker_build_directory = Path("/tmp") / f"github_hagent_{build_number}"
         github_api.init_hagent_docker_build_dir(self.hagent_build_api.docker_build_directory)
         self.hagent_build_api.prepare_source_code_directory = lambda _build_number: horey_repo_path
+        self.jenkins_api = jenkins_api
         self.hagent_build_api.prepare_docker_image_build_directory = self.prepare_github_hagent_docker_build_dir
 
-        # todo: uncomment:
-        # image = self.hagent_build_api.run_prepare_and_build_image_routine(branch_name, build_number, tags=["github_hagent"])
+        image = self.hagent_build_api.run_prepare_and_build_image_routine(branch_name, build_number, tags=["github_hagent"])
         # todo: remove:
         # image = self.environment_api.docker_api.get_image("github_hagent:latest")
         ret = self.environment_api.docker_api.get_all_images()

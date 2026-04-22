@@ -7,6 +7,8 @@ import datetime
 import time
 import threading
 from collections import defaultdict
+from pathlib import Path
+
 import jenkins
 import requests
 from horey.jenkins_api.node import Node
@@ -828,3 +830,13 @@ class JenkinsAPI:
 
         return ret
 
+    def generate_hagent_action_script(self, dst_dir_path:Path):
+        """
+        Job starter script.
+
+        :param dst_dir_path:
+        :return:
+        """
+
+        with open(dst_dir_path / "job_starter.py", "w", encoding="utf-8") as file_handler:
+            file_handler.write()
