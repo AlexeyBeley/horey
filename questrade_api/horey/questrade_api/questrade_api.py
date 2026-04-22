@@ -732,7 +732,7 @@ class QuestradeAPI:
         candles = self.db_get_today_candles(symbol)
         if candles:
             logger.info(f"Today candles already exist for symbol {symbol.symbol} {len(candles)}")
-            return candles
+            #return candles
         today = datetime.now(timezone.utc)
 
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
@@ -754,8 +754,8 @@ class QuestradeAPI:
 
         today = datetime.now(timezone.utc)
 
-        utc_today_3am = today.replace(day=21, hour=3, minute=0, second=0, microsecond=0)
-        utc_today_8pm = today.replace(day=21, hour=20, minute=0, second=0, microsecond=0)
+        utc_today_3am = today.replace(day=22, hour=3, minute=0, second=0, microsecond=0)
+        utc_today_8pm = today.replace(day=22, hour=20, minute=0, second=0, microsecond=0)
 
         candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=utc_today_8pm)
         return candles

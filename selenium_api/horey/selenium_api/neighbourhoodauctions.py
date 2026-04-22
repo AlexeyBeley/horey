@@ -41,6 +41,7 @@ class Neighbourhoodauctions(Provider):
             except NoSuchElementException:
                 continue
             auction_event.name =  auctions_element.find_element(By.CLASS_NAME, "title").text
+            auction_event.description = auction_event.name
 
             auction_event.url = row_thumbnail.get_attribute("href")
             auctions_element_text = auctions_element.text
@@ -72,8 +73,6 @@ class Neighbourhoodauctions(Provider):
         self.disconnect()
         return auction_events
 
-
-
     def load_page_lots(self, page_url, auction_event: AuctionEvent):
         """
         Load free items.
@@ -92,6 +91,10 @@ class Neighbourhoodauctions(Provider):
             lot.description = lot_element.text
             link_element = lot_element.find_element(By.TAG_NAME, "a")
             lot.url = link_element.get_attribute('href')
+            if "winnipeg" in auction_event.address.lower():
+                lot.interested = True
+            else:
+                raise NotImplementedError(auction_event.address)
 
             if "No Bids Yet" in lot_element.text:
                 lot.current_max = 0

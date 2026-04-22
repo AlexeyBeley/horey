@@ -16,7 +16,7 @@ def test_init_auction_events():
     assert auction.init_auction_events({})
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_yiel():
     auction = Neighbourhoodauctions()
     auction_event = AuctionEvent()
