@@ -5,13 +5,14 @@ https://questrade.com/lukecyca/pyslack
 import sqlite3
 from datetime import datetime, timezone, timedelta
 import json
-from sys import flags
+from pathlib import Path
 
 import requests
 from horey.h_logger import get_logger
 from horey.questrade_api.questrade_api_configuration_policy import (
     QuestradeAPIConfigurationPolicy,
 )
+from horey.questrade_api.items import Symbol, Candle, Position, Order
 
 logger = get_logger()
 
@@ -26,6 +27,8 @@ class QuestradeAPI:
         self.configuration = configuration
         self.access_token = self.configuration.token
         self.api_server = configuration.api_server
+        self._db_connection = None
+        self._db_cursor = None
 
     def create_request(self, request: str):
         """
@@ -41,7 +44,7 @@ class QuestradeAPI:
 
         return f"{self.api_server}/{request}"
 
-    def get(self, request_path):
+    def _get(self, request_path):
         """
         Compose and send GET request.
 
@@ -53,12 +56,28 @@ class QuestradeAPI:
 
         headers = {"Authorization": f"Bearer {self.access_token}"}
         response = requests.get(request, headers=headers)
+
         response.raise_for_status()
+
         try:
             return response.json()
         except Exception:
             return response.text
 
+    def get(self, request_path):
+        """
+        Compose and send GET request.
+
+        :param request_path:
+        :return:
+        """
+        try:
+            return self._get(request_path)
+        except Exception as inst:
+            if "401" not in repr(inst):
+                raise
+            self.connect(reconnect=True)
+            return self._get(request_path)
 
     def post(self, request_path, data):
         """
@@ -110,30 +129,23 @@ class QuestradeAPI:
         response = requests.put(request, data=json.dumps(data), headers=headers)
         response.raise_for_status()
 
-    def connect(self):
+    def connect(self, reconnect=False):
         """
         Connect to the api
 
         :return:
         """
 
-        refresh_token = self.configuration.token
-
         response_file_path = self.configuration.data_directory / "response.json"
+
         if response_file_path.exists():
-            with open(response_file_path, encoding="utf-8") as file_handler:
-                response = json.load(file_handler)
-            timestamp_now = datetime.now(tz=timezone.utc).timestamp()
-            if timestamp_now < response["expires_at"] - 5*60:
-                self.access_token = response["access_token"]
-                self.api_server = response['api_server'].rstrip("/")
-                return
+            response = self.connect_from_cache(response_file_path, reconnect=reconnect)
+            if response is None:
+                return True
+        else:
+            auth_url = f"https://login.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token={self.configuration.token}"
+            response = requests.get(auth_url).json()
 
-            response_file_path.unlink()
-            refresh_token = response["refresh_token"]
-
-        auth_url = f"https://login.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token={refresh_token}"
-        response = requests.get(auth_url).json()
         response["expires_at"] = (datetime.now(tz=timezone.utc) + timedelta(seconds=response["expires_in"])).timestamp()
 
         with open(response_file_path, "w", encoding="utf-8") as file_handler:
@@ -142,9 +154,30 @@ class QuestradeAPI:
         self.access_token = response["access_token"]
         logger.info(f"Connected to Questtrade API, new token: {self.access_token}")
 
-        self.api_server= response['api_server'].rstrip("/")  # e.g., https://api01.iq.questrade.com/
+        self.api_server = response['api_server'].rstrip("/")  # e.g., https://api01.iq.questrade.com/
         logger.info(f"Connected to Questtrade API, new server: {self.api_server}")
         return True
+
+    def connect_from_cache(self, response_file_path:Path, reconnect:bool=False):
+        """
+
+        :param response_file_path:
+        :return:
+        """
+
+        with open(response_file_path, encoding="utf-8") as file_handler:
+            response = json.load(file_handler)
+        timestamp_now = datetime.now(tz=timezone.utc).timestamp()
+        if not reconnect and timestamp_now < response["expires_at"] - 5 * 60:
+            self.access_token = response["access_token"]
+            self.api_server = response['api_server'].rstrip("/")
+            return None
+
+        response_file_path.unlink()
+        refresh_token = response["refresh_token"]
+        auth_url = f"https://login.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token={refresh_token}"
+        response = requests.get(auth_url).json()
+        return response
 
     def get_accounts(self):
         """
@@ -176,7 +209,8 @@ class QuestradeAPI:
         start_time = self.convert_time_to_request_format(time_start)
         end_time = self.convert_time_to_request_format(time_end)
 
-        position_candles = self.get(f"v1/markets/candles/{position_id}?startTime={start_time}&endTime={end_time}&interval=OneMinute")
+        position_candles = self.get(
+            f"v1/markets/candles/{position_id}?startTime={start_time}&endTime={end_time}&interval=OneMinute")
         if output_file:
             with open(self.configuration.data_directory / output_file, "w", encoding="utf-8") as file_handler:
                 json.dump(position_candles, file_handler, indent=2)
@@ -194,7 +228,6 @@ class QuestradeAPI:
         formatted = time_src.strftime("%Y-%m-%dT%H:%M:%S%z")
         # Insert colon in timezone: "2014-10-01T00:00:00-0500" -> "2014-10-01T00:00:00-05:00"
         return formatted[:-2] + ':' + formatted[-2:]
-
 
     def get_symbols_raw(self, prefix, offset=None):
         """
@@ -240,7 +273,7 @@ class QuestradeAPI:
             for file in files:
                 logger.info(f"Processing file: {file.name}")
                 with open(file, "r", encoding="utf-8") as file_handler:
-                    ret=json.load(file_handler)
+                    ret = json.load(file_handler)
 
                 for dict_src in ret:
                     self.db_upsert_symbol(Symbol(dict_src), cursor=cursor)
@@ -253,7 +286,7 @@ class QuestradeAPI:
 
         :return:
         """
-        with open(self.configuration.data_directory / "symbols.json" , encoding="utf-8") as file_handler:
+        with open(self.configuration.data_directory / "symbols.json", encoding="utf-8") as file_handler:
             symbols = json.load(file_handler)
 
         # all_types = {symbol["securityType"] for symbol in symbols.values()}
@@ -275,8 +308,8 @@ class QuestradeAPI:
         :return:
         """
 
-        start_time = datetime(year=2026, month=4, day=13, hour=3, minute=0, second=0,  tzinfo=timezone.utc)
-        end_time = datetime(year=2026, month=4, day=13, hour=21, minute=2, second=0,  tzinfo=timezone.utc)
+        start_time = datetime(year=2026, month=4, day=13, hour=3, minute=0, second=0, tzinfo=timezone.utc)
+        end_time = datetime(year=2026, month=4, day=13, hour=21, minute=2, second=0, tzinfo=timezone.utc)
         data_directory = self.configuration.data_directory / "daily_history_data" / f"{end_time.year}_{end_time.month}_{end_time.day}"
         data_directory.mkdir(parents=True, exist_ok=True)
         stocks_data = []
@@ -309,7 +342,7 @@ class QuestradeAPI:
 
             logger.info(f"Fetching stock history {i}/{len(stocks)} id:{stock['symbolId']} Symbol:{stock['symbol']}")
             res = self.get_position_history(stock["symbolId"], start_time,
-                                          end_time)
+                                            end_time)
             res["symbol"] = stock
             stocks_data.append(res)
 
@@ -339,14 +372,14 @@ class QuestradeAPI:
             raise NotImplementedError(f"Symbol {symbol_id} not found")
         candles = self.db_get_symbol_candles(symbol_id)
         breakpoint()
-        averages = [(candle["high"] + candle["low"])/2 for candle in symbol_data["candles"]]
+        averages = [(candle["high"] + candle["low"]) / 2 for candle in symbol_data["candles"]]
 
         success_sells = []
         for current_price_index, current_price in enumerate(averages):
-            buy_price_limit = current_price * (100 - percent)/100
+            buy_price_limit = current_price * (100 - percent) / 100
             sell_price_limit = current_price * (100 + percent) / 100
             sell_price_limit = current_price
-            for buy_price_index, buy_price in enumerate(averages[current_price_index+1:]):
+            for buy_price_index, buy_price in enumerate(averages[current_price_index + 1:]):
                 if buy_price > buy_price_limit:
                     continue
 
@@ -390,15 +423,15 @@ class QuestradeAPI:
                 try:
                     symbol.candles = self.db_get_symbol_candles(symbol.symbol_id, cursor=cursor)
                 except Exception as ex:
-                    breakpoint()
-                    continue
+                    raise
                 if len(symbol.candles) < 50:
                     continue
                 symbols.append(symbol)
                 logger.info(f"Added {symbol.symbol} to {len(symbols)} symbols")
 
-        ret = [[symbol.symbol, symbol.symbol_id,len(symbol.candles), symbol.candles[0].vwap] for symbol in symbols]
-        with open(self.configuration.data_directory / "symbols_sorted_by_transaction_count.json", "w", encoding="utf-8") as file_handler:
+        ret = [[symbol.symbol, symbol.symbol_id, len(symbol.candles), symbol.candles[0].vwap] for symbol in symbols]
+        with open(self.configuration.data_directory / "symbols_sorted_by_transaction_count.json", "w",
+                  encoding="utf-8") as file_handler:
             json.dump(ret, file_handler, indent=2)
 
     def sort_and_print_cheapest_by_price(self):
@@ -413,7 +446,7 @@ class QuestradeAPI:
         ret.sort(key=lambda val: val[3])
         for x in ret:
             print(x)
-        breakpoint()
+        return ret
 
     def load_symbols_history_data(self, max_price=None):
         """
@@ -433,17 +466,17 @@ class QuestradeAPI:
             response = cursor.fetchall()
 
         return [Candle({
-                "id": row[0],
-                "symbol_id": row[1],
-                "start": row[2],
-                "end": row[3],
-                "low": row[4],
-                "high": row[5],
-                "open": row[6],
-                "close": row[7],
-                "volume": row[8],
-                "vwap": row[9]
-            }) for row in response]
+            "id": row[0],
+            "symbol_id": row[1],
+            "start": row[2],
+            "end": row[3],
+            "low": row[4],
+            "high": row[5],
+            "open": row[6],
+            "close": row[7],
+            "volume": row[8],
+            "vwap": row[9]
+        }) for row in response]
 
     def provision_db_symbols_table(self):
         """
@@ -497,7 +530,7 @@ class QuestradeAPI:
         logger.info(f"Table candles created in {self.configuration.db_file_path}' database")
         return True
 
-    def db_upsert_symbol(self, symbol: Symbol, cursor=None ):
+    def db_upsert_symbol(self, symbol: Symbol, cursor=None):
         """
         Update or insert symbol into DB
         :param symbol:
@@ -511,7 +544,8 @@ class QuestradeAPI:
                 cursor.execute('''
                     INSERT OR REPLACE INTO symbols (symbol_id, symbol, description, security_type, listing_exchange, is_tradable, is_quotable, currency)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (symbol.symbol_id, symbol.symbol, symbol.description, symbol.security_type, symbol.listing_exchange, symbol.is_tradable, symbol.is_quotable, symbol.currency))
+                ''', (symbol.symbol_id, symbol.symbol, symbol.description, symbol.security_type,
+                      symbol.listing_exchange, symbol.is_tradable, symbol.is_quotable, symbol.currency))
                 conn.commit()
         else:
             cursor.execute('''
@@ -523,6 +557,41 @@ class QuestradeAPI:
         logger.info(f"Symbol {symbol.symbol} upserted into {self.configuration.db_file_path}' database")
         return True
 
+    def db_execute(self, query, args):
+        """
+        Execute query
+        :param query:
+        :param args:
+        :return:
+        """
+
+        self.db_cursor.execute(query, args)
+        self.db_connection.commit()
+        return True
+
+    @property
+    def db_connection(self):
+        """
+        Get DB connection
+        :param self:
+        :return:
+        """
+
+        if self._db_connection is None:
+            self._db_connection = sqlite3.connect(self.configuration.db_file_path)
+        return self._db_connection
+
+    @property
+    def db_cursor(self):
+        """
+        Get DB cursor
+        :param self:
+        :return:
+        """
+        if self._db_cursor is None:
+            self._db_cursor = self.db_connection.cursor()
+        return self._db_cursor
+
     def db_upsert_candle(self, symbol_id, candle: Candle, cursor=None):
         """
         Update or insert candle into DB
@@ -533,19 +602,18 @@ class QuestradeAPI:
         """
 
         if not cursor:
-            with sqlite3.connect(self.configuration.db_file_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
+            self.db_execute('''
                     INSERT OR REPLACE INTO candles (symbol_id, start, end, low, high, open, close, volume, vwap)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (symbol_id, candle.float_start, candle.float_end, candle.low, candle.high, candle.open, candle.close, candle.volume, candle.vwap))
-                conn.commit()
+                    ''', (symbol_id, candle.float_start, candle.float_end, candle.low, candle.high, candle.open,
+                          candle.close, candle.volume, candle.vwap))
         else:
             cursor.execute('''
                 INSERT OR REPLACE INTO candles (symbol_id, start, end, low, high, open, close, volume, vwap)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (symbol_id, candle.float_start, candle.float_end, candle.low, candle.high, candle.open, candle.close, candle.volume,
-              candle.vwap))
+            ''', (symbol_id, candle.float_start, candle.float_end, candle.low, candle.high, candle.open, candle.close,
+                  candle.volume,
+                  candle.vwap))
 
         logger.info(f"Candle for symbol {symbol_id} upserted into {self.configuration.db_file_path}' database")
         return True
@@ -558,13 +626,12 @@ class QuestradeAPI:
         :return:
         """
 
-        if cursor:
-            return self.db_get_symbol_raw(symbol_id,cursor)
+        logger.info(f"Fetching symbol {symbol_id} from {self.configuration.db_file_path}' database")
 
-        with sqlite3.connect(self.configuration.db_file_path) as conn:
-            cursor = conn.cursor()
+        if cursor:
             return self.db_get_symbol_raw(symbol_id, cursor)
 
+        return self.db_get_symbol_raw(symbol_id, self.db_cursor)
 
     def db_get_symbol_raw(self, symbol_id, cursor):
         """
@@ -582,177 +649,246 @@ class QuestradeAPI:
             raise NotImplementedError("Implement me")
         row = rows[0]
         return Symbol({
-                "id": row[0],
-                "symbolId": row[1],
-                "symbol": row[2],
-                "description": row[3],
-                "securityType": row[4],
-                "listingExchange": row[5],
-                "isTradable": row[6],
-                "isQuotable": row[7],
-                "currency": row[8]
-            })
+            "id": row[0],
+            "symbolId": row[1],
+            "symbol": row[2],
+            "description": row[3],
+            "securityType": row[4],
+            "listingExchange": row[5],
+            "isTradable": row[6],
+            "isQuotable": row[7],
+            "currency": row[8]
+        })
 
-    def db_get_symbol_candles(self, symbol_id, limit=None, cursor=None):
+    def db_get_symbol_candles(self, symbol_id, limit=None, cursor=None, start_time:datetime=None, end_time:datetime=None):
         """
         Get symbol candles from DB
+
+        :param end_time:
+        :param start_time:
         :param cursor:
         :param limit:
         :param symbol_id:
         :return:
         """
 
+
+        end_timestamp = end_time.timestamp() if end_time else None
+
+        start_timestamp = start_time.timestamp() if start_time else None
         if cursor:
-            return self.db_get_symbol_candles_raw(symbol_id, cursor, limit=limit)
+            return self.db_get_symbol_candles_raw(symbol_id, cursor, limit=limit, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
 
-        with sqlite3.connect(self.configuration.db_file_path) as conn:
-            cursor = conn.cursor()
-            return self.db_get_symbol_candles_raw(symbol_id, cursor, limit=limit)
+        return self.db_get_symbol_candles_raw(symbol_id, self.db_cursor, limit=limit, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
 
-    def db_get_symbol_candles_raw(self, symbol_id, cursor, limit=None):
+    def db_get_symbol_candles_raw(self, symbol_id, cursor, limit=None, start_timestamp:float=None, end_timestamp:float=None):
         """
         Get symbol candles from DB
+        :param end_timestamp:
+        :param start_timestamp:
         :param symbol_id:
         :param cursor:
         :param limit:
         :return:
         """
+
         if limit is not None:
             limit_string = f" LIMIT {limit}"
         else:
             limit_string = ""
 
-        cursor.execute(f'SELECT * FROM candles WHERE symbol_id = ?{limit_string}', (symbol_id, ))
+        where_string = ""
+        if start_timestamp:
+            where_string += f" AND start >= {start_timestamp}"
+            where_string += f" AND end <= {end_timestamp}"
+
+        cursor.execute(f'SELECT * FROM candles WHERE symbol_id = ?{where_string}{limit_string}', (symbol_id,))
         rows = cursor.fetchall()
         if rows is None:
             return None
         ret = []
         for row in rows:
             ret.append(Candle({
-                    "id": row[0],
-                    "symbol_id": row[1],
-                    "start": row[2],
-                    "end": row[3],
-                    "low": row[4],
-                    "high": row[5],
-                    "open": row[6],
-                    "close": row[7],
-                    "volume": row[8],
-                    "vwap": row[9]
-                }))
+                "id": row[0],
+                "symbol_id": row[1],
+                "start": row[2],
+                "end": row[3],
+                "low": row[4],
+                "high": row[5],
+                "open": row[6],
+                "close": row[7],
+                "volume": row[8],
+                "vwap": row[9]
+            }))
         return ret
 
-
-class Candle:
-    def __init__(self, dict_src):
-        self.dict_src = dict_src
-        self._end = None
-        self._start = None
-        self._float_start = None
-        self._float_end = None
-
-        self.start = dict_src["start"]
-        self.end = dict_src["end"]
-        self.low = dict_src["low"]
-        self.high = dict_src["high"]
-        self.open = dict_src["open"]
-        self.close = dict_src["close"]
-        self.volume = dict_src["volume"]
-        self.vwap = dict_src["VWAP"] if "VWAP" in dict_src else dict_src["vwap"]
-
-        self.symbol_id = None
-        if "symbol_id" in dict_src:
-            self.symbol_id = dict_src["symbol_id"]
-
-    @property
-    def start(self):
+    def update_symbol_today_candles(self, symbol: Symbol):
         """
-        Get start
-        :return:
-        """
-        return self._start
-
-    @start.setter
-    def start(self, value):
-        """
-        Set start
-        :param value:
+        Update symbols today candles
+        :param symbol:
         :return:
         """
 
-        if isinstance(value, str):
-            _date = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            _date = _date.replace(tzinfo=timezone.utc)
-            self._start = _date
-        elif isinstance(value, datetime):
-            self._start = value
-        elif isinstance(value, float):
-            self._start = datetime.fromtimestamp(value)
-        else:
+        candles = self.db_get_today_candles(symbol)
+        if candles:
+            logger.info(f"Today candles already exist for symbol {symbol.symbol} {len(candles)}")
+            return candles
+        today = datetime.now(timezone.utc)
 
-            raise NotImplementedError("Implement me")
+        utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
+        utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
 
-    @property
-    def end(self):
-        """
-        Get end
-        :return:
-        """
-        return self._end
 
-    @end.setter
-    def end(self, value):
+        candles = self.get_symbol_candles(symbol, utc_today_3am, utc_today_8pm)
+        for candle in candles:
+            self.db_upsert_candle(symbol.symbol_id, candle)
+        return candles
+
+    def db_get_today_candles(self, symbol:Symbol):
         """
-        Set start
-        :param value:
+        Fetch from DB
+
+        :param symbol:
         :return:
         """
 
-        if isinstance(value, str):
-            _date = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            _date = _date.replace(tzinfo=timezone.utc)
-            self._end = _date
-        elif isinstance(value, datetime):
-            self._end = value
-        elif isinstance(value, float):
-            self._end = datetime.fromtimestamp(value)
-        else:
+        today = datetime.now(timezone.utc)
 
-            raise NotImplementedError("Implement me")
-    @property
-    def float_start(self):
+        utc_today_3am = today.replace(day=21, hour=3, minute=0, second=0, microsecond=0)
+        utc_today_8pm = today.replace(day=21, hour=20, minute=0, second=0, microsecond=0)
+
+        candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=utc_today_8pm)
+        return candles
+
+    def get_symbol_candles(self, symbol: Symbol, start_time: datetime, end_time: datetime):
         """
-        Convert date to float timestamp
+        Get symbols candles
+        :param symbol:
+        :param start_time:
+        :param end_time:
         :return:
         """
 
-        if isinstance(self.start, datetime):
-            return self.start.timestamp()
-        raise NotImplementedError("Implement me")
 
-    @property
-    def float_end(self):
+        start_time = self.convert_time_to_request_format(start_time)
+        end_time = self.convert_time_to_request_format(end_time)
+
+        try:
+            position_candles = self.get(
+            f"v1/markets/candles/{symbol.symbol_id}?startTime={start_time}&endTime={end_time}&interval=OneMinute")
+        except Exception as inst:
+            if "Not Found for url" in repr(inst):
+                return []
+            raise
+
+        return [Candle(dict_src) for dict_src in position_candles["candles"]]
+
+    def update_cheap_candles_with_today_data(self):
         """
-        Convert date to float timestamp
+        Update cheap symbols with today data
         :return:
         """
 
-        if isinstance(self.end, datetime):
-            return self.end.timestamp()
-        raise NotImplementedError("Implement me")
+        cheapest_stocks = self.sort_and_print_cheapest_by_price()
+        symbol_ids = [symbol[1] for symbol in cheapest_stocks]
+        self.connect()
+        for symbol_id in symbol_ids:
+            symbol = self.db_get_symbol(symbol_id)
+            self.update_symbol_today_candles(symbol)
+        return True
+
+    def make_purchase_plan(self):
+        """
+        Plan purchase
+
+        :return:
+        """
+
+        position_symbol_ids = [position.symbol_id for position in self.get_positions()]
+
+        cheapest_stocks = self.sort_and_print_cheapest_by_price()
+        symbol_ids = [symbol[1] for symbol in cheapest_stocks if symbol[1] not in position_symbol_ids]
+        symbols = []
+
+        len_symbol_ids = len(symbol_ids)
+        for i, symbol_id in enumerate(symbol_ids):
+            logger.info(f"Fetching {i}/{len_symbol_ids}")
+
+            symbol = self.db_get_symbol(symbol_id)
+            symbol.candles = self.db_get_today_candles(symbol)
+            if not symbol.candles:
+                continue
+            symbols.append(symbol)
+
+        for symbol in symbols:
+            candles_vwaps = [candle.vwap for candle in symbol.candles]
+            min_vwap = min(candles_vwaps)
+            max_vwap = max(candles_vwaps)
+            symbol.max_vwap_change =  min_vwap/max_vwap*100
+            symbol.absolute_low = min([candle.low for candle in symbol.candles])
+            symbol.absolute_high = max([candle.high for candle in symbol.candles])
+
+        for symbol in sorted(symbols, key=lambda x: x.max_vwap_change):
+            print(f"{symbol.symbol}, vwap_change={symbol.max_vwap_change}, max-min={symbol.absolute_high - symbol.absolute_low}, deals={len(symbol.candles)}, absolute_low={symbol.absolute_low}, count={int(1/symbol.absolute_low)}")
+        return True
+
+    @staticmethod
+    def connected(func):
+        def wrapper(self, *args, **kwargs):
+            self.connect()
+            return func(self, *args, **kwargs)
+        return wrapper
+
+    @connected
+    def get_positions(self):
+        """
+        Plan purchase
+
+        :return:
+        """
+
+        response = self.get(f"v1/accounts/{self.configuration.account}/positions")
+        return [Position(dict_src) for dict_src in response["positions"]]
+
+    @connected
+    def get_orders(self):
+        """
+        Plan purchase
+
+        :return:
+        """
+
+        start_time = datetime(2026, 4, 1, 0, 0, 0, tzinfo=timezone.utc)
+        iso_format = start_time.isoformat()
+        response = self.get(f"v1/accounts/{self.configuration.account}/orders?stateFilter=Open&startTime={iso_format}")
+        return [Order(dict_src) for dict_src in response["orders"]]
 
 
-class Symbol:
-    def __init__(self, dict_src):
-        self.symbol = dict_src["symbol"]
-        self.symbol_id = dict_src["symbolId"]
-        self.security_type = dict_src["securityType"]
-        self.is_tradable = dict_src["isTradable"]
-        self.is_quotable = dict_src["isQuotable"]
-        self.currency = dict_src["currency"]
-        self.listing_exchange = dict_src["listingExchange"]
-        self.description = dict_src["description"]
+    def get_positions_without_sell_orders(self):
+        """
+        Plan purchase
 
-        self.id = dict_src["id"] if "id" in dict_src else None
+        :return:
+        """
 
-        self.candles = []
+        ret = []
+        lines = []
+        positions = self.get_positions()
+        orders = self.get_orders()
+        order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
+        for position in positions:
+            if position.symbol_id not in order_by_symbol_id:
+                ret.append(position)
+                candles = self.db_get_today_candles(position)
+                if position.average_entry_price is None:
+                    lines.append(f">NO SELL ORDER FOR {position.symbol} {position.open_quantity} {position.average_entry_price}")
+                    continue
+                sell_high = max(candle.high for candle in candles)
+                sell_calculates = max(sell_high, position.average_entry_price*1.1)
+                lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculates}, revenue={int(sell_calculates/( position.average_entry_price/100))}%")
+        if lines:
+            lines = (["#################################","#################################"] + lines +
+                     ["#################################", "#################################"])
+        for line in lines:
+            logger.info(line)
+        return True

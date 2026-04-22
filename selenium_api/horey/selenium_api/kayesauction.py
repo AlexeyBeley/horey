@@ -285,18 +285,24 @@ class Kayesauction(Provider):
         month = self.MONTH_BY_NAME[month_name]
 
         line_date = line[month_index + len(month_name):]
+
         if line_date.count(",") > 1:
             if "and closes" in line_date.lower():
                 line_date = line_date.split(" and closes")[0]
             else:
                 breakpoint()
-        day, line_date = line_date.split(",")
+        if " at " not in line:
+            day, year = line_date.split(",")
+            hour, minute = 13, 0
+        else:
+            day, line_date = line_date.split(",")
+            year, line_date = line_date.strip().split("at")
+
+            parts = line_date.strip().split(" ", 2)
+            hour_minute, meridiem = parts[0], parts[1]
+            hour, minute = self.extract_time_meridiem(hour_minute, meridiem)
         day = int(day.strip())
-        year, line_date = line_date.strip().split("at")
         year = int(year.strip())
-        parts = line_date.strip().split(" ", 2)
-        hour_minute, meridiem = parts[0], parts[1]
-        hour, minute = self.extract_time_meridiem(hour_minute, meridiem)
         return datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute)
 
     def init_auction_event_lots(self, auction_event: AuctionEvent):

@@ -2,6 +2,7 @@
 Testing questrade api functionality.
 
 """
+import time
 from pathlib import Path
 
 import pytest
@@ -151,15 +152,31 @@ def test_provision_db(questrade_api):
     assert questrade_api.provision_db_symbols_table()
     assert questrade_api.provision_db_candles_table()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_fetch_symbols_by_max_price(questrade_api):
     assert questrade_api.fetch_symbols_by_max_price(1)
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_sort_and_print_cheapest_by_price(questrade_api):
-    assert questrade_api.sort_and_print_cheapest_by_price()
+    response = questrade_api.sort_and_print_cheapest_by_price()
+    assert response
 
 @pytest.mark.unit
 def test_check_strategy_one_persent_below_current(questrade_api):
     assert questrade_api.check_strategy_one_persent_below_current(52015918)
+
+@pytest.mark.unit
+def test_update_cheap_candles_with_today_data(questrade_api):
+    assert questrade_api.update_cheap_candles_with_today_data()
+
+@pytest.mark.unit
+def test_make_purchase_plan(questrade_api):
+    assert questrade_api.make_purchase_plan()
+
+@pytest.mark.wip
+def test_get_positions_without_sell_orders(questrade_api):
+    for _ in range(60*2):
+        assert questrade_api.get_positions_without_sell_orders()
+        logger.info("Sleeping 60 seconds...")
+        time.sleep(60)

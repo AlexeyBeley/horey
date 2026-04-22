@@ -856,7 +856,6 @@ def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, e
     assert cicd_api_integration.run_remote_deployer_deploy_targets([target_master, target_backup], asynchronous=False)
 
 
-
 @pytest.mark.todo
 def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in

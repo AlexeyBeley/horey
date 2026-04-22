@@ -12,7 +12,8 @@ logger = get_logger()
 class Provider:
     _selenium_api = None
     MONTH_BY_NAME = {"january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "october": 10, "november": 11,
-                     " nov ": 11, "december": 12, }
+                     " nov ": 11, "december": 12,
+                     "apr": 4}
 
     def __init__(self, proxy=None):
         self.name = None
