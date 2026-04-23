@@ -128,3 +128,20 @@ class Provisioner(SystemFunctionCommon):
         line = f"{src} {dst} ext4 defaults 0 2"
         self.add_line_to_file_remote(self.remoter, line=line, file_path=Path("/etc/fstab"), sudo=True)
         return True
+
+    def test_provisioned(self):
+        """
+        Test if provisioned.
+
+        :return:
+        """
+        raise NotImplementedError()
+
+    def _provision(self):
+        """
+        Provision local.
+
+        :return:
+        """
+
+        raise NotImplementedError("")
