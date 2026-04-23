@@ -108,18 +108,19 @@ class Provisioner(SystemFunctionCommon):
             case _:
                 return self.provision_remote_main()
 
-    def init_partition_remote(self, partition):
+    def init_partition_remote(self, partition_path):
         """
         Init partition.
-        :param partition: Path or UUID=<uuid>
+        :param partition_path: Path
         :return:
         """
 
         self.remoter.execute("sudo swapoff -a")
-        self.remoter.execute(f"sudo mkswap {partition}", self.last_line_validator("Setting up swapspace"))
-        self.remoter.execute(f"sudo swapon {partition}")
-
-        return self.add_line_to_file_remote(self.remoter, line=f"{partition} none swap sw 0 0",
+        self.remoter.execute(f"sudo mkswap {partition_path}", self.last_line_validator("Setting up swapspace"))
+        self.remoter.execute(f"sudo swapon {partition_path}")
+        ret = self.remoter.execute(f"sudo blkid -s UUID -o value {partition_path}")
+        partition_uuid_string = "UUID="+ret[0][0].strip("\n")
+        return self.add_line_to_file_remote(self.remoter, line=f"{partition_uuid_string} none swap sw 0 0",
                                         file_path=Path("/etc/fstab"), sudo=True)
 
     def provision_remote_main(self):
