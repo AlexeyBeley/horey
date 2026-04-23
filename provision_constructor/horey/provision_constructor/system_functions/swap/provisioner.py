@@ -20,7 +20,7 @@ class Provisioner(SystemFunctionCommon):
     """
     Main class.
     """
-    # pylint: disable= too-many-arguments
+    # pylint: disable= too-many-arguments, too-many-positional-arguments
     def __init__(
         self,
         deployment_dir, force, upgrade,
@@ -108,18 +108,18 @@ class Provisioner(SystemFunctionCommon):
             case _:
                 return self.provision_remote_main()
 
-    def init_partition_remote(self, partition_path):
+    def init_partition_remote(self, partition):
         """
         Init partition.
-        :param partition_path:
+        :param partition: Path or UUID=<uuid>
         :return:
         """
 
         self.remoter.execute("sudo swapoff -a")
-        self.remoter.execute(f"sudo mkswap {partition_path}", self.last_line_validator("Setting up swapspace"))
-        self.remoter.execute(f"sudo swapon {partition_path}")
+        self.remoter.execute(f"sudo mkswap {partition}", self.last_line_validator("Setting up swapspace"))
+        self.remoter.execute(f"sudo swapon {partition}")
 
-        return self.add_line_to_file_remote(self.remoter, line=f"{partition_path} none swap sw 0 0",
+        return self.add_line_to_file_remote(self.remoter, line=f"{partition} none swap sw 0 0",
                                         file_path=Path("/etc/fstab"), sudo=True)
 
     def provision_remote_main(self):
@@ -133,10 +133,10 @@ class Provisioner(SystemFunctionCommon):
             ret = self.remoter.execute("grep MemTotal /proc/meminfo | awk '{print $2}'")
             try:
                 in_kb = int(ret[0][0].strip("\n"))
-            except Exception:
+            except Exception as inst_err:
                 ret = self.remoter.execute("cat /proc/meminfo")
                 logger.error(f"SWAP Memory calculation error: {ret=}")
-                raise ValueError("Was not able to find instance memory size")
+                raise ValueError("Was not able to find instance memory size") from inst_err
 
             self.ram_size_in_gb = int(in_kb/1024/1024) + 1
             self.swap_size_in_gb = self.calc_swap_needed(self.ram_size_in_gb)
@@ -160,9 +160,6 @@ class Provisioner(SystemFunctionCommon):
         Swap:          8.0Gi       4.0Mi       8.0Gi
         :return:
         """
-
-        # todo: refactor to handle new ssh connection.
-        self.remoter.execute("pwd")
 
         ret = self.remoter.execute("free -h")
         lines = ret[0]

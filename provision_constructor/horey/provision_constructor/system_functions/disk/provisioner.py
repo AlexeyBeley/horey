@@ -103,10 +103,11 @@ class Provisioner(SystemFunctionCommon):
             if part[0] == "ext4":
                 self.remoter.execute(f"sudo mkfs.ext4 {'-F' if self.force else ''} {partition_path}", self.last_line_validator("done"))
             if part[0] == "linux-swap":
+                partition_uuid = "UUID=" + blockdevice["uuid"]
                 SystemFunctionFactory.REGISTERED_FUNCTIONS["swap"](self.deployment_dir, True,
                                                                                   self.upgrade,
                                                                                   action="init_partition",
-                                                                   partition_path=partition_path).provision_remote(remoter=self.remoter)
+                                                                   partition_path=partition_uuid).provision_remote(remoter=self.remoter)
 
         return True
 
@@ -128,3 +129,20 @@ class Provisioner(SystemFunctionCommon):
         line = f"{src} {dst} ext4 defaults 0 2"
         self.add_line_to_file_remote(self.remoter, line=line, file_path=Path("/etc/fstab"), sudo=True)
         return True
+
+    def test_provisioned(self):
+        """
+        Test if provisioned.
+
+        :return:
+        """
+        raise NotImplementedError()
+
+    def _provision(self):
+        """
+        Provision local.
+
+        :return:
+        """
+
+        raise NotImplementedError("")
