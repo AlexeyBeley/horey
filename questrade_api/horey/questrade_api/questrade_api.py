@@ -881,8 +881,11 @@ class QuestradeAPI:
                     lines.append(f">NO SELL ORDER FOR {position.symbol} {position.open_quantity} {position.average_entry_price}")
                     continue
                 sell_high = max(candle.high for candle in candles)
-                sell_calculates = max(sell_high, position.average_entry_price*1.1)
-                lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculates}, revenue={int(sell_calculates/( position.average_entry_price/100))}%")
+                percent_105 =  position.average_entry_price * 1.05
+                percent_110 =  position.average_entry_price * 1.1
+                sell_calculated = percent_110 if sell_high > percent_110 else percent_105
+
+                lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculated}, revenue={int(sell_calculated/( position.average_entry_price/100))}%")
         if lines:
             lines = (["#################################","#################################"] + lines +
                      ["#################################", "#################################"])
