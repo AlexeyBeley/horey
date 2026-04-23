@@ -6,6 +6,7 @@ import sqlite3
 from datetime import datetime, timezone, timedelta
 import json
 from pathlib import Path
+from typing import List
 
 import requests
 from horey.h_logger import get_logger
@@ -720,13 +721,14 @@ class QuestradeAPI:
         """
 
         candles = self.db_get_today_candles(symbol)
-        if candles:
-            logger.info(f"Today candles already exist for symbol {symbol.symbol} {len(candles)}")
-            #return candles
         today = datetime.now(timezone.utc)
 
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
+        if candles:
+            pass
+            #logger.info(f"Today candles already exist for symbol {symbol.symbol} {len(candles)}")
+            #return candles
 
 
         candles = self.get_symbol_candles(symbol, utc_today_3am, utc_today_8pm)
@@ -734,7 +736,7 @@ class QuestradeAPI:
             self.db_upsert_candle(symbol.symbol_id, candle)
         return candles
 
-    def db_get_today_candles(self, symbol:Symbol):
+    def db_get_today_candles(self, symbol:Symbol) -> List[Candle]:
         """
         Fetch from DB
 
@@ -744,8 +746,8 @@ class QuestradeAPI:
 
         today = datetime.now(timezone.utc)
 
-        utc_today_3am = today.replace(day=22, hour=3, minute=0, second=0, microsecond=0)
-        utc_today_8pm = today.replace(day=22, hour=20, minute=0, second=0, microsecond=0)
+        utc_today_3am = today.replace(day=23, hour=3, minute=0, second=0, microsecond=0)
+        utc_today_8pm = today.replace(day=23, hour=20, minute=0, second=0, microsecond=0)
 
         candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=utc_today_8pm)
         return candles
@@ -799,6 +801,10 @@ class QuestradeAPI:
         cheapest_stocks = self.sort_and_print_cheapest_by_price()
         symbol_ids = [symbol[1] for symbol in cheapest_stocks if symbol[1] not in position_symbol_ids and
                       ((symbol_name is None) or (symbol[0] == symbol_name))]
+        orders = self.get_orders()
+        order_symbol_ids = [order.symbol_id for order in orders]
+        symbol_ids = [symbol_id for symbol_id in symbol_ids if symbol_id not in order_symbol_ids]
+
         symbols = []
 
         len_symbol_ids = len(symbol_ids)

@@ -166,9 +166,9 @@ def test_sort_and_print_cheapest_by_price(questrade_api):
 def test_check_strategy_one_persent_below_current(questrade_api):
     assert questrade_api.check_strategy_one_persent_below_current(52015918)
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_update_cheap_candles_with_today_data(questrade_api):
-    assert questrade_api.update_cheap_candles_with_today_data(symbol_name="ALP")
+    assert questrade_api.update_cheap_candles_with_today_data()
 
 @pytest.mark.unit
 def test_make_purchase_plan(questrade_api):
