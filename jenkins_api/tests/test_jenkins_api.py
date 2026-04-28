@@ -12,22 +12,24 @@ from horey.jenkins_api.jenkins_api_configuration_policy import JenkinsAPIConfigu
 from horey.jenkins_api.build import Build
 from horey.aws_api.aws_api import AWSAPI
 
-ignore_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore")
-configuration = JenkinsAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.join(ignore_dir, "jenkins_api_configuration.py")
-configuration.region = "il-central-1"
-
-configuration.init_from_file()
-jenkins_api = JenkinsAPI(
-    configuration, aws_api=AWSAPI()
-)
-
 
 # pylint: disable= missing-function-docstring
+@pytest.fixture(name="jenkins_api")
+def jenkins_api_fixture():
+    ignore_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore")
+    configuration = JenkinsAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = os.path.join(ignore_dir, "jenkins_api_configuration.py")
+    configuration.region = "il-central-1"
+
+    configuration.init_from_file()
+    jenkins_api = JenkinsAPI(
+        configuration, aws_api=AWSAPI()
+    )
+    yield jenkins_api
 
 
 @pytest.mark.done
-def test_cleanup():
+def test_cleanup(jenkins_api):
     """
     Run the cleanup function and save the output to file.
     :return:
@@ -39,7 +41,7 @@ def test_cleanup():
 
 
 @pytest.mark.skip
-def test_connection():
+def test_connection(jenkins_api):
     """
     Test the connection to Jenkins.
     :return:
@@ -140,7 +142,7 @@ def test_backup_jobs():
     jenkins_api.backup_jobs("./backups")
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_get_all_jobs():
     ret = jenkins_api.get_all_jobs()
     assert isinstance(ret, list)

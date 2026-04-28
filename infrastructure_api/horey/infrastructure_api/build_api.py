@@ -76,6 +76,16 @@ class BuildAPI:
         configuration.remote = "https://github.com/AlexeyBeley/horey.git"
         self._horey_git_api = GitAPI(configuration=configuration)
 
+    def run_prepare_image_routine(self, branch_name, build_number):
+        """
+        Run the prepare routine
+
+        :return:
+        """
+        source_code_directory_path = self.prepare_source_code_directory(branch_name)
+        build_directory = self.prepare_docker_image_build_directory(source_code_directory_path, build_number)
+        return build_directory
+
     def run_prepare_and_build_image_routine(self, branch_name, build_number, nocache=False, dockerfile="Dockerfile",
                                             tags=None):
         """
@@ -84,9 +94,8 @@ class BuildAPI:
         :return:
         """
 
+        build_directory = self.run_prepare_image_routine(branch_name, build_number)
         tags = tags or []
-        source_code_directory_path = self.prepare_source_code_directory(branch_name)
-        build_directory = self.prepare_docker_image_build_directory(source_code_directory_path, build_number)
         image = self.build_docker_image(build_directory, tags, nocache=nocache, dockerfile=dockerfile)
         return image
 

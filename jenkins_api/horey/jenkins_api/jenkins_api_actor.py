@@ -5,6 +5,7 @@ Standard Horey Actor: Script entrypoint to a python package.
 
 import argparse
 import json
+import sys
 
 from horey.jenkins_api.jenkins_api import JenkinsAPI
 from horey.jenkins_api.jenkins_api_configuration_policy import (
@@ -46,6 +47,46 @@ def run_job(arguments) -> None:
 
 
 action_manager.register_action("run_job", run_job_parser, run_job)
+# endregion
+
+
+# region run_job_from_env_vars
+def run_job_from_env_vars_parser():
+    description = "Run single job from env vars"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument(
+        "--job_name", required=True, type=str, help="build_info_file"
+    )
+    parser.add_argument(
+        "--jenkins_api_config_file", required=True, type=str, help="jenkins_api_config_file"
+    )
+
+    return parser
+
+
+def run_job_from_env_vars(arguments) -> None:
+    configuration = JenkinsAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = arguments.jenkins_api_config_file
+    configuration.init_from_file()
+
+    jenkins_api = JenkinsAPI(configuration)
+    parameters = {}
+    for attr, value in arguments.__dict__.items():
+        if attr in ["jenkins_api_config_file", "job_name"]:
+            continue
+        if attr.startswith("_"):
+            continue
+        parameters[attr] = value
+
+    job = JenkinsJob(arguments.job_name, parameters)
+
+    errors_report = jenkins_api.execute_jobs([job])
+    if errors_report:
+        print(errors_report)
+        sys.exit(1)
+
+
+action_manager.register_action("run_job_from_env_vars", run_job_from_env_vars_parser, run_job_from_env_vars)
 # endregion
 
 
@@ -239,4 +280,4 @@ action_manager.register_action("find_build", find_build_parser, find_build)
 
 
 if __name__ == "__main__":
-    action_manager.call_action(pass_unknown_args=False)
+    action_manager.call_action(pass_unknown_args=True)

@@ -4,6 +4,7 @@ Module to handle jenkins server.
 import json
 import os
 import datetime
+import shutil
 import time
 import threading
 from collections import defaultdict
@@ -76,14 +77,21 @@ class JenkinsAPI:
     def __init__(self, configuration: JenkinsAPIConfigurationPolicy):
         self.configuration = configuration
 
-        self.server = jenkins.Jenkins(
-            configuration.host,
-            username=configuration.username,
-            password=configuration.token,
-            timeout=configuration.timeout,
-        )
+        self._server = None
 
         self._job_name_by_url = None
+
+    @property
+    def server(self):
+        if self._server is None:
+            self._server = jenkins.Jenkins(
+                self.configuration.host,
+                username=self.configuration.username,
+                password=self.configuration.token,
+                timeout=self.configuration.timeout,
+            )
+        return self._server
+
 
     @property
     def hostname(self):
@@ -346,6 +354,7 @@ class JenkinsAPI:
         :param jobs:
         :return:
         """
+
         report_lines = []
         for job in jobs:
             if job.build_status is None:
@@ -830,13 +839,14 @@ class JenkinsAPI:
 
         return ret
 
-    def generate_hagent_action_script(self, dst_dir_path:Path):
+    def generate_jenkins_api_actor_script(self, dst_dir_path:Path):
         """
         Job starter script.
 
         :param dst_dir_path:
         :return:
         """
+        script_name = "jenkins_api_actor.py"
 
-        with open(dst_dir_path / "job_starter.py", "w", encoding="utf-8") as file_handler:
-            file_handler.write()
+        shutil.copy(Path(__file__).parent / script_name, dst_dir_path)
+        return script_name

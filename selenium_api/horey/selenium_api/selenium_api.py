@@ -397,7 +397,7 @@ class SeleniumAPI:
             except StaleElementReferenceException:
                 time.sleep(1)
                 get_page = False
-            except NoSuchElementException:
+            except NoSuchElementException as inst_err:
                 time.sleep(3)
                 body = self.get_element(By.TAG_NAME, "body").text
                 if "This page is displayed while the website verifies you are not a bot" in body:
@@ -408,8 +408,10 @@ class SeleniumAPI:
                     self.disconnect()
                 else:
                     get_page=False
+                    logger.exception(inst_err)
                     logger.info(f"Retrying to get data from: {url}")
                     breakpoint()
+                    raise
 
         breakpoint()
         raise TimeoutError(f"Was not able to fetch from: {url}")

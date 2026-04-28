@@ -113,6 +113,8 @@ class Provisioner(SystemFunctionCommon):
             return self.provision_login_remote()
         if self.action == "copy_image_file":
             return self.copy_image_file_remote()
+        if self.action == "build":
+            return self.build_image_remote()
 
 
         if not SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force,
@@ -217,3 +219,15 @@ class Provisioner(SystemFunctionCommon):
 
         return True
 
+    def build_image_remote(self):
+        """
+        Build image from dockerfile.
+        action="build",
+        build_directory=build_directory,
+        tag="github_hagent:latest"
+
+        :return:
+        """
+
+        self.remoter.put_directory(Path(self.kwargs.get("build_directory")), Path("/tmp/build"), sudo=False)
+        return self.remoter.execute(f"cd /tmp/build && docker build . -t {self.kwargs.get('tag')}")

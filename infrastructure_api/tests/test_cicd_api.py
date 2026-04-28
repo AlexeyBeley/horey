@@ -15,6 +15,7 @@ from test_utils import init_from_secrets_api
 from horey.common_utils.common_utils import CommonUtils
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 from horey.aws_api.aws_api import AWSAPI
+from horey.aws_api.base_entities.region import Region
 from horey.h_logger import get_logger
 from horey.infrastructure_api.infrastructure_api import InfrastructureAPI
 from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
@@ -56,6 +57,15 @@ class Configuration(ConfigurationPolicy):
         self._github_api_configuration_file_secret_name = None
         self._github_hagent_runner_name = None
         self._github_hagent_repo_name = None
+        self._github_hagent_docker_files_secret_names = None
+
+    @property
+    def github_hagent_docker_files_secret_names(self):
+        return self._github_hagent_docker_files_secret_names
+
+    @github_hagent_docker_files_secret_names.setter
+    def github_hagent_docker_files_secret_names(self, value):
+        self._github_hagent_docker_files_secret_names = value
 
     @property
     def github_hagent_runner_name(self):
@@ -80,7 +90,6 @@ class Configuration(ConfigurationPolicy):
     @github_api_configuration_file_secret_name.setter
     def github_api_configuration_file_secret_name(self, value):
         self._github_api_configuration_file_secret_name = value
-        self._github_api_configuration_file_secret_name = None
 
     @property
     def ec2_vrrp_master(self):
@@ -228,6 +237,10 @@ def fixture_cicd_api_integration(env_api_integration):
 
     cicd_api.jenkins_master_ecs_api.build_api.git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
     yield cicd_api
+    try:
+        shutil.rmtree(cicd_api.hagent_build_api.docker_build_directory)
+    except FileNotFoundError:
+        pass
 
 
 @pytest.fixture(name="ec2_api_mgmt_integration")
@@ -239,6 +252,8 @@ def fixture_ec2_api_mgmt_integration(env_api_mgmt_integration):
 
 @pytest.fixture(name="github_api")
 def fixture_github_api():
+    if Configuration.TEST_CONFIG.github_api_configuration_file_secret_name is None:
+        raise ValueError("github_api_configuration_file_secret_name is not set")
     github_config = init_from_secrets_api(GithubAPIConfigurationPolicy,
                                               Configuration.TEST_CONFIG.github_api_configuration_file_secret_name)
     github_api = GithubAPI(github_config)
@@ -806,18 +821,26 @@ def test_provision_github_hagent(cicd_api_integration, ec2_api_mgmt_integration,
                                                         )
 
 @pytest.mark.wip
-def test_provision_github_hagent_dockerized(cicd_api_integration, ec2_api_mgmt_integration, github_api, jenkins_api):
+def test_provision_github_hagent_dockerized(cicd_api_integration, ec2_api_mgmt_integration, github_api):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
+
+    cicd_api_integration.hagent_build_api.docker_build_directory.mkdir(exist_ok=True)
+    file_paths = []
+    for secret_name in Configuration.TEST_CONFIG.github_hagent_docker_files_secret_names.split(","):
+        cicd_api_integration.environment_api.aws_api.get_secret_file(secret_name,
+                                                                              cicd_api_integration.hagent_build_api.docker_build_directory,
+                                                                              region=Region.get_region(mock_values.region))
+        file_paths.append( cicd_api_integration.hagent_build_api.docker_build_directory/secret_name)
 
     assert cicd_api_integration.provision_github_hagent_dockerized(github_api,
                                                         bastions=ec2_instances,
                                                         repository_name=Configuration.TEST_CONFIG.github_hagent_repo_name,
                                                         horey_repo_path = Path(__file__).parent.parent.parent,
-                                                        jenkins_api=jenkins_api
+                                                        extra_file_paths=file_paths
+
                                                         )
 
-@pytest.mark.unit
 @pytest.mark.unit
 def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in

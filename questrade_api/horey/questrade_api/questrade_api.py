@@ -144,8 +144,13 @@ class QuestradeAPI:
             if response is None:
                 return True
         else:
-            auth_url = f"https://login.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token={self.configuration.token}"
-            response = requests.get(auth_url).json()
+            base_url = "https://login.questrade.com/oauth2/token"
+            params = {
+                "grant_type": "refresh_token",
+                "refresh_token": self.configuration.token
+            }
+
+            response = requests.get(base_url, params=params).json()
 
         response["expires_at"] = (datetime.now(tz=timezone.utc) + timedelta(seconds=response["expires_in"])).timestamp()
 
@@ -226,7 +231,7 @@ class QuestradeAPI:
 
         :return:
         """
-
+        offset= offset or 0
         symbols = self.get(f"v1/symbols/search?prefix={prefix}&offset={offset}")
         symbols = symbols["symbols"]
         return symbols
@@ -388,42 +393,43 @@ class QuestradeAPI:
     def fetch_symbols_by_max_price(self, max_price):
         """
         Sort symbols by transactions count.
+        0.0035*100
+
         :return:
         """
 
-        with sqlite3.connect(self.configuration.db_file_path) as conn:
-            cursor = conn.cursor()
+        one_percent_ecn_fee_limit = 0.0035*100
+        if max_price:
+            self.db_cursor.execute(
+                f"select symbol_id from candles where vwap <= {max_price} and vwap >= {one_percent_ecn_fee_limit} group by symbol_id"
+            )
+            response = self.db_cursor.fetchall()
+        else:
+            self.db_cursor.execute(
+                "select symbol_id from candles group by symbol_id"
+            )
+            response = self.db_cursor.fetchall()
 
-            if max_price:
-                cursor.execute(
-                    f"select symbol_id from candles where vwap <= {max_price} group by symbol_id"
-                )
-                response = cursor.fetchall()
-            else:
-                cursor.execute(
-                    "select symbol_id from candles group by symbol_id"
-                )
-                response = cursor.fetchall()
-
-            symbols = []
-            for line in response:
-                symbol = self.db_get_symbol(line[0], cursor=cursor)
-                if not symbol:
-                    logger.error(f"Symbol {line[0]} not found in DB")
-                    continue
-                try:
-                    symbol.candles = self.db_get_symbol_candles(symbol.symbol_id, cursor=cursor)
-                except Exception as ex:
-                    raise
-                if len(symbol.candles) < 50:
-                    continue
-                symbols.append(symbol)
-                logger.info(f"Added {symbol.symbol} to {len(symbols)} symbols")
+        symbols = []
+        for line in response:
+            symbol = self.db_get_symbol(line[0])
+            if not symbol:
+                logger.error(f"Symbol {line[0]} not found in DB")
+                continue
+            try:
+                symbol.candles = self.db_get_symbol_candles(symbol.symbol_id)
+            except Exception as ex:
+                raise
+            if len(symbol.candles) < 5:
+                continue
+            symbols.append(symbol)
+            logger.info(f"Added {symbol.symbol} to {len(symbols)} symbols")
 
         ret = [[symbol.symbol, symbol.symbol_id, len(symbol.candles), symbol.candles[0].vwap] for symbol in symbols]
         with open(self.configuration.data_directory / "symbols_sorted_by_transaction_count.json", "w",
                   encoding="utf-8") as file_handler:
             json.dump(ret, file_handler, indent=2)
+        return True
 
     def sort_and_print_cheapest_by_price(self):
         """
@@ -722,6 +728,8 @@ class QuestradeAPI:
 
         candles = self.db_get_today_candles(symbol)
         today = datetime.now(timezone.utc)
+        if today.hour < 3:
+            today -= timedelta(days=1)
 
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
@@ -729,7 +737,6 @@ class QuestradeAPI:
             pass
             #logger.info(f"Today candles already exist for symbol {symbol.symbol} {len(candles)}")
             #return candles
-
 
         candles = self.get_symbol_candles(symbol, utc_today_3am, utc_today_8pm)
         for candle in candles:
@@ -745,9 +752,11 @@ class QuestradeAPI:
         """
 
         today = datetime.now(timezone.utc)
+        if today.hour < 3:
+            today -= timedelta(days=1)
+        utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
+        utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
 
-        utc_today_3am = today.replace(day=23, hour=3, minute=0, second=0, microsecond=0)
-        utc_today_8pm = today.replace(day=23, hour=20, minute=0, second=0, microsecond=0)
 
         candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=utc_today_8pm)
         return candles
@@ -765,10 +774,12 @@ class QuestradeAPI:
         start_time = self.convert_time_to_request_format(start_time)
         end_time = self.convert_time_to_request_format(end_time)
 
+        logger.info("Fetching Symbol's candles from API")
         try:
             position_candles = self.get(
             f"v1/markets/candles/{symbol.symbol_id}?startTime={start_time}&endTime={end_time}&interval=OneMinute")
         except Exception as inst:
+            logger.exception(inst)
             if "Not Found for url" in repr(inst):
                 return []
             raise
@@ -780,13 +791,20 @@ class QuestradeAPI:
         Update cheap symbols with today data
         :return:
         """
-
+        error_counter = 0
         cheapest_stocks = self.sort_and_print_cheapest_by_price()
         symbol_ids = [symbol[1] for symbol in cheapest_stocks if (symbol_name is None) or (symbol[0] == symbol_name)]
         self.connect()
-        for symbol_id in symbol_ids:
+        for i, symbol_id in enumerate(symbol_ids):
             symbol = self.db_get_symbol(symbol_id)
-            self.update_symbol_today_candles(symbol)
+            try:
+                logger.info(f"Updating Symbol {i}/{len(symbol_ids)} {symbol.symbol}")
+                self.update_symbol_today_candles(symbol)
+            except Exception:
+                self.connect(reconnect =True)
+                error_counter += 1
+        if error_counter > len(symbol_ids)/2:
+            raise ValueError(f"Too many errors {error_counter} out of {len(symbol_ids)}")
         return True
 
     def make_purchase_plan(self, symbol_name=None):
@@ -825,8 +843,9 @@ class QuestradeAPI:
             symbol.absolute_low = min([candle.low for candle in symbol.candles])
             symbol.absolute_high = max([candle.high for candle in symbol.candles])
 
-        for symbol in sorted(symbols, key=lambda x: x.max_vwap_change):
-            print(f"{symbol.symbol}, vwap_change={symbol.max_vwap_change}, max-min={symbol.absolute_high - symbol.absolute_low}, deals={len(symbol.candles)}, absolute_low={symbol.absolute_low}, count={int(1/symbol.absolute_low)}")
+        for i, symbol in enumerate(sorted(symbols, key=lambda x: x.max_vwap_change)):
+            count = int(1 / symbol.absolute_low) + 1
+            print(f"[{i+1}] {symbol.symbol}, vwap_change={symbol.max_vwap_change}, max-min={symbol.absolute_high - symbol.absolute_low}, deals={len(symbol.candles)}, absolute_low={symbol.absolute_low}, count={count}")
         return True
 
     @staticmethod
@@ -846,6 +865,17 @@ class QuestradeAPI:
 
         response = self.get(f"v1/accounts/{self.configuration.account}/positions")
         return [Position(dict_src) for dict_src in response["positions"] if dict_src["currentMarketValue"] is not None]
+
+    @connected
+    def get_balances(self):
+        """
+        Plan purchase
+
+        :return:
+        """
+
+        response = self.get(f"v1/accounts/{self.configuration.account}/balances")
+        return response
 
     @connected
     def get_orders(self):
@@ -870,20 +900,33 @@ class QuestradeAPI:
 
         ret = []
         lines = []
+        balances = self.get_balances()
+        buying_power = balances["combinedBalances"][0]["buyingPower"]
+        if buying_power > 1.0:
+            lines.append(f">Time to buy! Buying power: {buying_power}")
+
         positions = self.get_positions()
         orders = self.get_orders()
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
         for position in positions:
+            # todo: fix
+            if position.symbol in ["TDTH", "SOWG", "CUE"]:
+                continue
+
+
             if position.symbol_id not in order_by_symbol_id:
                 ret.append(position)
                 candles = self.db_get_today_candles(position)
                 if position.average_entry_price is None:
-                    lines.append(f">NO SELL ORDER FOR {position.symbol} {position.open_quantity} {position.average_entry_price}")
+                    lines.append(f">Time to sell! {position.symbol} {position.open_quantity} {position.average_entry_price}")
                     continue
-                sell_high = max(candle.high for candle in candles)
                 percent_105 =  position.average_entry_price * 1.05
                 percent_110 =  position.average_entry_price * 1.1
-                sell_calculated = percent_110 if sell_high > percent_110 else percent_105
+                if candles:
+                    sell_high = max(candle.high for candle in candles)
+                    sell_calculated = percent_110 if sell_high > percent_110 else percent_105
+                else:
+                    sell_calculated = percent_105
 
                 lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculated}, revenue={int(sell_calculated/( position.average_entry_price/100))}%")
         if lines:

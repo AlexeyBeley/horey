@@ -873,6 +873,7 @@ class MAauction(Provider):
         try:
             self.selenium_api.retry_on_throttling(url, lambda : self.selenium_api.get_element(By.CLASS_NAME, "pagination"))
         except NoSuchElementException as inst_err:
+            breakpoint()
             auction_ring_elements = self.selenium_api.get_elements(By.CLASS_NAME, "auction-ring")
             urls = []
             for auction_ring_element in auction_ring_elements:
@@ -880,6 +881,9 @@ class MAauction(Provider):
                 urls.append(btn_element.get_attribute("href"))
 
             return urls
+        except Exception as inst_err:
+            logger.info(f"Unexpected error: {inst_err}")
+            breakpoint()
         return []
 
     def yield_auction_events_from_internal_url(self, url, known_auction_events_by_url):

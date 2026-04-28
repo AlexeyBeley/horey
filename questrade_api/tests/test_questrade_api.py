@@ -154,7 +154,7 @@ def test_provision_db(questrade_api):
 
 @pytest.mark.unit
 def test_fetch_symbols_by_max_price(questrade_api):
-    assert questrade_api.fetch_symbols_by_max_price(1)
+    assert questrade_api.fetch_symbols_by_max_price(2)
 
 
 @pytest.mark.unit
@@ -166,11 +166,11 @@ def test_sort_and_print_cheapest_by_price(questrade_api):
 def test_check_strategy_one_persent_below_current(questrade_api):
     assert questrade_api.check_strategy_one_persent_below_current(52015918)
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_update_cheap_candles_with_today_data(questrade_api):
     assert questrade_api.update_cheap_candles_with_today_data()
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_make_purchase_plan(questrade_api):
     assert questrade_api.make_purchase_plan()
 

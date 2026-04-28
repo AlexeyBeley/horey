@@ -4,6 +4,7 @@ Standard Load balancing maintainer.
 """
 import json
 import pathlib
+import shutil
 from pathlib import Path
 import time
 import getpass
@@ -27,6 +28,7 @@ from horey.infrastructure_api.dns_api import DNSAPIConfigurationPolicy
 from horey.git_api.git_api import GitAPI, GitAPIConfigurationPolicy
 from horey.aws_api.aws_clients.efs_client import EFSFileSystem, EFSAccessPoint, EFSMountTarget
 from horey.deployer.remote_deployer import DeploymentTarget, RemoteDeployer
+from horey.jenkins_api.jenkins_api import JenkinsAPI, JenkinsAPIConfigurationPolicy
 from horey.pip_api.pip_api import StandaloneMethods
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 
@@ -108,6 +110,7 @@ class CICDAPI:
         self._remote_deployer = None
         self._iam_api = None
         self._build_api = None
+        self._jenkins_api = None
     
     @property
     def remote_deployer(self):
@@ -120,6 +123,19 @@ class CICDAPI:
         if self._remote_deployer is None:
             self._remote_deployer = RemoteDeployer()
         return self._remote_deployer
+
+    @property
+    def jenkins_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        if self._jenkins_api is None:
+            config = JenkinsAPIConfigurationPolicy()
+            self._jenkins_api = JenkinsAPI(config)
+        return self._jenkins_api
 
     @property
     def cloudwatch_api(self):
@@ -1076,46 +1092,57 @@ class CICDAPI:
         Create tmp build dir
 
         :param _src_dir:
-        :param build_id:
+        :param build_number:
         :return:
         """
-
         build_dir_path = self.hagent_build_api.prepare_docker_image_horey_package_build_directory(_src_dir, "jenkins_api", build_number)
 
-        self.jenkins_api.generate_hagent_action_script(build_dir_path)
+        script_name = self.jenkins_api.generate_jenkins_api_actor_script(build_dir_path)
+        self.hagent_build_api.add_docker_instruction_copy(build_dir_path ,script_name , before_comment="add_your_files_here")
+        for tmp_file_path in self.extra_file_paths:
+            shutil.copy(tmp_file_path, build_dir_path)
+            self.hagent_build_api.add_docker_instruction_copy(build_dir_path, tmp_file_path.name, before_comment="add_your_files_here")
+        breakpoint()
         return self.hagent_build_api.docker_build_directory
 
-    def provision_github_hagent_dockerized(self, github_api: GithubAPI, bastions: List[EC2Instance] = None, repository_name=None, horey_repo_path=None, jenkins_api=None):
+    def provision_github_hagent_dockerized(self, github_api: GithubAPI, bastions: List[EC2Instance] = None, repository_name=None, horey_repo_path=None, remote_build=True, extra_file_paths=None):
         """
         Provision multirunner.
 
         :return:
         """
 
+        extra_file_paths = extra_file_paths or []
         branch_name = None
         build_number = 1
         self.hagent_build_api.git_api.configuration.directory_path = horey_repo_path
         self.hagent_build_api.docker_build_directory = Path("/tmp") / f"github_hagent_{build_number}"
+
+        # todo: Refactor the dockerfile creation into build_dir creation
         github_api.init_hagent_docker_build_dir(self.hagent_build_api.docker_build_directory)
         self.hagent_build_api.prepare_source_code_directory = lambda _build_number: horey_repo_path
-        self.jenkins_api = jenkins_api
         self.hagent_build_api.prepare_docker_image_build_directory = self.prepare_github_hagent_docker_build_dir
 
-        image = self.hagent_build_api.run_prepare_and_build_image_routine(branch_name, build_number, tags=["github_hagent"])
-        # todo: remove:
-        # image = self.environment_api.docker_api.get_image("github_hagent:latest")
-        ret = self.environment_api.docker_api.get_all_images()
-        for image in ret:
-            if not image.tags:
-                continue
-            if image.tags[0] == "github_hagent:latest":
-                break
+        if not remote_build:
+            image = self.hagent_build_api.run_prepare_and_build_image_routine(branch_name, build_number, tags=["github_hagent"])
+            breakpoint()
+            # todo: remove:
+            # image = self.environment_api.docker_api.get_image("github_hagent:latest")
+            ret = self.environment_api.docker_api.get_all_images()
+            for image in ret:
+                if not image.tags:
+                    continue
+                if image.tags[0] == "github_hagent:latest":
+                    break
+            else:
+                raise NotImplementedError("Not implemented")
+
+
+            image_file_path = Path("/tmp/github_hagent_image.tar")
+            self.environment_api.docker_api.save(image, image_file_path)
         else:
-            raise NotImplementedError("Not implemented")
-
-
-        image_file_path = Path("/tmp/github_hagent_image.tar")
-        self.environment_api.docker_api.save(image, image_file_path)
+            self.extra_file_paths = extra_file_paths
+            build_directory = self.hagent_build_api.run_prepare_image_routine(branch_name, build_number)
 
         ec2_instance = self.provision_github_hagent_ec2_instance(bastions=bastions)
 
@@ -1125,12 +1152,21 @@ class CICDAPI:
             self.run_remote_provision_constructor(target,
                                                   "docker",
                                                   )
-            self.run_remote_provision_constructor(target,
+
+            if not remote_build:
+                self.run_remote_provision_constructor(target,
                                                   "docker",
                                                   action="copy_image_file",
                                                   image_file=image_file_path,
                                                   tag="github_hagent:latest"
                                                   )
+            else:
+                self.run_remote_provision_constructor(target,
+                                                      "docker",
+                                                      action="build",
+                                                      build_directory=build_directory,
+                                                      tag="github_hagent:latest"
+                                                      )
 
             self.run_remote_provision_constructor(target,
                                                   "github_agent",
@@ -1143,7 +1179,7 @@ class CICDAPI:
 
         target = self.init_deployment_target(ec2_instance, bastions=bastions)
         target.append_remote_step("ProvisionGithub", entrypoint)
-        assert self.run_remote_deployer_deploy_targets([target], asynchronous=False)
+        return self.run_remote_deployer_deploy_targets([target], asynchronous=False)
 
 
     def provision_github_hagent_ec2_instance(self, bastions=None):

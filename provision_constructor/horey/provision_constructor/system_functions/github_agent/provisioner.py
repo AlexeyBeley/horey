@@ -67,7 +67,7 @@ class Provisioner(SystemFunctionCommon):
         github_token = self.kwargs.get("github_token")
         repo_name = self.kwargs.get("repo_name")
         repo_owner = self.kwargs.get("repo_owner")
-        breakpoint()
+        runner_name = self.kwargs.get('runner_name', repo_name)
         ret = self.remoter.execute(f"docker ps -a --format json -f name={repo_name}")
         if ret[0]:
             response = json.loads(ret[0][0])
@@ -78,12 +78,12 @@ class Provisioner(SystemFunctionCommon):
 
 
         ret = self.remoter.execute(f"docker run -d --name {repo_name} "
-                                   f"-e REPO_OWNER={self.kwargs.get('repo_owner')} "
-                                   f"-e REPO_NAME={self.kwargs.get('repo_name')} "
-                                   f"-e GITHUB_TOKEN={self.kwargs.get('github_token')} "
-                                   f"-e RUNNER_NAME={self.kwargs.get('runner_name', repo_name)} "
+                                   f"-e REPO_OWNER={repo_owner} "
+                                   f"-e REPO_NAME={repo_name} "
+                                   f"-e GITHUB_TOKEN={github_token} "
+                                   f"-e RUNNER_NAME={runner_name} "
                                    f"{image_name}")
-        breakpoint()
+        return ret
 
     def provision_agent_remote(self):
         """

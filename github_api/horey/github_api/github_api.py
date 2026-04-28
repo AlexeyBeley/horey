@@ -269,6 +269,9 @@ class GithubAPI:
             )
             if response["total_count"] == 0:
                 break
+            elif len(runners) == response["total_count"]:
+                break
+
             page_runners = response["runners"]
             logger.info(f"Page: {page}, Items: {len(page_runners)}")
             runners.extend(page_runners)

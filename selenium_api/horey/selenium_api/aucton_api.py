@@ -430,7 +430,7 @@ class AuctionAPI:
 
             except Exception:
                 breakpoint()
-                # self.update_auction_event(event.id, end_time="2026-01-23 10:00:00.000000")
+                # self.update_auction_event(event.id, end_time="2026-04-25 10:00:00.000000")
 
             if event.finished:
                 continue

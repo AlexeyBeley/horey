@@ -28,4 +28,7 @@ COPY entrypoint.sh .
 
 RUN sudo chmod +x ./entrypoint.sh
 RUN sudo ./bin/installdependencies.sh
+
+# add_your_files_here
+
 ENTRYPOINT ["./entrypoint.sh"]
