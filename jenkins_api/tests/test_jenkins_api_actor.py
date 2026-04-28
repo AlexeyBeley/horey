@@ -9,7 +9,7 @@ import pytest
 from horey.jenkins_api.jenkins_api_actor import run_job_from_env_vars
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_job_from_env_vars():
     """
     Test basic init.
