@@ -274,3 +274,5 @@ class LoadbalancerAPI:
         if not self.environment_api.aws_api.elbv2_client.update_target_group_information(target_group):
             raise RuntimeError(f"Was not able to find target group '{target_group.name }' in region '{target_group.region}'")
         return target_group
+
+    def provision_public_load_balancer(self):

@@ -47,6 +47,7 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
         self._nat_gateway_elastic_address_name_template = None
         self._nat_gateway_name_template = None
         self._public_hosted_zone_domain_name = None
+        self._private_hosted_zone_domain_name = None
         self._response_headers_policy_name = None
         self._s3_bucket_policy_statements = []
         self._build_id = []
@@ -175,6 +176,16 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
     @public_hosted_zone_domain_name.setter
     def public_hosted_zone_domain_name(self, value):
         self._public_hosted_zone_domain_name = value
+
+    @property
+    def private_hosted_zone_domain_name(self):
+        if self._private_hosted_zone_domain_name is None:
+            raise self.UndefinedValueError("private_hosted_zone_domain_name")
+        return self._private_hosted_zone_domain_name
+
+    @private_hosted_zone_domain_name.setter
+    def private_hosted_zone_domain_name(self, value):
+        self._private_hosted_zone_domain_name = value
 
     @property
     def nat_gateway_name_template(self):

@@ -64,21 +64,14 @@ def run_job_from_env_vars_parser():
     return parser
 
 
-def run_job_from_env_vars(arguments) -> None:
+def run_job_from_env_vars(arguments, job_params) -> None:
     configuration = JenkinsAPIConfigurationPolicy()
     configuration.configuration_file_full_path = arguments.jenkins_api_config_file
     configuration.init_from_file()
 
     jenkins_api = JenkinsAPI(configuration)
-    parameters = {}
-    for attr, value in arguments.__dict__.items():
-        if attr in ["jenkins_api_config_file", "job_name"]:
-            continue
-        if attr.startswith("_"):
-            continue
-        parameters[attr] = value
 
-    job = JenkinsJob(arguments.job_name, parameters)
+    job = JenkinsJob(arguments.job_name, job_params)
 
     errors_report = jenkins_api.execute_jobs([job])
     if errors_report:

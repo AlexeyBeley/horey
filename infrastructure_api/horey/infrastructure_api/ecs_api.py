@@ -27,6 +27,7 @@ from horey.infrastructure_api.ecs_api_configuration_policy import ECSAPIConfigur
 from horey.infrastructure_api.environment_api import EnvironmentAPI
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
 from horey.infrastructure_api.ec2_api import EC2API, EC2APIConfigurationPolicy
+from horey.infrastructure_api.loadbalancer_api import LoadbalancerAPIConfigurationPolicy, LoadbalancerAPI
 from horey.infrastructure_api.build_api import BuildAPI, BuildAPIConfigurationPolicy
 
 from horey.aws_api.aws_services_entities.application_auto_scaling_scalable_target import \
@@ -57,12 +58,46 @@ class ECSAPI:
         self._ec2_api = None
         self._build_api = None
         self.loadbalancer_dns_api_pairs = None
+        self._loadbalancer_api = None
         self.init_ecr_repository_name()
 
         try:
             assert self.configuration.ecr_repository_region
         except self.configuration.UndefinedValueError:
             self.configuration.ecr_repository_region = self.environment_api.configuration.region
+
+    @property
+    def load_balancer_api(self):
+        """
+        if self._loadbalancer_api is None:
+            config = LoadbalancerAPIConfigurationPolicy()
+            config.slug = self.configuration.cluster_name
+            self._loadbalancer_api = LoadbalancerAPI(configuration=config, environment_api=self.environment_api)
+        return self._loadbalancer_api
+        :return:
+        """
+        raise DeprecationWarning("Use cluster_loadbalancer_api instead")
+
+    @property
+    def cluster_public_loadbalancer_api(self):
+        if self._loadbalancer_api is None:
+            config = LoadbalancerAPIConfigurationPolicy()
+            config.slug = self.configuration.cluster_name
+            config.scheme= "internet-facing"
+            config.security_groups = [f"sg_public_{config.load_balancer_name}"]
+            self._loadbalancer_api = LoadbalancerAPI(configuration=config, environment_api=self.environment_api)
+        return self._loadbalancer_api
+
+    @property
+    def cluster_private_loadbalancer_api(self):
+        if self._loadbalancer_api is None:
+            config = LoadbalancerAPIConfigurationPolicy()
+            config.slug = self.configuration.cluster_name
+            config.scheme= "internal"
+            config.security_groups = [f"sg_private_{config.load_balancer_name}"]
+            self._loadbalancer_api = LoadbalancerAPI(configuration=config, environment_api=self.environment_api)
+        return self._loadbalancer_api
+
 
     @property
     def ec2_api(self):
@@ -355,7 +390,7 @@ class ECSAPI:
             }
         ]
 
-        cluster.name = cluster_name
+        cluster.name = cluster_name or self.configuration.cluster_name
         cluster.region = self.environment_api.region
         cluster.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
                         self.environment_api.get_tags_with_name(cluster.name)]
@@ -1413,3 +1448,35 @@ class ECSAPI:
         self.environment_api.aws_api.provision_ecs_capacity_provider(capacity_provider)
 
         return capacity_provider
+
+
+    def provision_public_service_load_balancing(self, certificate=None):
+        """
+        Provision public ALB for the cluster and the needed resources
+
+        :return:
+        """
+
+        for sg_name in self.cluster_public_loadbalancer_api.configuration.security_groups:
+            lb_sg = self.ec2_api.provision_security_group(sg_name)
+            if len(self.configuration.container_definition_port_mappings) != 1:
+                raise ValueError("Only one port mapping is supported for now")
+            port = self.configuration.container_definition_port_mappings[0]["containerPort"]
+            port_range = [port, port]
+            self.ec2_api.security_group_add_rule(self.configuration.service_security_group_name, lb_sg, port_range=port_range)
+
+        lb = self.cluster_public_loadbalancer_api.provision_load_balancer()
+        breakpoint()
+        provision_load_balancer_target_group
+        provision_load_balancer_listener
+        provision_listener_rules
+
+
+    def provision_service_security_group(self):
+        """
+        Provision security group for the service.
+
+        :return:
+        """
+        return self.ec2_api.provision_security_group(self.configuration.service_security_group_name)
+

@@ -9,6 +9,24 @@ class QuestradeAPIConfigurationPolicy(ConfigurationPolicy):
         self._account = None
         self._api_server = None
         self._data_directory = None
+        self._user = None
+        self._password = None
+
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, value):
+        self._password = value
+
+    @property
+    def user(self):
+        return self._user
+
+    @user.setter
+    def user(self, value):
+        self._user = value
 
     @property
     def db_file_path(self):

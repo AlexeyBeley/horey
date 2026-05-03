@@ -297,23 +297,41 @@ class CICDAPI:
 
         return efs_access_point
 
-    def provision_jenkins_master_infrastructure(self):
+    def provision_jenkins_master_infrastructure(self, public_dns_prefix=None, private_dns_prefix=None):
         """
         Jenkins Master infra
 
         :return:
         """
+
         self.jenkins_master_ecs_api.provision_service_log_group()
-        master_service_security_group = self.ec2_api.provision_security_group(f"sg_{self.environment_api.configuration.environment_level}-jenkins-master-service")
-        load_balancer_security_group = self.ec2_api.provision_internal_alb_security_group()
-        self.ec2_api.security_group_add_rule(master_service_security_group, source_group=load_balancer_security_group, port_range=(8080, 8080))
+        master_service_security_group = self.jenkins_master_ecs_api.provision_service_security_group()
+
+        load_balancer = None
+        if public_dns_prefix:
+            dns_address = f"{public_dns_prefix}.{self.environment_api.configuration.public_hosted_zone_domain_name}"
+            cert =  self.environment_api.find_appropriate_certificate(dns_address)
+            load_balancer = self.jenkins_master_ecs_api.provision_public_service_load_balancing(certificate=cert)
+            self.dns_api.provision_address(dns_address, load_balancer)
+            breakpoint()
+            public_load_balancer_security_group = self.ec2_api.get_security_group(load_balancer.security_groups[0])
+            self.ec2_api.security_group_add_rule(master_service_security_group, source_group=public_load_balancer_security_group, port_range=(8080, 8080))
+
+        if private_dns_prefix:
+            load_balancer = self.jenkins_master_ecs_api.provision_private_cluster_load_balancer()
+            breakpoint()
+            private_load_balancer_security_group = self.ec2_api.provision_private_alb_security_group()
+            self.ec2_api.security_group_add_rule(master_service_security_group, source_group=private_load_balancer_security_group, port_range=(8080, 8080))
+
+        if not load_balancer:
+            raise ValueError("Either private_dns_address or public_dns_address must be specified")
+
         jenkins_master_efs_security_group_name, jenkins_master_access_point_name, jenkins_master_efs_file_system_name = self.generate_jenkins_master_efs_component_names()
 
-        # todo: uncomment when ready
-        # self.provision_efs(jenkins_master_efs_security_group_name,
-        #                   jenkins_master_access_point_name,
-        #                   jenkins_master_efs_file_system_name)
-        # self.ec2_api.security_group_add_rule(self.ec2_api.get_security_group(jenkins_master_efs_security_group_name), source_group=master_service_security_group, port_range=(2049, 2049))
+        self.provision_efs(jenkins_master_efs_security_group_name,
+                           jenkins_master_access_point_name,
+                           jenkins_master_efs_file_system_name)
+        self.ec2_api.security_group_add_rule(self.ec2_api.get_security_group(jenkins_master_efs_security_group_name), source_group=master_service_security_group, port_range=(2049, 2049))
         assume_role_policy_document = json.dumps({
             "Version": "2012-10-17",
             "Statement": [
@@ -328,7 +346,8 @@ class CICDAPI:
             ]
         })
 
-        task_role = self.iam_api.provision_role(role_name=self.get_task_role_name("jenkins-master"),
+        policies = self.task_role_inline_policies_callback()
+        self.iam_api.provision_role(policies=policies, role_name=self.get_task_role_name("jenkins-master"),
                                                 assume_role_policy=assume_role_policy_document)
 
         exec_role = self.jenkins_master_ecs_api.provision_execution_role(name=self.get_task_role_name("jenkins-master-exec"),
@@ -339,11 +358,8 @@ class CICDAPI:
 
         self.jenkins_master_ecs_api.provision_ecr_repository(repository_policy=policy_text)
         breakpoint()
-        cluster_name = (f"{self.environment_api.configuration.project_name_abbr}-"
-                f"{self.environment_api.configuration.environment_level}-"
-                f"management")
 
-        cluster = self.jenkins_master_ecs_api.provision_cluster(cluster_name=cluster_name)
+        cluster = self.jenkins_master_ecs_api.provision_cluster()
         self.jenkins_master_ecs_api.provision_ecs_autoscaling_group_capacity_provider(cluster, "management")
         return True
 
@@ -679,6 +695,9 @@ class CICDAPI:
             ecs_api_configuration.autoscaling_max_capacity = 1
             ecs_api_configuration.network_mode = "awsvpc"
             ecs_api_configuration.cluster_name = f"cluster-{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}"
+            ecs_api_configuration.cluster_name = (f"{self.environment_api.configuration.project_name_abbr}-"
+                            f"{self.environment_api.configuration.environment_level}-"
+                            f"management")
 
             ecs_api_configuration._container_definition_port_mappings = [
             {
@@ -1102,7 +1121,6 @@ class CICDAPI:
         for tmp_file_path in self.extra_file_paths:
             shutil.copy(tmp_file_path, build_dir_path)
             self.hagent_build_api.add_docker_instruction_copy(build_dir_path, tmp_file_path.name, before_comment="add_your_files_here")
-        breakpoint()
         return self.hagent_build_api.docker_build_directory
 
     def provision_github_hagent_dockerized(self, github_api: GithubAPI, bastions: List[EC2Instance] = None, repository_name=None, horey_repo_path=None, remote_build=True, extra_file_paths=None):

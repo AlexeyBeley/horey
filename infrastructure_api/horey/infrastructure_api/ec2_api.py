@@ -196,15 +196,25 @@ class EC2API:
             raise ValueError(f"Was not able to find instance by {name=}")
         self.environment_api.aws_api.ec2_client.stop_instance(ec2_instance)
 
-    def provision_internal_alb_security_group(self):
+    def provision_private_alb_security_group(self):
         """
         Provision internal ALB security group.
 
         :return:
         """
 
-        return self.provision_security_group(f"sg_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-internal-alb",
+        return self.provision_security_group(f"sg_private_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-internal-alb",
                                       "Internal ALB security group")
+
+    def provision_public_alb_security_group(self):
+        """
+        Provision External ALB security group.
+
+        :return:
+        """
+
+        return self.provision_security_group(f"sg_public_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-internal-alb",
+                                             "External ALB security group")
 
     def security_group_add_rule(self, destination_group: EC2SecurityGroup, source_group: Union[EC2SecurityGroup, str]=None, port_range=None):
         """

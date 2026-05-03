@@ -66,7 +66,11 @@ class Server:
         data = []
 
         auction_event_reports = self.auction_api.generate_auction_event_reports()
+
         for auction_event_report in auction_event_reports:
+            if auction_event_report.auction_event is None:
+                continue
+
             if auction_event_report.str_auction_event_id != auction_event_id:
                 continue
             app.logger.info(f"Generating report id {auction_event_report.str_auction_event_id}")
@@ -87,6 +91,13 @@ class Server:
         return jsonify(table_data=data, timestamp=auction_event_report.timestamp_text)
 
     def update_info(self, auction_event_id=None, provider_id=None):
+        """
+        Update info for provider or auction event.
+        :param auction_event_id:
+        :param provider_id:
+        :return:
+        """
+
         if provider_id is not None:
             self.auction_api.update_info_provider_auction_events(provider_id, asynchronous=True)
             return "Started update_info_provider_auction_events"

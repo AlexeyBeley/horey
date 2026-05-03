@@ -3,12 +3,16 @@ Shamelessly stolen from:
 https://questrade.com/lukecyca/pyslack
 """
 import sqlite3
+import time
 from datetime import datetime, timezone, timedelta
 import json
 from pathlib import Path
 from typing import List
+from scipy import stats
 
 import requests
+from selenium.webdriver.common.by import By
+
 from horey.h_logger import get_logger
 from horey.questrade_api.questrade_api_configuration_policy import (
     QuestradeAPIConfigurationPolicy,
@@ -30,6 +34,21 @@ class QuestradeAPI:
         self.api_server = configuration.api_server
         self._db_connection = None
         self._db_cursor = None
+        self._selenium_api = None
+
+    @property
+    def selenium_api(self):
+        """
+        Getter for selenium_api
+
+        :return:
+        """
+
+        if self._selenium_api is None:
+            from horey.selenium_api.selenium_api import SeleniumAPI
+            self._selenium_api = SeleniumAPI()
+            self._selenium_api.connect()
+        return self._selenium_api
 
     def create_request(self, request: str):
         """
@@ -45,7 +64,7 @@ class QuestradeAPI:
 
         return f"{self.api_server}/{request}"
 
-    def _get(self, request_path):
+    def _get(self, request_path, params=None):
         """
         Compose and send GET request.
 
@@ -56,7 +75,7 @@ class QuestradeAPI:
         request = self.create_request(request_path)
 
         headers = {"Authorization": f"Bearer {self.access_token}"}
-        response = requests.get(request, headers=headers)
+        response = requests.get(request, headers=headers, params=params)
 
         response.raise_for_status()
 
@@ -65,7 +84,7 @@ class QuestradeAPI:
         except Exception:
             return response.text
 
-    def get(self, request_path):
+    def get(self, request_path, params=None):
         """
         Compose and send GET request.
 
@@ -73,12 +92,12 @@ class QuestradeAPI:
         :return:
         """
         try:
-            return self._get(request_path)
+            return self._get(request_path, params=params)
         except Exception as inst:
             if "401" not in repr(inst):
                 raise
             self.connect(reconnect=True)
-            return self._get(request_path)
+            return self._get(request_path, params=params)
 
     def post(self, request_path, data):
         """
@@ -303,7 +322,7 @@ class QuestradeAPI:
         Get all stocks history.
         :return:
         """
-
+        raise NotImplementedError("This is a heavy operation, use with care")
         start_time = datetime(year=2026, month=4, day=13, hour=3, minute=0, second=0, tzinfo=timezone.utc)
         end_time = datetime(year=2026, month=4, day=13, hour=21, minute=2, second=0, tzinfo=timezone.utc)
         data_directory = self.configuration.data_directory / "daily_history_data" / f"{end_time.year}_{end_time.month}_{end_time.day}"
@@ -726,20 +745,20 @@ class QuestradeAPI:
         :return:
         """
 
-        candles = self.db_get_today_candles(symbol)
+        existing_candles = self.db_get_today_candles(symbol)
+        existing_pairs = [(candle.float_start, candle.float_end) for candle in existing_candles]
         today = datetime.now(timezone.utc)
         if today.hour < 3:
             today -= timedelta(days=1)
 
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
-        if candles:
-            pass
-            #logger.info(f"Today candles already exist for symbol {symbol.symbol} {len(candles)}")
-            #return candles
+
 
         candles = self.get_symbol_candles(symbol, utc_today_3am, utc_today_8pm)
         for candle in candles:
+            if (candle.float_start, candle.float_end) in existing_pairs:
+                continue
             self.db_upsert_candle(symbol.symbol_id, candle)
         return candles
 
@@ -819,7 +838,7 @@ class QuestradeAPI:
         cheapest_stocks = self.sort_and_print_cheapest_by_price()
         symbol_ids = [symbol[1] for symbol in cheapest_stocks if symbol[1] not in position_symbol_ids and
                       ((symbol_name is None) or (symbol[0] == symbol_name))]
-        orders = self.get_orders()
+        orders = self.api_get_orders()
         order_symbol_ids = [order.symbol_id for order in orders]
         symbol_ids = [symbol_id for symbol_id in symbol_ids if symbol_id not in order_symbol_ids]
 
@@ -836,17 +855,46 @@ class QuestradeAPI:
             symbols.append(symbol)
 
         for symbol in symbols:
-            candles_vwaps = [candle.vwap for candle in symbol.candles]
-            min_vwap = min(candles_vwaps)
-            max_vwap = max(candles_vwaps)
-            symbol.max_vwap_change =  min_vwap/max_vwap*100
+
+            symbol.vwap_change = self.calculate_vwap_change(symbol.candles)
             symbol.absolute_low = min([candle.low for candle in symbol.candles])
             symbol.absolute_high = max([candle.high for candle in symbol.candles])
 
-        for i, symbol in enumerate(sorted(symbols, key=lambda x: x.max_vwap_change)):
-            count = int(1 / symbol.absolute_low) + 1
-            print(f"[{i+1}] {symbol.symbol}, vwap_change={symbol.max_vwap_change}, max-min={symbol.absolute_high - symbol.absolute_low}, deals={len(symbol.candles)}, absolute_low={symbol.absolute_low}, count={count}")
+        str_ret = ""
+        for i, symbol in enumerate(sorted(symbols, key=lambda x: x.vwap_change)):
+            str_ret += f"[{i+1}] {symbol.symbol}, abs_low={symbol.absolute_low}, vwap_change={symbol.vwap_change}, deals={len(symbol.candles)}\n"
+
+        with open(self.configuration.data_directory/ "purchase_plan.txt", "w") as file:
+            file.write(str_ret)
+        print(f"Purchase_plan is ready: {self.configuration.data_directory/ 'purchase_plan.txt'}")
         return True
+    
+    @staticmethod
+    def calculate_vwap_change(candles):
+        """
+        Calculate vwap change
+        :param candles:
+        :return:
+        """
+
+        candles_vwaps = [candle.vwap for candle in candles]
+        min_vwap = min(candles_vwaps)
+        max_vwap = max(candles_vwaps)
+        vwap_change = min_vwap / max_vwap * 100
+        return QuestradeAPI.calculate_vwap_incline(candles) * vwap_change
+    
+    @staticmethod
+    def calculate_vwap_incline(candles):
+        """
+        Create a line on the vwap change and calculate incline.
+        :param candles:
+        :return:
+        """
+
+        x_data = [(candle.float_end + candle.float_start)/2 for candle in candles]
+        y_data = [candle.vwap for candle in candles]
+        slope, intercept, r_value, p_value, std_err = stats.linregress(x_data, y_data)
+        return 1 if (slope > 0) else -1
 
     @staticmethod
     def connected(func):
@@ -878,18 +926,23 @@ class QuestradeAPI:
         return response
 
     @connected
-    def get_orders(self):
+    def api_get_orders(self, state_filter="Open", start_time=None, end_time=None):
         """
         Plan purchase
+
+        state_filter: All, Open, Closed
 
         :return:
         """
 
-        start_time = datetime(2026, 4, 1, 0, 0, 0, tzinfo=timezone.utc)
-        iso_format = start_time.isoformat()
-        response = self.get(f"v1/accounts/{self.configuration.account}/orders?stateFilter=Open&startTime={iso_format}")
+        params = {"stateFilter": state_filter}
+        start_time = start_time or datetime(2026, 4, 1, 0, 0, 0, tzinfo=timezone.utc)
+        if start_time:
+            params["startTime"] = start_time.isoformat()
+        if end_time:
+            params["endTime"] = end_time.isoformat()
+        response = self.get(f"v1/accounts/{self.configuration.account}/orders", params=params)
         return [Order(dict_src) for dict_src in response["orders"]]
-
 
     def get_positions_without_sell_orders(self):
         """
@@ -906,7 +959,7 @@ class QuestradeAPI:
             lines.append(f">Time to buy! Buying power: {buying_power}")
 
         positions = self.get_positions()
-        orders = self.get_orders()
+        orders = self.api_get_orders()
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
         for position in positions:
             # todo: fix
@@ -935,3 +988,208 @@ class QuestradeAPI:
         for line in lines:
             logger.info(line)
         return True
+
+    @connected
+    def db_get_all_symbols(self):
+        """
+        Fetch all symbols from DB
+        :return:
+        """
+
+        self.db_cursor.execute('SELECT * FROM candles')
+        rows = self.db_cursor.fetchall()
+        if rows is None:
+            return None
+        ret = []
+        for row in rows:
+            ret.append(Symbol({
+                "symbol": row[1],
+                "symbolId": row[2],
+                "securityType": row[3],
+                "isTradable": row[4],
+                "isQuotable": row[5],
+                "currency": row[6],
+                "listingExchange": row[7],
+                "description": row[8],
+                "id": row[0]
+            }))
+        return ret
+
+    @connected
+    def cleanup_candles(self):
+        """
+        Cleanup candles, with duplicate times
+
+        :return:
+        """
+
+        ret = self.db_cursor.execute('SELECT * FROM candles group by symbol_id')
+        rows = self.db_cursor.fetchall()
+
+        for row in rows:
+            candles = self.db_get_symbol_candles(row[1])
+            del_candles = []
+            for i, candle_a in enumerate(candles):
+                for candle_b in candles[i+1:]:
+                    if candle_a.start == candle_b.start and candle_a.end == candle_b.end:
+                        del_candles.append(candle_b)
+            for candle in del_candles:
+                logger.info(f"Deleting duplicate: for symbol: {candle.symbol_id}, candle_id: {candle.id}")
+                self.db_delete_candle(candle)
+
+    def db_delete_candle(self, candle:Candle):
+        """
+        Delete candle
+
+        :param candle:
+        :return:
+        """
+        self.db_cursor.execute('DELETE FROM candles WHERE id = ?', (candle.dict_src["id"],))
+        self.db_connection.commit()
+
+    @connected
+    def api_get_activities(self, time_start=None, time_end=None):
+        """
+        Fetch account activities
+        :return:
+        """
+        if time_start is None:
+            today = datetime.now(timezone.utc)
+            if today.hour < 3:
+                today -= timedelta(days=1)
+            time_start = today.replace(hour=3, minute=0, second=0, microsecond=0)
+            time_end = today.replace(hour=20, minute=0, second=0, microsecond=0)
+
+        start_time = self.convert_time_to_request_format(time_start)
+        end_time = self.convert_time_to_request_format(time_end)
+
+        response = self.get(f"v1/accounts/{self.configuration.account}/activities?startTime={start_time}&endTime={end_time}")
+        activities = response["activities"]
+        return activities
+
+
+    def selenium_login(self):
+        """
+        login via selenium
+        :return:
+        """
+
+        self.selenium_api.get("https://login.questrade.com/Account/Login")
+        self.selenium_api.fill_input("userId", self.configuration.user)
+        time.sleep(1)
+        self.selenium_api.fill_input("password", self.configuration.password)
+        time.sleep(2)
+        btn_container = self.selenium_api.get_element(By.CLASS_NAME, "container-action")
+        btn = btn_container.find_element(By.NAME ,"button")
+        btn.click()
+
+    def open_symbol_page(self, symbol_name):
+        """
+        Open symbol page
+        :param symbol_name:
+        :return:
+        """
+
+        raise NotImplementedError()
+    
+    def write_to_cache(self, lst_obj):
+        """
+        Write list of objects to cache
+        :param lst_obj:
+        :return:
+        """
+        ret = [obj.dict_src for obj in lst_obj]
+        file_name = lst_obj[0].__class__.__name__.lower() + "s_cache.json"
+        with open(self.configuration.data_directory / file_name, "w") as file:
+            json.dump(ret, file, indent=2)
+
+    def load_from_cache(self, obj_class):
+        """
+        Write list of objects to cache
+        :param obj_class:
+        :return:
+        """
+        file_name = obj_class.__name__.lower() + "s_cache.json"
+        with open(self.configuration.data_directory / file_name) as file:
+            order_dicts = json.load(file)
+        return [obj_class(dict_src) for dict_src in order_dicts]
+
+    def generate_profit_review(self, start_time, end_time):
+        """
+        Analise profit
+        :return:
+        """
+
+        total_profit = 0.0
+        orders = self.api_get_orders(state_filter="Closed", start_time=start_time, end_time=end_time)
+        self.write_to_cache(orders)
+        base_orders = self.load_from_cache(Order)
+        orders = [order for order in base_orders if order.state == "Executed"]
+        symbol_to_orders =  self.split_orders_by_symbol(orders)
+
+        for symbol_id, symbol_to_orders in symbol_to_orders.items():
+            symbol_buy_price = 0
+            symbol_owned_quantity = 0
+            commission = 0
+
+            for order in symbol_to_orders:
+                if order.placement_commission:
+                    breakpoint()
+                    logger.info(f"{order.symbol_id} {order.placement_commission}")
+
+                if order.commission_charged:
+                    commission += order.commission_charged
+
+                if order.side == "Buy":
+                    buy_quantity = order.filled_quantity or order.total_quantity
+                    if buy_quantity is None:
+                        breakpoint()
+                    buy_price_unit = order.limit_price or order.avg_exec_price
+                    if buy_price_unit is None:
+                        breakpoint()
+
+                    new_quantity = symbol_owned_quantity + buy_quantity
+                    symbol_buy_price =  (symbol_buy_price*symbol_owned_quantity + buy_price_unit * buy_quantity) / new_quantity
+                    symbol_owned_quantity = new_quantity
+                    continue
+
+                if symbol_owned_quantity == 0:
+                    # did not acquire in this time range.
+                    continue
+
+                sell_quantity = order.total_quantity
+                if sell_quantity is None:
+                    breakpoint()
+
+                if symbol_owned_quantity < sell_quantity:
+                    breakpoint()
+
+                symbol_owned_quantity -= sell_quantity
+
+                sell_price_unit = order.avg_exec_price or order.limit_price
+                if sell_price_unit is None:
+                    breakpoint()
+                sell_price = sell_price_unit * sell_quantity
+                buy_price = symbol_buy_price * sell_quantity
+
+                profit = sell_price - buy_price - commission
+                commission = 0
+                total_profit += profit
+                print(f"{symbol_id} {profit=} {sell_quantity=} {symbol_owned_quantity=}")
+        print(f"Total profit: {total_profit}")
+        return True
+
+    @staticmethod
+    def split_orders_by_symbol(orders: List[Order]):
+        """
+        Split orders by symbol_id
+        Keep order sequence
+        :param orders:
+        :return:
+        """
+        symbol_to_orders = {}
+        for order in orders:
+            if order.symbol_id not in symbol_to_orders:
+                symbol_to_orders[order.symbol_id] = []
+            symbol_to_orders[order.symbol_id].append(order)
+        return symbol_to_orders

@@ -1,8 +1,22 @@
 from datetime import datetime, timezone
 
-class Candle:
+class Base:
     def __init__(self, dict_src):
         self.dict_src = dict_src
+        self.id = dict_src["id"] if "id" in dict_src else None
+
+    def print(self):
+        """
+        Print object params
+        :return:
+        """
+        for x, y in self.__dict__.items():
+            if not x.startswith("_"):
+                print(f"{x}: {y}")
+
+class Candle(Base):
+    def __init__(self, dict_src):
+        super().__init__(dict_src)
         self._end = None
         self._start = None
         self._float_start = None
@@ -100,9 +114,9 @@ class Candle:
         raise NotImplementedError("Implement me")
 
 
-class Symbol:
+class Symbol(Base):
     def __init__(self, dict_src):
-        self.dict_src = dict_src
+        super().__init__(dict_src)
         self.symbol = dict_src["symbol"]
         self.symbol_id = dict_src["symbolId"]
         self.security_type = dict_src["securityType"]
@@ -112,11 +126,9 @@ class Symbol:
         self.listing_exchange = dict_src["listingExchange"]
         self.description = dict_src["description"]
 
-        self.id = dict_src["id"] if "id" in dict_src else None
-
         self.candles = []
 
-class Position:
+class Position(Base):
     def __init__(self, dict_src):
         """
         {'symbol': 'ITRMF',
@@ -135,7 +147,7 @@ class Position:
 
         :param dict_src:
         """
-        self.dict_src = dict_src
+        super().__init__(dict_src)
 
         self.symbol = dict_src["symbol"]
         self.symbol_id = dict_src["symbolId"]
@@ -152,14 +164,14 @@ class Position:
         self.is_under_reorg = dict_src["isUnderReorg"]
 
 
-class Order:
+class Order(Base):
     def __init__(self, dict_src):
         """
         dict_src = {'id': 1750935419, 'symbol': 'ZSPC', 'symbolId': 73637676, 'totalQuantity': 21, 'openQuantity': 21, 'filledQuantity': 0, 'canceledQuantity': 0, 'side': 'Buy', 'orderType': 'Limit', 'limitPrice': 0.0488, 'stopPrice': None, 'isAllOrNone': False, 'isAnonymous': False, 'icebergQuantity': None, 'minQuantity': None, 'avgExecPrice': 0, 'lastExecPrice': None, 'source': 'Undefined', 'timeInForce': 'GoodTillExtendedDay', 'gtdDate': None, 'state': 'Accepted', 'rejectionReason': '', 'chainId': 1750935419, 'creationTime': '2026-04-21T07:52:19.088000-04:00', 'updateTime': '2026-04-21T07:52:19.139000-04:00', 'notes': '', 'primaryRoute': 'AUTO', 'secondaryRoute': 'AUTO', 'orderRoute': 'CTDLBN', 'venueHoldingOrder': 'CTDLBN', 'comissionCharged': 0, 'exchangeOrderId': '260421-115219-1', 'isSignificantShareHolder': False, 'isInsider': False, 'isLimitOffsetInDollar': False, 'userId': 2932875, 'placementCommission': None, 'legs': [], 'strategyType': 'SingleLeg', 'triggerStopPrice': None, 'orderGroupId': 0, 'orderClass': None, 'isCrossZero': False}
 
         :param dict_src:
         """
-        self.dict_src = dict_src
+        super().__init__(dict_src)
         self.order_id = dict_src["id"]
         self.symbol_id = dict_src["symbolId"]
         self.total_quantity = dict_src["totalQuantity"]
@@ -179,7 +191,11 @@ class Order:
         self.strategy_type = dict_src["strategyType"]
         self.order_class = dict_src["orderClass"]
         self.is_cross_zero = dict_src["isCrossZero"]
-
-
-
-
+        if "comissionCharged" in dict_src:
+            self.commission_charged = dict_src["comissionCharged"]
+        if "placementCommission" in dict_src:
+            self.placement_commission = dict_src["placementCommission"]
+        if "stopPrice" in dict_src:
+            self.stop_price = dict_src["stopPrice"]
+        if "avgExecPrice" in dict_src:
+            self.avg_exec_price = dict_src["avgExecPrice"]

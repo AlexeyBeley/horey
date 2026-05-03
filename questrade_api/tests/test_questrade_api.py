@@ -2,11 +2,14 @@
 Testing questrade api functionality.
 
 """
+import json
 import time
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import pytest
 
+from horey.questrade_api.items import Candle
 from horey.questrade_api.questrade_api import QuestradeAPI, QuestradeAPIConfigurationPolicy
 
 """
@@ -36,6 +39,24 @@ class Configs(ConfigurationPolicy):
         self._token = None
         self._account = None
         self._api_server = None
+        self._user = None
+        self._password = None
+
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, value):
+        self._password = value
+
+    @property
+    def user(self):
+        return self._user
+
+    @user.setter
+    def user(self, value):
+        self._user = value
 
     @property
     def api_server(self):
@@ -65,6 +86,8 @@ class Configs(ConfigurationPolicy):
 @pytest.fixture(name="tests_config")
 def fixture_tests_config():
     configuration = Configs()
+    configuration.user = test_mock_values.user
+    configuration.password= test_mock_values.password
     configuration.token = test_mock_values.token
     configuration.account = test_mock_values.account
     configuration.api_server = test_mock_values.api_server
@@ -75,6 +98,8 @@ def fixture_tests_config():
 def fixture_questrade_api(tests_config):
     configuration = QuestradeAPIConfigurationPolicy()
     configuration.token = tests_config.token
+    configuration.password = tests_config.password
+    configuration.user = tests_config.user
     configuration.account = tests_config.account
     configuration.api_server = tests_config.api_server
 
@@ -166,17 +191,48 @@ def test_sort_and_print_cheapest_by_price(questrade_api):
 def test_check_strategy_one_persent_below_current(questrade_api):
     assert questrade_api.check_strategy_one_persent_below_current(52015918)
 
+@pytest.mark.unit
+def test_selenium_login(questrade_api):
+    assert questrade_api.selenium_login()
+
+@pytest.mark.unit
+def test_cleanup_candles(questrade_api):
+    assert questrade_api.cleanup_candles()
+
+@pytest.mark.unit
+def test_get_activities(questrade_api):
+    assert questrade_api.get_activities()
+
 @pytest.mark.wip
+def test_generate_profit_review(questrade_api):
+    today = datetime.now(timezone.utc)
+    if today.hour < 3:
+        today -= timedelta(days=1)
+    time_start = today.replace(hour=3, minute=0, second=0, microsecond=0) - timedelta(days=30)
+    time_end = today.replace(hour=20, minute=0, second=0, microsecond=0)
+
+    assert questrade_api.generate_profit_review(time_start, time_end)
+
+@pytest.mark.unit
 def test_update_cheap_candles_with_today_data(questrade_api):
     assert questrade_api.update_cheap_candles_with_today_data()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_make_purchase_plan(questrade_api):
     assert questrade_api.make_purchase_plan()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_get_positions_without_sell_orders(questrade_api):
     for _ in range(60*2):
         assert questrade_api.get_positions_without_sell_orders()
         logger.info("Sleeping 60 seconds...")
         time.sleep(60)
+
+@pytest.mark.unit
+def test_calculate_vwap_incline(questrade_api):
+    with open(Path(__file__).parent / "candles_sample.json") as fh:
+        candle_dicts = json.load(fh)
+    candles = [Candle(dict_src) for dict_src in candle_dicts]
+    assert questrade_api.calculate_vwap_incline(candles)
+
+

@@ -60,6 +60,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._schedule_expression = None
         self._cron_name = None
         self._adhoc_task_name = None
+        self._service_security_group_name = None
 
     @property
     def adhoc_task_name(self):
@@ -527,3 +528,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
                 raise
 
         return False
+
+    @property
+    def service_security_group_name(self):
+        return f"sg_{self.cluster_name}-service-{self.service_name}"

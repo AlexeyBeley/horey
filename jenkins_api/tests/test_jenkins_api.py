@@ -142,7 +142,7 @@ def test_backup_jobs():
     jenkins_api.backup_jobs("./backups")
 
 
-@pytest.mark.unit
+@pytest.mark.done
 def test_get_all_jobs():
     ret = jenkins_api.get_all_jobs()
     assert isinstance(ret, list)

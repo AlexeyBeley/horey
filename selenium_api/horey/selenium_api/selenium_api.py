@@ -212,6 +212,12 @@ class SeleniumAPI:
         return SeleniumAPI.driver.get(url)
 
     def fill_input(self, str_id, input_data):
+        """
+        Fill id
+        :param str_id:
+        :param input_data:
+        :return:
+        """
         search_box = self.get_by_id(str_id)
         search_box.send_keys(input_data)
         return search_box
