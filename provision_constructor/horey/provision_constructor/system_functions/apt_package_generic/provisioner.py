@@ -197,6 +197,7 @@ class Provisioner(SystemFunctionCommon):
             logger.info(f"[REMOTE] [{self.remoter.get_host_address()}] Validation ignores {lst_stderr=} {status_code=}")
             lines = [line.strip("\n") for line in lst_stdout]
             self.validate_apt_update_output(lines)
+            return True
 
         stdout, _, _ = self.remoter.execute("sudo DEBIAN_FRONTEND=noninteractive apt update"
                                                        " --allow-releaseinfo-change"
