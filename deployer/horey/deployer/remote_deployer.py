@@ -71,8 +71,10 @@ class SSHRemoter(Remoter):
         :return:
         """
 
-        while retries > 0:
-            retries -= 1
+        validation_retries = retries
+
+        while validation_retries > 0:
+            validation_retries -= 1
 
             errors = []
             _, lst_stdout, lst_stderr, status_code = self.executor(command, timeout=timeout, retries=retries)
@@ -88,9 +90,9 @@ class SSHRemoter(Remoter):
             except Exception as inst_err:
                 logger.error(f"[REMOTE] [{self.host_address}] Command failed: {command}")
                 logger.error(f"[REMOTE] [{self.host_address}] Error: {repr(inst_err)}")
-                if retries == 0:
+                if validation_retries == 0:
                     raise
-                logger.warning(f"[REMOTE] [{self.host_address}] Retrying command: {command}, retries left: {retries}")
+                logger.warning(f"[REMOTE] [{self.host_address}] Retrying command: {command}, validation retries left: {validation_retries}")
                 time.sleep(5)
 
         raise RuntimeError(f"[REMOTE] [{self.host_address}] Unexpected status")
