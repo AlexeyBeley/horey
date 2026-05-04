@@ -1335,6 +1335,7 @@ class RemoteDeployer:
 
             time.sleep(sleep_time)
         else:
+            logger.info()
             error_type = TimeoutError
 
         failed = False
