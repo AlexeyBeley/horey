@@ -184,13 +184,25 @@ class Provisioner(SystemFunctionCommon):
             return True
 
         self.unlock_dpckg_lock_remote()
+
+        def validator(lst_stdout, lst_stderr, status_code):
+            """
+            Validate apt update result.
+            :param lst_stdout:
+            :param lst_stderr:
+            :param status_code:
+            :return:
+            """
+
+            logger.info(f"[REMOTE] [{self.remoter.get_host_address()}] Validation ignores {lst_stderr=} {status_code=}")
+            lines = [line.strip("\n") for line in lst_stdout]
+            self.validate_apt_update_output(lines)
+
         stdout, _, _ = self.remoter.execute("sudo DEBIAN_FRONTEND=noninteractive apt update"
                                                        " --allow-releaseinfo-change"
                                                        " -o Dpkg::Options::=\"--force-confdef\""
-                                                       " -o Dpkg::Options::=\"--force-confnew\"", retries=5)
-
-        lines = [line.strip("\n") for line in stdout]
-        self.validate_apt_update_output(lines)
+                                                       " -o Dpkg::Options::=\"--force-confnew\"",
+                                            validator, retries=5)
 
         self.remoter.get_state()["APT_PACKAGES_UPDATED"] = True
         self.remoter.get_state()["APT_PACKAGES"] = []

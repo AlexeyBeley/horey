@@ -13,7 +13,6 @@ import stat
 import traceback
 
 from contextlib import contextmanager
-from logging import exception
 from pathlib import Path
 from typing import List, Any, Tuple
 
@@ -45,6 +44,13 @@ class SSHRemoter(Remoter):
         self.sftp_client = sftp_client
         logger.info(f"Setting remote deployment dir in deployer: {remote_deployment_dir}")
         self.remote_deployment_dir = remote_deployment_dir
+
+    def get_host_address(self):
+        """
+        Get host address
+        :return:
+        """
+        return self.host_address
 
     def get_state(self) -> dict:
         """
