@@ -18,6 +18,13 @@ class Remoter(ABC):
         :return:
         """
 
+    def get_host_address(self) -> str:
+        """
+        Get host address
+
+        :return:
+        """
+
     @abstractmethod
     def get_deployment_dir(self) -> Path:
         """

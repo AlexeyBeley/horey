@@ -13,7 +13,6 @@ import stat
 import traceback
 
 from contextlib import contextmanager
-from logging import exception
 from pathlib import Path
 from typing import List, Any, Tuple
 
@@ -38,12 +37,20 @@ class SSHRemoter(Remoter):
 
     """
 
-    def __init__(self, executor, sftp_client, remote_deployment_dir: Path):
+    def __init__(self, executor, sftp_client, remote_deployment_dir: Path, host_address=None):
         self._state = {}
+        self.host_address = host_address
         self.executor = executor
         self.sftp_client = sftp_client
         logger.info(f"Setting remote deployment dir in deployer: {remote_deployment_dir}")
         self.remote_deployment_dir = remote_deployment_dir
+
+    def get_host_address(self):
+        """
+        Get host address
+        :return:
+        """
+        return self.host_address
 
     def get_state(self) -> dict:
         """
@@ -64,18 +71,31 @@ class SSHRemoter(Remoter):
         :return:
         """
 
-        errors = []
-        _, lst_stdout, lst_stderr, status_code = self.executor(command, timeout=timeout, retries=retries)
+        validation_retries = retries
 
-        for output_validator in output_validators:
+        while validation_retries > 0:
+            validation_retries -= 1
+
+            errors = []
+            _, lst_stdout, lst_stderr, status_code = self.executor(command, timeout=timeout, retries=retries)
+            logger.info(f"[REMOTE] [{self.host_address}] Finished execution, starting output validators")
+
             try:
-                if not output_validator(lst_stdout, lst_stderr, status_code):
-                    errors.append("Validation function returned False should have raised Exception or return True if succeeded")
-            except Exception as inst_error:
-                errors.append(repr(inst_error))
-        if errors:
-            raise RuntimeError("Validation failed "+ ", ".join(errors))
-        return lst_stdout, lst_stderr, status_code
+                for output_validator in output_validators:
+                    if not output_validator(lst_stdout, lst_stderr, status_code):
+                        errors.append("Validation function returned False should have raised Exception or return True if succeeded")
+                if errors:
+                    raise RuntimeError("Validation failed "+ ", ".join(errors))
+                return lst_stdout, lst_stderr, status_code
+            except Exception as inst_err:
+                logger.error(f"[REMOTE] [{self.host_address}] Command failed: {command}")
+                logger.error(f"[REMOTE] [{self.host_address}] Error: {repr(inst_err)}")
+                if validation_retries == 0:
+                    raise
+                logger.warning(f"[REMOTE] [{self.host_address}] Retrying command: {command}, validation retries left: {validation_retries}")
+                time.sleep(5)
+
+        raise RuntimeError(f"[REMOTE] [{self.host_address}] Unexpected status")
 
     def put_file(self, src: Path, dst: Path, sudo: bool = False):
         """
@@ -511,8 +531,13 @@ class RemoteDeployer:
                 time.sleep(1)
             except Exception as inst_error_tmp:
                 inst_error = inst_error_tmp
+
+                logger.error(f"[REMOTE] [{remote_address}] Received error ({repr(inst_error_tmp)})")
+
                 if not retry_on_exception:
+                    logger.error(f"[REMOTE] [{remote_address}] {retry_on_exception=}. Reraising ({repr(inst_error_tmp)})")
                     raise
+
                 logger.warning(f"{remote_address} retrying to execute {i + 1}/{retries}")
                 time.sleep(1)
         raise RemoteDeployer.DeployerError(f"{remote_address} Reached timeout waiting for SSH response") from inst_error
@@ -1592,7 +1617,7 @@ class RemoteDeployer:
                 self.sftp_clients[key] = client
         return client
 
-    def get_remoter(self, target, windows=False, default_timeout=60*60) -> SSHRemoter:
+    def get_remoter(self, target:DeploymentTarget, windows=False, default_timeout=60*60) -> SSHRemoter:
         """
         Create remoter.
 
@@ -1629,6 +1654,7 @@ class RemoteDeployer:
             silent_shell_command = 'export PS1=""'
 
             stdin, shout, [], exit_status = self.execute_remote_shell(channel, silent_shell_command, target.deployment_target_address)
+            logger.info(f"[REMOTE] [{target.deployment_target_address}] Initialized remote shell with params: {stdin=}, {shout=}, {exit_status=}")
             def executor(command:str, timeout:int=None, retries=1):
                 """
                 Reuse channel
@@ -1658,6 +1684,6 @@ class RemoteDeployer:
             return self.execute_windows(ssh_client, command, target.deployment_target_address, timeout=timeout, retries=retries)
 
 
-        ret = SSHRemoter(executor_windows if windows else init_executor_linux(), sftp_client,  target.remote_deployment_dir_path)
+        ret = SSHRemoter(executor_windows if windows else init_executor_linux(), sftp_client,  target.remote_deployment_dir_path, host_address=target.deployment_target_address)
 
         return ret
