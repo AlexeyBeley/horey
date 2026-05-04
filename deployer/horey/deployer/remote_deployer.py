@@ -513,10 +513,13 @@ class RemoteDeployer:
                 time.sleep(1)
             except Exception as inst_error_tmp:
                 inst_error = inst_error_tmp
+
                 logger.error(f"[REMOTE] [{remote_address}] Received error ({repr(inst_error_tmp)})")
+
                 if not retry_on_exception:
                     logger.error(f"[REMOTE] [{remote_address}] {retry_on_exception=}. Reraising ({repr(inst_error_tmp)})")
                     raise
+
                 logger.warning(f"{remote_address} retrying to execute {i + 1}/{retries}")
                 time.sleep(1)
         raise RemoteDeployer.DeployerError(f"{remote_address} Reached timeout waiting for SSH response") from inst_error
@@ -1633,6 +1636,7 @@ class RemoteDeployer:
             silent_shell_command = 'export PS1=""'
 
             stdin, shout, [], exit_status = self.execute_remote_shell(channel, silent_shell_command, target.deployment_target_address)
+            logger.info(f"[REMOTE] [{target.deployment_target_address}] Initialized remote shell with params: {stdin=}, {shout=}, {exit_status=}")
             def executor(command:str, timeout:int=None, retries=1):
                 """
                 Reuse channel
