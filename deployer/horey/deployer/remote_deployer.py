@@ -71,19 +71,29 @@ class SSHRemoter(Remoter):
         :return:
         """
 
-        errors = []
-        _, lst_stdout, lst_stderr, status_code = self.executor(command, timeout=timeout, retries=retries)
-        logger.info(f"[REMOTE] [{self.host_address}] Finished execution, starting output validators")
+        while retries > 0:
+            retries -= 1
 
-        for output_validator in output_validators:
+            errors = []
+            _, lst_stdout, lst_stderr, status_code = self.executor(command, timeout=timeout, retries=retries)
+            logger.info(f"[REMOTE] [{self.host_address}] Finished execution, starting output validators")
+
             try:
-                if not output_validator(lst_stdout, lst_stderr, status_code):
-                    errors.append("Validation function returned False should have raised Exception or return True if succeeded")
-            except Exception as inst_error:
-                errors.append(repr(inst_error))
-        if errors:
-            raise RuntimeError("Validation failed "+ ", ".join(errors))
-        return lst_stdout, lst_stderr, status_code
+                for output_validator in output_validators:
+                    if not output_validator(lst_stdout, lst_stderr, status_code):
+                        errors.append("Validation function returned False should have raised Exception or return True if succeeded")
+                if errors:
+                    raise RuntimeError("Validation failed "+ ", ".join(errors))
+                return lst_stdout, lst_stderr, status_code
+            except Exception as inst_err:
+                logger.error(f"[REMOTE] [{self.host_address}] Command failed: {command}")
+                logger.error(f"[REMOTE] [{self.host_address}] Error: {repr(inst_err)}")
+                if retries == 0:
+                    raise
+                logger.warning(f"[REMOTE] [{self.host_address}] Retrying command: {command}, retries left: {retries}")
+                time.sleep(5)
+
+        raise RuntimeError(f"[REMOTE] [{self.host_address}] Unexpected status")
 
     def put_file(self, src: Path, dst: Path, sudo: bool = False):
         """
