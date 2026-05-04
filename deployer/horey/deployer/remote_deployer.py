@@ -38,8 +38,9 @@ class SSHRemoter(Remoter):
 
     """
 
-    def __init__(self, executor, sftp_client, remote_deployment_dir: Path):
+    def __init__(self, executor, sftp_client, remote_deployment_dir: Path, host_address=None):
         self._state = {}
+        self.host_address = host_address
         self.executor = executor
         self.sftp_client = sftp_client
         logger.info(f"Setting remote deployment dir in deployer: {remote_deployment_dir}")
@@ -66,6 +67,7 @@ class SSHRemoter(Remoter):
 
         errors = []
         _, lst_stdout, lst_stderr, status_code = self.executor(command, timeout=timeout, retries=retries)
+        logger.info(f"[REMOTE] [{self.host_address}] Finished execution, starting output validators")
 
         for output_validator in output_validators:
             try:
@@ -511,7 +513,9 @@ class RemoteDeployer:
                 time.sleep(1)
             except Exception as inst_error_tmp:
                 inst_error = inst_error_tmp
+                logger.error(f"[REMOTE] [{remote_address}] Received error ({repr(inst_error_tmp)})")
                 if not retry_on_exception:
+                    logger.error(f"[REMOTE] [{remote_address}] {retry_on_exception=}. Reraising ({repr(inst_error_tmp)})")
                     raise
                 logger.warning(f"{remote_address} retrying to execute {i + 1}/{retries}")
                 time.sleep(1)
@@ -1592,7 +1596,7 @@ class RemoteDeployer:
                 self.sftp_clients[key] = client
         return client
 
-    def get_remoter(self, target, windows=False, default_timeout=60*60) -> SSHRemoter:
+    def get_remoter(self, target:DeploymentTarget, windows=False, default_timeout=60*60) -> SSHRemoter:
         """
         Create remoter.
 
@@ -1658,6 +1662,6 @@ class RemoteDeployer:
             return self.execute_windows(ssh_client, command, target.deployment_target_address, timeout=timeout, retries=retries)
 
 
-        ret = SSHRemoter(executor_windows if windows else init_executor_linux(), sftp_client,  target.remote_deployment_dir_path)
+        ret = SSHRemoter(executor_windows if windows else init_executor_linux(), sftp_client,  target.remote_deployment_dir_path, host_address=target.deployment_target_address)
 
         return ret
