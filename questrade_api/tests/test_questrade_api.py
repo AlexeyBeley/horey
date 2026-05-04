@@ -203,7 +203,7 @@ def test_cleanup_candles(questrade_api):
 def test_get_activities(questrade_api):
     assert questrade_api.get_activities()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_generate_profit_review(questrade_api):
     today = datetime.now(timezone.utc)
     if today.hour < 3:
@@ -213,15 +213,15 @@ def test_generate_profit_review(questrade_api):
 
     assert questrade_api.generate_profit_review(time_start, time_end)
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_update_cheap_candles_with_today_data(questrade_api):
     assert questrade_api.update_cheap_candles_with_today_data()
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_make_purchase_plan(questrade_api):
     assert questrade_api.make_purchase_plan()
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_get_positions_without_sell_orders(questrade_api):
     for _ in range(60*2):
         assert questrade_api.get_positions_without_sell_orders()

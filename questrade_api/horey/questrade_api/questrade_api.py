@@ -880,6 +880,8 @@ class QuestradeAPI:
         candles_vwaps = [candle.vwap for candle in candles]
         min_vwap = min(candles_vwaps)
         max_vwap = max(candles_vwaps)
+        if min_vwap == max_vwap:
+            return 0
         vwap_change = min_vwap / max_vwap * 100
         return QuestradeAPI.calculate_vwap_incline(candles) * vwap_change
     
