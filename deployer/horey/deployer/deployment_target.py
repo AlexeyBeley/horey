@@ -98,7 +98,7 @@ class DeploymentTarget:
         step = DeploymentStep(step_configuration)
         self.add_step(step)
 
-    def append_remote_step(self, name, entrypoint):
+    def append_remote_step(self, name, entrypoint, sleep_time=5, retry_attempts=12):
         """
         Add remote step
 
@@ -107,7 +107,7 @@ class DeploymentTarget:
         :return:
         """
 
-        step = RemoteDeploymentStep(name, entrypoint)
+        step = RemoteDeploymentStep(name, entrypoint, sleep_time=5, retry_attempts=12)
         self.add_step(step)
 
     class StatusCode(Enum):
