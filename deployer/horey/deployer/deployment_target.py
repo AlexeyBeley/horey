@@ -107,7 +107,7 @@ class DeploymentTarget:
         :return:
         """
 
-        step = RemoteDeploymentStep(name, entrypoint, sleep_time=5, retry_attempts=12)
+        step = RemoteDeploymentStep(name, entrypoint, sleep_time=sleep_time, retry_attempts=retry_attempts)
         self.add_step(step)
 
     class StatusCode(Enum):
