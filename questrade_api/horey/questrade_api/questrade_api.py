@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import List
 from scipy import stats
+from decimal import Decimal, ROUND_HALF_UP
 
 import requests
 from selenium.webdriver.common.by import By
@@ -861,7 +862,7 @@ class QuestradeAPI:
             symbol.absolute_high = max([candle.high for candle in symbol.candles])
 
         str_ret = ""
-        for i, symbol in enumerate(sorted(symbols, key=lambda x: x.vwap_change)):
+        for i, symbol in enumerate(sorted(symbols, key=lambda x: abs(x.vwap_change))):
             str_ret += f"[{i+1}] {symbol.symbol}, abs_low={symbol.absolute_low}, vwap_change={symbol.vwap_change}, deals={len(symbol.candles)}\n"
 
         with open(self.configuration.data_directory/ "purchase_plan.txt", "w") as file:
@@ -983,7 +984,15 @@ class QuestradeAPI:
                 else:
                     sell_calculated = percent_105
 
-                lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculated}, revenue={int(sell_calculated/( position.average_entry_price/100))}%")
+                sell_calculated = Decimal(str(sell_calculated))
+
+                # Round to 2 decimal places
+                sell_calculated_round = sell_calculated.quantize(Decimal("0.00"), rounding=ROUND_HALF_UP)
+
+                if sell_calculated_round < sell_calculated:
+                    sell_calculated_round += Decimal("0.01")
+
+                lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculated_round}, revenue={int(sell_calculated/( Decimal(str(position.average_entry_price))/100))}%")
         if lines:
             lines = (["#################################","#################################"] + lines +
                      ["#################################", "#################################"])
@@ -1189,6 +1198,7 @@ class QuestradeAPI:
         :param orders:
         :return:
         """
+
         symbol_to_orders = {}
         for order in orders:
             if order.symbol_id not in symbol_to_orders:

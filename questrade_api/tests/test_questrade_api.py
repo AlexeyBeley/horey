@@ -177,9 +177,9 @@ def test_provision_db(questrade_api):
     assert questrade_api.provision_db_symbols_table()
     assert questrade_api.provision_db_candles_table()
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_fetch_symbols_by_max_price(questrade_api):
-    assert questrade_api.fetch_symbols_by_max_price(2)
+    assert questrade_api.fetch_symbols_by_max_price(4)
 
 
 @pytest.mark.unit
@@ -204,6 +204,14 @@ def test_get_activities(questrade_api):
     assert questrade_api.get_activities()
 
 @pytest.mark.unit
+def test_calculate_vwap_incline(questrade_api):
+    with open(Path(__file__).parent / "candles_sample.json") as fh:
+        candle_dicts = json.load(fh)
+    candles = [Candle(dict_src) for dict_src in candle_dicts]
+    assert questrade_api.calculate_vwap_incline(candles)
+
+
+@pytest.mark.unit
 def test_generate_profit_review(questrade_api):
     today = datetime.now(timezone.utc)
     if today.hour < 3:
@@ -217,7 +225,7 @@ def test_generate_profit_review(questrade_api):
 def test_update_cheap_candles_with_today_data(questrade_api):
     assert questrade_api.update_cheap_candles_with_today_data()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_make_purchase_plan(questrade_api):
     assert questrade_api.make_purchase_plan()
 
@@ -227,12 +235,4 @@ def test_get_positions_without_sell_orders(questrade_api):
         assert questrade_api.get_positions_without_sell_orders()
         logger.info("Sleeping 60 seconds...")
         time.sleep(60)
-
-@pytest.mark.unit
-def test_calculate_vwap_incline(questrade_api):
-    with open(Path(__file__).parent / "candles_sample.json") as fh:
-        candle_dicts = json.load(fh)
-    candles = [Candle(dict_src) for dict_src in candle_dicts]
-    assert questrade_api.calculate_vwap_incline(candles)
-
 
