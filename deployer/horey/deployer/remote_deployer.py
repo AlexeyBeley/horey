@@ -1282,7 +1282,7 @@ class RemoteDeployer:
         """
 
         total_time = max(total_time, max(
-            step.sleep_time * step.retry_attempts for target in targets for step in
+            step.sleep_time * step.retryeleattempts for target in targets for step in
             target.steps))
         logger.info(f"New time to finish calculated from steps and default: {total_time} seconds")
 

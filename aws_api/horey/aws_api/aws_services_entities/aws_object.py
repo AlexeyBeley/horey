@@ -44,7 +44,28 @@ class AwsObject:
         self.tags = []
         self._region = None
         self._arn = None
-        self.account_id = None
+        self._account_id = None
+
+    @property
+    def account_id(self):
+        """
+        AWS account id
+        :return:
+        """
+        if not self._account_id:
+            if not self.arn:
+                raise ValueError("account id and arn not set")
+            self._account_id = self.arn.split(":")[4]
+        return self._account_id
+
+    @account_id.setter
+    def account_id(self, value):
+        """
+        Setter
+        :param value:
+        :return:
+        """
+        self._account_id = value
 
     def _init_from_cache(self, dict_src, dict_options):
         """

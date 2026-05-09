@@ -604,6 +604,8 @@ class ELBV2Client(Boto3Client):
             self.clear_cache(LoadBalancer.Listener)
             return response
 
+        return None
+
     def update_rule_information(self, rule: LoadBalancer.Rule, region_rules=None):
         """
         Standard.
@@ -616,11 +618,36 @@ class ELBV2Client(Boto3Client):
         region_rules = region_rules or self.get_region_rules(
             rule.region, full_information=False, listener_arn=rule.listener_arn
         )
+        if not rule.actions or len(rule.actions) != 1:
+            raise NotImplementedError(rule.actions)
+        if len(rule.actions[0]["ForwardConfig"]["TargetGroups"]) != 1:
+            raise NotImplementedError(rule.actions)
 
+        target_group_arn = rule.actions[0]["ForwardConfig"]["TargetGroups"][0]["TargetGroupArn"]
+        by_tag = []
+        by_target_group = []
         for region_rule in region_rules:
             if region_rule.get_tagname(ignore_missing_tag=True) == rule.get_tagname():
-                rule.update_from_raw_response(region_rule.dict_src)
-                return True
+                by_tag.append(region_rule)
+            try:
+                current_tg_arn = region_rule.actions[0]["ForwardConfig"]["TargetGroups"][0]["TargetGroupArn"]
+                if target_group_arn == current_tg_arn:
+                    by_target_group.append(region_rule)
+            except Exception:
+                pass
+
+        if len(by_tag) > 1:
+            raise ValueError(f"Expected single rule, found {[_rule.arn for _rule in by_tag]}")
+
+        if by_tag and not by_target_group:
+            raise ValueError("Found rule by tag but not by target group")
+
+        if {_rule.arn for _rule in by_tag} != {_rule.arn for _rule in by_target_group}:
+            raise ValueError(f"{by_tag[0].arn} != {by_target_group[0].arn}")
+
+        if by_tag:
+            by_tag[0].listener_arn = rule.listener_arn
+            return rule.update_from_attrs(by_tag[0])
 
         return False
 
@@ -633,11 +660,9 @@ class ELBV2Client(Boto3Client):
         """
 
         current_rule = LoadBalancer.Rule({})
-        current_rule.listener_arn = rule.listener_arn
+        current_rule.update_from_attrs(rule)
         if current_rule.tags is None:
             raise ValueError(f"Tags were not set: {rule.listener_arn=}")
-        current_rule.tags = rule.tags
-
         if self.update_rule_information(current_rule):
             rule.arn = current_rule.arn
             modify_request = current_rule.generate_modify_request(rule)
@@ -645,6 +670,7 @@ class ELBV2Client(Boto3Client):
                 self.modify_rule_raw(rule.region, modify_request)
 
             return self.update_rule_information(rule)
+        breakpoint()
 
         response = self.create_rule_raw(rule.region, rule.generate_create_request())
         rule.update_from_raw_response(response)
@@ -665,6 +691,7 @@ class ELBV2Client(Boto3Client):
                 self.get_session_client(region=region).create_rule, "Rules", filters_req=request_dict
         ):
             return response
+        return None
 
     def modify_rule_raw(self, region, request_dict):
         """

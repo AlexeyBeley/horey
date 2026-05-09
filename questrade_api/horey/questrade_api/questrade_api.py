@@ -635,7 +635,7 @@ class QuestradeAPI:
         logger.info(f"Candle for symbol {symbol_id} upserted into {self.configuration.db_file_path}' database")
         return True
 
-    def db_get_symbol(self, symbol_id, cursor=None):
+    def db_get_symbol(self, symbol_id=None, cursor=None, symbol_symbol=None):
         """
         Get symbol from DB
         :param cursor:
@@ -646,11 +646,11 @@ class QuestradeAPI:
         logger.info(f"Fetching symbol {symbol_id} from {self.configuration.db_file_path}' database")
 
         if cursor:
-            return self.db_get_symbol_raw(symbol_id, cursor)
+            return self.db_get_symbol_raw(symbol_id, cursor, symbol_symbol=symbol_symbol)
 
-        return self.db_get_symbol_raw(symbol_id, self.db_cursor)
+        return self.db_get_symbol_raw(symbol_id, self.db_cursor, symbol_symbol=symbol_symbol)
 
-    def db_get_symbol_raw(self, symbol_id, cursor):
+    def db_get_symbol_raw(self, symbol_id, cursor, symbol_symbol=None):
         """
         Get symbol from DB
         :param cursor:
@@ -658,7 +658,11 @@ class QuestradeAPI:
         :return:
         """
 
-        cursor.execute('SELECT * FROM symbols WHERE symbol_id = ?', (symbol_id,))
+        if symbol_symbol:
+            cursor.execute('SELECT * FROM symbols WHERE symbol = ?', (symbol_symbol,))
+
+        else:
+            cursor.execute('SELECT * FROM symbols WHERE symbol_id = ?', (symbol_id,))
         rows = cursor.fetchall()
         if len(rows) == 0:
             return None
@@ -772,7 +776,7 @@ class QuestradeAPI:
         """
 
         today = datetime.now(timezone.utc)
-        if today.hour < 3:
+        if today.hour < 5:
             today -= timedelta(days=1)
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
@@ -966,7 +970,7 @@ class QuestradeAPI:
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
         for position in positions:
             # todo: fix
-            if position.symbol in ["TDTH", "SOWG", "CUE"]:
+            if position.symbol in []:
                 continue
 
 

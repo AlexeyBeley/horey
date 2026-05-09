@@ -116,16 +116,17 @@ class MAauction(Provider):
         url_element = lot_element.find_element(By.TAG_NAME, "a")
         try:
             highbid_element = lot_element.find_element(By.CLASS_NAME, "tile-two-winning-bid")
+            highbid = highbid_element.text
+            if not highbid.startswith("$"):
+                raise ValueError("Current Bid does not present")
+            lot.current_max = float(highbid.replace(",", "")[1:])
         except Exception as error_inst:
             body = self.selenium_api.get_element(By.TAG_NAME, "body").text
             if "This page is displayed while the website verifies you are not a bot" in body:
+                breakpoint()
                 raise self.ThrottlingError()
             logger.exception("Fetch tile-two-winning-bid failed: %s: %s", lot_element.text, error_inst)
-            raise
-        highbid = highbid_element.text
-        if not highbid.startswith("$"):
-            raise ValueError("Current Bid does not present")
-        lot.current_max = float(highbid.replace(",", "")[1:])
+            lot.current_max = 0
 
         lot.url = url_element.get_attribute('href')
         item_image_element = lot_element.find_element(By.TAG_NAME, "img")
@@ -873,7 +874,6 @@ class MAauction(Provider):
         try:
             self.selenium_api.retry_on_throttling(url, lambda : self.selenium_api.get_element(By.CLASS_NAME, "pagination"))
         except NoSuchElementException as inst_err:
-            breakpoint()
             auction_ring_elements = self.selenium_api.get_elements(By.CLASS_NAME, "auction-ring")
             urls = []
             for auction_ring_element in auction_ring_elements:

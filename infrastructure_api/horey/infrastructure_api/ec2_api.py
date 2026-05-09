@@ -84,18 +84,26 @@ class EC2API:
 
         return security_group
 
-    def get_security_group(self, name=None):
+    def get_security_group(self, name=None, group_id=None):
         """
         Get security group.
 
+        :param group_id:
         :param name:
         :return:
         """
-
-        filters = {"Filters": [
+        if name:
+            filters = {"Filters": [
             {"Name": "vpc-id", "Values": [self.environment_api.vpc.id]},
             {"Name": "group-name", "Values": [name]}
-        ]}
+            ]}
+        elif group_id:
+            filters = {"Filters": [
+                {"Name": "vpc-id", "Values": [self.environment_api.vpc.id]},
+                {"Name": "group-id", "Values": [group_id]}
+            ]}
+        else:
+            raise NotImplementedError("Name and group_id not set")
         security_groups = self.environment_api.aws_api.ec2_client.get_region_security_groups(self.environment_api.region,
                                                                                              filters=filters)
         if len(security_groups) != 1:
@@ -249,6 +257,7 @@ class EC2API:
             "UserIdGroupPairs": [
                 {
                     "GroupId": source_group_id,
+                    "Description": f"{source_group_id} {port_range[0]}-{port_range[1]}"
                 }
             ],
         }

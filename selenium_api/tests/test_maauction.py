@@ -44,11 +44,11 @@ def test_load_page_lot_elements():
     assert provider.load_page_lot_elements("https://www.maauctions.com/auctions/24840-november-1-2025-automotive-timed-vehicles-and-rvs-alberta")
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_load_page_lots():
     provider = MAauction()
     provider.connect()
-    ret = provider.load_page_lots("https://www.maauctions.com/auctions/24840-november-1-2025-automotive-timed-vehicles-and-rvs-alberta")
+    ret = provider.load_page_lots("https://www.northtorontoauction.com/auctions/25103-june-17-2026-toronto-province-of-ontario-sealed-bid-auction-jiimaan-vessel?pageSize=125")
     assert ret
 
 

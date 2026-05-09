@@ -416,7 +416,6 @@ class SeleniumAPI:
                     get_page=False
                     logger.exception(inst_err)
                     logger.info(f"Retrying to get data from: {url}")
-                    breakpoint()
                     raise
 
         breakpoint()

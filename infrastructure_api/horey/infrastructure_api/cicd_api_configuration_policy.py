@@ -22,6 +22,36 @@ class CICDAPIConfigurationPolicy(ConfigurationPolicy):
         self._master_efs_access_point_name = None
         self._master_file_system_name = None
         self._github_hagent_security_group_name = None
+        self._jenkins_master_efs_security_group_name = None
+        self._jenkins_master_efs_access_point_name = None
+        self._jenkins_master_efs_file_system_name = None
+
+    @property
+    def jenkins_master_efs_security_group_name(self):
+        self.check_defined()
+        return self._jenkins_master_efs_security_group_name
+
+    @jenkins_master_efs_security_group_name.setter
+    def jenkins_master_efs_security_group_name(self, value):
+        self._jenkins_master_efs_security_group_name = value
+
+    @property
+    def jenkins_master_efs_access_point_name(self):
+        self.check_defined()
+        return self._jenkins_master_efs_access_point_name
+
+    @jenkins_master_efs_access_point_name.setter
+    def jenkins_master_efs_access_point_name(self, value):
+        self._jenkins_master_efs_access_point_name = value
+
+    @property
+    def jenkins_master_efs_file_system_name(self):
+        self.check_defined()
+        return self._jenkins_master_efs_file_system_name
+
+    @jenkins_master_efs_file_system_name.setter
+    def jenkins_master_efs_file_system_name(self, value):
+        self._jenkins_master_efs_file_system_name = value
 
     @property
     def github_hagent_security_group_name(self):
@@ -45,11 +75,6 @@ class CICDAPIConfigurationPolicy(ConfigurationPolicy):
     def master_efs_access_point_name(self):
         self.check_defined()
         return self._master_efs_access_point_name
-
-    @property
-    def efs_master_security_group_name(self):
-        self.check_defined()
-        return self._efs_master_security_group_name
 
     @property
     def build_environment_variable(self):

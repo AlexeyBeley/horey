@@ -532,3 +532,11 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def service_security_group_name(self):
         return f"sg_{self.cluster_name}-service-{self.service_name}"
+
+    @property
+    def service_public_target_group_name(self):
+        return f"tg-pblc-{self.cluster_name}-{self.service_name}"
+
+    @property
+    def service_private_target_group_name(self):
+        return f"tg-prvt-{self.cluster_name}-{self.service_name}"

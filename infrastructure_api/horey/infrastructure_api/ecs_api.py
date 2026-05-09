@@ -58,7 +58,8 @@ class ECSAPI:
         self._ec2_api = None
         self._build_api = None
         self.loadbalancer_dns_api_pairs = None
-        self._loadbalancer_api = None
+        self._cluster_public_loadbalancer_api = None
+        self._cluster_private_loadbalancer_api = None
         self.init_ecr_repository_name()
 
         try:
@@ -80,23 +81,25 @@ class ECSAPI:
 
     @property
     def cluster_public_loadbalancer_api(self):
-        if self._loadbalancer_api is None:
+        if self._cluster_public_loadbalancer_api is None:
             config = LoadbalancerAPIConfigurationPolicy()
             config.slug = self.configuration.cluster_name
             config.scheme= "internet-facing"
+            config.target_type= "ip"
             config.security_groups = [f"sg_public_{config.load_balancer_name}"]
-            self._loadbalancer_api = LoadbalancerAPI(configuration=config, environment_api=self.environment_api)
-        return self._loadbalancer_api
+            self._cluster_public_loadbalancer_api = LoadbalancerAPI(configuration=config, environment_api=self.environment_api)
+        return self._cluster_public_loadbalancer_api
 
     @property
     def cluster_private_loadbalancer_api(self):
-        if self._loadbalancer_api is None:
+        if self._cluster_private_loadbalancer_api is None:
             config = LoadbalancerAPIConfigurationPolicy()
             config.slug = self.configuration.cluster_name
             config.scheme= "internal"
+            config.target_type = "ip"
             config.security_groups = [f"sg_private_{config.load_balancer_name}"]
-            self._loadbalancer_api = LoadbalancerAPI(configuration=config, environment_api=self.environment_api)
-        return self._loadbalancer_api
+            self._cluster_private_loadbalancer_api = LoadbalancerAPI(configuration=config, environment_api=self.environment_api)
+        return self._cluster_private_loadbalancer_api
 
 
     @property
@@ -1304,7 +1307,7 @@ class ECSAPI:
         capacity_provider_name = f"cp_{self.environment_api.configuration.environment_level}-capacity-provider-{slug}"
         launch_template_name = f"lt_{self.environment_api.configuration.environment_level}-capacity-provider-{slug}"
 
-        instance_profile = self.provision_iam_instance_profile_for_ecs_container_instances(slug)
+        instance_profile = self.provision_iam_instance_profile_for_ecs_container_instances()
 
         sec_group = self.ec2_api.provision_security_group(name=sg_name)
         key = self.environment_api.provision_ssh_key(container_instance_ssh_key_pair_name)
@@ -1312,21 +1315,28 @@ class ECSAPI:
         auto_scaling_group = self.environment_api.provision_auto_scaling_group(asg_name, launch_template)
         capacity_provider = self.provision_ecs_capacity_provider(capacity_provider_name, auto_scaling_group)
         self.attach_capacity_provider_to_ecs_cluster(ecs_cluster, capacity_provider)
+        breakpoint()
         return True
 
-    def provision_iam_instance_profile_for_ecs_container_instances(self, slug):
+    def provision_iam_instance_profile_for_ecs_container_instances(self, slug=None):
         """
         AWS infra.
 
         :return:
         """
 
-        instance_profile_name = f"ip_{self.environment_api.configuration.environment_level}-container-instance-{slug}"
 
-        if slug in [self.environment_api.configuration.environment_level, self.environment_api.configuration.environment_name]:
-            role_name = f"role_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-ecs-cnt-inst"
-        else:
+        if slug:
             role_name = f"role_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-ecs-cnt-inst-{slug}"
+            instance_profile_name = f"ip_{self.environment_api.configuration.environment_level}-container-instance-{slug}"
+        else:
+
+            cluster_name = self.configuration.cluster_name.replace(self.environment_api.configuration.environment_level, "")
+            cluster_name = cluster_name.replace(self.environment_api.configuration.environment_level_abbr, "")
+            for replace_me in ["--", "__", "-_", "_-"]:
+                cluster_name = cluster_name.replace(replace_me, "-")
+            role_name = f"role_{self.environment_api.configuration.environment_level}-{cluster_name}-ecs-cnt-inst"
+            instance_profile_name = f"ip_{self.environment_api.configuration.environment_level}-{cluster_name}-ecs-cnt-inst"
 
         assume_role_policy = """{
                 "Version": "2012-10-17",
@@ -1341,7 +1351,10 @@ class ECSAPI:
                 ]
                 }"""
 
-        role = self.aws_iam_api.provision_role(role_name=role_name, assume_role_policy=assume_role_policy, managed_policies_arns=["arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"])
+        resources = ["*"]
+        actions = ["ssm:UpdateInstanceInformation"]
+        ssm_policy = self.aws_iam_api.generate_inline_policy("ssm_access", resources, actions)
+        role = self.aws_iam_api.provision_role(policies=[ssm_policy], role_name=role_name, assume_role_policy=assume_role_policy, managed_policies_arns=["arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"])
         instance_profile = self.aws_iam_api.provision_instance_profile(instance_profile_name, role)
         return instance_profile
 
@@ -1450,12 +1463,13 @@ class ECSAPI:
         return capacity_provider
 
 
-    def provision_public_service_load_balancing(self, certificate=None):
+    def provision_public_service_load_balancing(self, dns_address=None):
         """
         Provision public ALB for the cluster and the needed resources
 
         :return:
         """
+        certificate = self.environment_api.find_appropriate_certificate(dns_address)
 
         for sg_name in self.cluster_public_loadbalancer_api.configuration.security_groups:
             lb_sg = self.ec2_api.provision_security_group(sg_name)
@@ -1463,14 +1477,35 @@ class ECSAPI:
                 raise ValueError("Only one port mapping is supported for now")
             port = self.configuration.container_definition_port_mappings[0]["containerPort"]
             port_range = [port, port]
-            self.ec2_api.security_group_add_rule(self.configuration.service_security_group_name, lb_sg, port_range=port_range)
+            service_sg =  self.ec2_api.get_security_group(self.configuration.service_security_group_name)
+            self.ec2_api.security_group_add_rule(service_sg, lb_sg, port_range=port_range)
+        load_balancer = self.cluster_public_loadbalancer_api.provision_load_balancer()
+        tg = self.cluster_public_loadbalancer_api.provision_load_balancer_target_group(name=self.configuration.service_public_target_group_name)
+        listener = self.cluster_public_loadbalancer_api.provision_load_balancer_listener(certificate=certificate)
+        self.cluster_public_loadbalancer_api.provision_listener_rule(listener, tg, dns_address=dns_address)
+        return load_balancer
 
-        lb = self.cluster_public_loadbalancer_api.provision_load_balancer()
-        breakpoint()
-        provision_load_balancer_target_group
-        provision_load_balancer_listener
-        provision_listener_rules
+    def provision_private_service_load_balancing(self, dns_address=None):
+        """
+        Provision public ALB for the cluster and the needed resources
 
+        :return:
+        """
+        certificate = self.environment_api.find_appropriate_certificate(dns_address)
+
+        for sg_name in self.cluster_private_loadbalancer_api.configuration.security_groups:
+            lb_sg = self.ec2_api.provision_security_group(sg_name)
+            if len(self.configuration.container_definition_port_mappings) != 1:
+                raise ValueError("Only one port mapping is supported for now")
+            port = self.configuration.container_definition_port_mappings[0]["containerPort"]
+            port_range = [port, port]
+            service_sg =  self.ec2_api.get_security_group(self.configuration.service_security_group_name)
+            self.ec2_api.security_group_add_rule(service_sg, lb_sg, port_range=port_range)
+        load_balancer = self.cluster_private_loadbalancer_api.provision_load_balancer()
+        tg = self.cluster_private_loadbalancer_api.provision_load_balancer_target_group(name=self.configuration.service_private_target_group_name)
+        listener = self.cluster_private_loadbalancer_api.provision_load_balancer_listener(certificate=certificate)
+        self.cluster_private_loadbalancer_api.provision_listener_rule(listener, tg, dns_address=dns_address)
+        return load_balancer
 
     def provision_service_security_group(self):
         """

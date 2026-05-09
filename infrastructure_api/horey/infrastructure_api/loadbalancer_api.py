@@ -32,7 +32,7 @@ class LoadbalancerAPI:
         loadbalancer = self.provision_load_balancer()
         target_group = self.provision_load_balancer_target_group()
         listener = self.provision_load_balancer_listener(loadbalancer)
-        self.provision_listener_rules(listener, target_group)
+        self.provision_listener_rule(listener, target_group)
         return True
 
     def provision_load_balancer(self):
@@ -67,7 +67,7 @@ class LoadbalancerAPI:
         self.environment_api.aws_api.provision_load_balancer(load_balancer)
         return load_balancer
 
-    def provision_load_balancer_target_group(self):
+    def provision_load_balancer_target_group(self, name=None):
         """
         Provision load balancer target group.
 
@@ -75,7 +75,7 @@ class LoadbalancerAPI:
         """
         target_group = ELBV2TargetGroup({})
         target_group.region = self.environment_api.region
-        target_group.name = self.configuration.target_group_name
+        target_group.name = name or self.configuration.target_group_name
         target_group.target_type = self.configuration.target_type
         if target_group.target_type != "lambda":
             target_group.port = self.configuration.target_group_port
@@ -93,6 +93,7 @@ class LoadbalancerAPI:
         target_group.health_check_path = self.configuration.health_check_path
 
         if self.configuration.target_group_targets:
+            raise NotImplementedError("todo: add param")
             target_group.targets = self.configuration.target_group_targets
 
         target_group.matcher = {"HttpCode": "200"}
@@ -104,13 +105,14 @@ class LoadbalancerAPI:
         self.environment_api.aws_api.provision_load_balancer_target_group(target_group)
         return target_group
 
-    def provision_load_balancer_listener(self, load_balancer):
+    def provision_load_balancer_listener(self, certificate):
         """
         Standard
 
-        :param load_balancer:
+        :param certificate:
         :return:
         """
+        load_balancer = self.get_loadbalancer()
 
         # listener 80
         listener_80 = LoadBalancer.Listener({})
@@ -142,12 +144,17 @@ class LoadbalancerAPI:
 
         self.environment_api.aws_api.elbv2_client.provision_load_balancer_listener(listener_80)
 
-        # listener 443
-        certificates = [self.environment_api.aws_api.acm_client.get_certificate_by_domain_name(self.environment_api.region, dns) for dns in self.configuration.certificates_domain_names + self.configuration.certificates_unmanaged_domain_names]
         listener = LoadBalancer.Listener({})
         listener.protocol = "HTTPS"
         listener.ssl_policy = "ELBSecurityPolicy-TLS13-1-2-2021-06"
         listener.mutual_authentication = {"Mode": "off"}
+
+        # listener 443
+        if not certificate:
+            certificates = [self.environment_api.aws_api.acm_client.get_certificate_by_domain_name(self.environment_api.region, dns) for dns in self.configuration.certificates_domain_names + self.configuration.certificates_unmanaged_domain_names]
+            raise NotImplementedError("Check for other options")
+        else:
+            certificates = [certificate]
 
         # unique certificates only
         certificate_arns = {cert.arn for cert in certificates}
@@ -180,7 +187,7 @@ class LoadbalancerAPI:
 
         return listener
 
-    def provision_listener_rules(self, listener, target_group):
+    def provision_listener_rule(self, listener, target_group, dns_address=None):
         """
         Provision rule for specific service.
 
@@ -188,37 +195,31 @@ class LoadbalancerAPI:
         """
         # todo: cleanup report reorder rules by usage
         # todo: cleanup report host rule without certificate
-
         current_rules = self.environment_api.aws_api.elbv2_client.get_region_rules(listener.region, listener_arn=listener.arn)
 
         rule = LoadBalancer.Rule({})
-
-        current_rule = LoadBalancer.Rule({})
-        current_rule.listener_arn = listener.arn
-        current_rule.region = self.environment_api.region
-        current_rule.tags = self.environment_api.configuration.tags
-        current_rule.tags.append({
-            "Key": "Name",
-            "Value": self.configuration.target_group_name
-        })
-
-        if self.environment_api.aws_api.elbv2_client.update_rule_information(current_rule, region_rules=current_rules):
-            rule.priority = current_rule.priority
-            rule.arn = current_rule.arn
-        else:
-            priorities = [int(_rule.priority) for _rule in current_rules if _rule.priority != "default"]
-            rule.priority = 10 if not priorities else max(priorities) + 10
 
         rule.listener_arn = listener.arn
         rule.region = self.environment_api.region
         rule.tags = self.environment_api.configuration.tags
         rule.tags.append({
             "Key": "Name",
-            "Value": self.configuration.target_group_name
+            "Value": target_group.name
         })
 
         rule.priority = self.configuration.rule_priority or rule.priority
-        rule.conditions = self.configuration.rule_conditions
+        if dns_address:
+            rule.conditions = [
+                {
+                    "Field": "host-header",
+                    "Values": [dns_address],
+                    "HostHeaderConfig": {
+                        "Values": [dns_address]
+                    }
+                }
+            ]
+        else:
+            raise NotImplementedError("rule.conditions = self.configuration.rule_conditions")
 
         rule.actions = [
             {
@@ -242,9 +243,19 @@ class LoadbalancerAPI:
         rule.tags = self.environment_api.configuration.tags
         rule.tags.append({
             "Key": "Name",
-            "Value": self.configuration.target_group_name
+            "Value": target_group.name
         })
-        self.environment_api.aws_api.provision_load_balancer_rule(rule)
+
+        current_rule = LoadBalancer.Rule({})
+        current_rule.update_from_attrs(rule)
+        if self.environment_api.aws_api.elbv2_client.update_rule_information(current_rule, region_rules=current_rules):
+            rule.priority = current_rule.priority
+            rule.arn = current_rule.arn
+        else:
+            priorities = [int(_rule.priority) for _rule in current_rules if _rule.priority != "default"]
+            rule.priority = 10 if not priorities else max(priorities) + 10
+
+        self.environment_api.aws_api.elbv2_client.provision_load_balancer_rule(rule)
 
     def get_loadbalancer(self):
         """
@@ -274,5 +285,3 @@ class LoadbalancerAPI:
         if not self.environment_api.aws_api.elbv2_client.update_target_group_information(target_group):
             raise RuntimeError(f"Was not able to find target group '{target_group.name }' in region '{target_group.region}'")
         return target_group
-
-    def provision_public_load_balancer(self):

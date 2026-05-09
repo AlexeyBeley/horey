@@ -57,7 +57,6 @@ class S3StorageService(StorageService):
         self.bucket = bucket
         self.base_path = base_path
 
-
     def upload(self, local_path: Path, remote_path: str):
         """
         Upload file to S3.
@@ -111,7 +110,7 @@ class CICDAPI:
         self._iam_api = None
         self._build_api = None
         self._jenkins_api = None
-    
+
     @property
     def remote_deployer(self):
         """
@@ -223,7 +222,6 @@ class CICDAPI:
         """
         self.provision_jenkins_master_infrastructure()
         self.update_jenkins_master()
-        self.jenkins_master_ecs_api.provision_ecs_task_definition(self.ecs_api.ecr_repo_uri + ":latest")
         self.cloudwatch_api.provision()
 
     def update_jenkins_master(self, branch_name=None):
@@ -238,7 +236,8 @@ class CICDAPI:
 
         image_registry_reference = image.tags[0]
         td = self.jenkins_master_ecs_api.generate_ecs_task_definition(image_registry_reference,
-                                                       slug="jenkins-master", requires_compatibilities=["FARGATE"])
+                                                                      slug="jenkins-master",
+                                                                      requires_compatibilities=["FARGATE"])
         (_,
          jenkins_master_access_point_name,
          jenkins_master_efs_file_system_name) = self.generate_jenkins_master_efs_component_names()
@@ -246,12 +245,12 @@ class CICDAPI:
         master_efs = self.get_efs_file_system(jenkins_master_efs_file_system_name)
         access_point = self.get_efs_access_point(master_efs.id, jenkins_master_access_point_name)
         volumes, mount_points = self.generate_jenkins_master_volume_and_mount_configuration(master_efs, access_point,
-                                                                             "/var/jenkins_home")
+                                                                                            "/var/jenkins_home")
 
         td.set_storage(volumes=volumes, mount_points=mount_points)
 
         task_role = self.iam_api.get_role(self.get_task_role_name("jenkins-master")
-                                                )
+                                          )
 
         exec_role = self.iam_api.get_role(self.get_task_role_name("jenkins-master-exec"))
 
@@ -259,10 +258,10 @@ class CICDAPI:
         td.set_ports(container_port=8080, host_port=8080)
 
         self.jenkins_master_ecs_api.provision_ecs_task_definition_ng(td)
-        target_group = self.loadbalancer_api.get_targetgroup(name=f"tg-cluster-{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level_abbr}-mgmt-jenkins")
+        target_group = self.loadbalancer_api.get_targetgroup(
+            name=f"tg-cluster-{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level_abbr}-mgmt-jenkins")
         breakpoint()
         self.jenkins_master_ecs_api.provision_ecs_service(td, target_groups=[target_group])
-        breakpoint()
 
     def get_efs_file_system(self, file_system_name):
         """
@@ -307,31 +306,31 @@ class CICDAPI:
         self.jenkins_master_ecs_api.provision_service_log_group()
         master_service_security_group = self.jenkins_master_ecs_api.provision_service_security_group()
 
+        cluster = self.jenkins_master_ecs_api.provision_cluster()
+
         load_balancer = None
+        if private_dns_prefix:
+            dns_address = f"{private_dns_prefix}.{self.environment_api.configuration.private_hosted_zone_domain_name}"
+            load_balancer = self.jenkins_master_ecs_api.provision_private_service_load_balancing(
+                dns_address=dns_address)
+            hz = self.dns_api.find_appropriate_hosted_zone(dns_address=dns_address)
+            self.dns_api.provision_record(dns_address, load_balancer.dns_name, hz)
+
         if public_dns_prefix:
             dns_address = f"{public_dns_prefix}.{self.environment_api.configuration.public_hosted_zone_domain_name}"
-            cert =  self.environment_api.find_appropriate_certificate(dns_address)
-            load_balancer = self.jenkins_master_ecs_api.provision_public_service_load_balancing(certificate=cert)
-            self.dns_api.provision_address(dns_address, load_balancer)
-            breakpoint()
-            public_load_balancer_security_group = self.ec2_api.get_security_group(load_balancer.security_groups[0])
-            self.ec2_api.security_group_add_rule(master_service_security_group, source_group=public_load_balancer_security_group, port_range=(8080, 8080))
-
-        if private_dns_prefix:
-            load_balancer = self.jenkins_master_ecs_api.provision_private_cluster_load_balancer()
-            breakpoint()
-            private_load_balancer_security_group = self.ec2_api.provision_private_alb_security_group()
-            self.ec2_api.security_group_add_rule(master_service_security_group, source_group=private_load_balancer_security_group, port_range=(8080, 8080))
+            load_balancer = self.jenkins_master_ecs_api.provision_public_service_load_balancing(dns_address=dns_address)
+            hz = self.dns_api.find_appropriate_hosted_zone(dns_address=dns_address)
+            self.dns_api.provision_record(dns_address, load_balancer.dns_name, hz)
 
         if not load_balancer:
             raise ValueError("Either private_dns_address or public_dns_address must be specified")
 
-        jenkins_master_efs_security_group_name, jenkins_master_access_point_name, jenkins_master_efs_file_system_name = self.generate_jenkins_master_efs_component_names()
+        self.generate_jenkins_master_efs_component_names()
 
-        self.provision_efs(jenkins_master_efs_security_group_name,
-                           jenkins_master_access_point_name,
-                           jenkins_master_efs_file_system_name)
-        self.ec2_api.security_group_add_rule(self.ec2_api.get_security_group(jenkins_master_efs_security_group_name), source_group=master_service_security_group, port_range=(2049, 2049))
+        self.provision_efs()
+        self.ec2_api.security_group_add_rule(
+            self.ec2_api.get_security_group(self.configuration.jenkins_master_efs_security_group_name),
+            source_group=master_service_security_group, port_range=(2049, 2049))
         assume_role_policy_document = json.dumps({
             "Version": "2012-10-17",
             "Statement": [
@@ -348,18 +347,16 @@ class CICDAPI:
 
         policies = self.task_role_inline_policies_callback()
         self.iam_api.provision_role(policies=policies, role_name=self.get_task_role_name("jenkins-master"),
-                                                assume_role_policy=assume_role_policy_document)
+                                    assume_role_policy=assume_role_policy_document)
 
-        exec_role = self.jenkins_master_ecs_api.provision_execution_role(name=self.get_task_role_name("jenkins-master-exec"),
-                                                )
-
+        exec_role = self.jenkins_master_ecs_api.provision_execution_role(
+            name=self.get_task_role_name("jenkins-master-exec"),
+            )
 
         policy_text = self.iam_api.generate_ecr_repository_policy(ecs_task_execution_role=exec_role)
 
         self.jenkins_master_ecs_api.provision_ecr_repository(repository_policy=policy_text)
-        breakpoint()
 
-        cluster = self.jenkins_master_ecs_api.provision_cluster()
         self.jenkins_master_ecs_api.provision_ecs_autoscaling_group_capacity_provider(cluster, "management")
         return True
 
@@ -373,12 +370,12 @@ class CICDAPI:
         :return:
         """
 
-        return (f"sg_{self.environment_api.configuration.environment_level}" \
-                                         f"-jenkins-master",
-               f"acp_{self.environment_api.configuration.environment_level}" \
-                                       f"-management-jenkins",
-               f"fs_{self.environment_api.configuration.environment_level}" \
-                                      f"-management-jenkins")
+        self.configuration.jenkins_master_efs_security_group_name = f"sg_{self.environment_api.configuration.environment_level_abbr}" \
+                                                                    f"-{self.environment_api.configuration.environment_name_abbr}-jenkins"
+        self.configuration.jenkins_master_efs_access_point_name = f"acp_{self.environment_api.configuration.environment_level_abbr}" \
+                                                                  f"-{self.environment_api.configuration.environment_name_abbr}-jenkins"
+        self.configuration.jenkins_master_efs_file_system_name = f"fs_{self.environment_api.configuration.environment_level_abbr}" \
+                                                                 f"-{self.environment_api.configuration.environment_name_abbr}-jenkins"
 
     def get_task_role_name(self, slug):
         """
@@ -531,9 +528,7 @@ class CICDAPI:
         logger.info(f"Time took from triggering task to its completion: {time.perf_counter() - perf_counter_start}")
         return response
 
-    def provision_efs(self, security_group_name,
-                           access_point_name,
-                           file_system_name):
+    def provision_efs(self):
         """
         Standard.
         --volume jenkins-data:/var/jenkins_home
@@ -541,12 +536,14 @@ class CICDAPI:
         :return:
         """
 
-        efs_security_group = self.ec2_api.provision_security_group(name=security_group_name)
-        master_efs = self.provision_master_efs_file_system(file_system_name)
-        access_point = self.provision_master_efs_access_point(master_efs.id, access_point_name)
+        efs_security_group = self.ec2_api.provision_security_group(
+            name=self.configuration.jenkins_master_efs_security_group_name)
+        master_efs = self.provision_master_efs_file_system(self.configuration.jenkins_master_efs_file_system_name)
+        access_point = self.provision_master_efs_access_point(master_efs.id,
+                                                              self.configuration.jenkins_master_efs_access_point_name)
         self.provision_efs_mount_targets(master_efs.id, efs_security_group.id)
         volume, mount_point = self.generate_jenkins_master_volume_and_mount_configuration(master_efs, access_point,
-                                                                             "/var/jenkins_home")
+                                                                                          "/var/jenkins_home")
         return volume, mount_point
 
     @staticmethod
@@ -673,7 +670,6 @@ class CICDAPI:
         """
 
         if self._iam_api is None:
-
             self._iam_api = AWSIAMAPI(AWSIAMAPIConfigurationPolicy(), self.environment_api)
 
         return self._iam_api
@@ -694,28 +690,27 @@ class CICDAPI:
             ecs_api_configuration.ecs_task_definition_memory_reservation = 2048
             ecs_api_configuration.autoscaling_max_capacity = 1
             ecs_api_configuration.network_mode = "awsvpc"
-            ecs_api_configuration.cluster_name = f"cluster-{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}"
-            ecs_api_configuration.cluster_name = (f"{self.environment_api.configuration.project_name_abbr}-"
-                            f"{self.environment_api.configuration.environment_level}-"
-                            f"management")
+            ecs_api_configuration.cluster_name = f"{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level_abbr}-{self.environment_api.configuration.environment_name_abbr}"
 
             ecs_api_configuration._container_definition_port_mappings = [
-            {
-                "containerPort": 8080,
-                "hostPort": 8080,
-                "protocol": "tcp",
-            },
+                {
+                    "containerPort": 8080,
+                    "hostPort": 8080,
+                    "protocol": "tcp",
+                },
             ]
 
             ecs_api_configuration.task_definition_desired_count = 1
             ecs_api_configuration.launch_type = "FARGATE"
             ecs_api_configuration.kill_old_containers = False
-            ecs_api_configuration.security_groups = [f"sg_{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-jenkins"]
+            ecs_api_configuration.security_groups = [
+                f"sg_{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-jenkins"]
             ecs_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_jenkins_master_container_build_directory_callback
 
             ecs_api.build_api.configuration.docker_repository_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{ecs_api.configuration.ecr_repository_region}.amazonaws.com/{ecs_api_configuration.ecr_repository_name}"
 
-            ecs_api.set_ecr_repository_name(f"repo_{self.environment_api.configuration.environment_level}_jenkins_master")
+            ecs_api.set_ecr_repository_name(
+                f"repo_{self.environment_api.configuration.environment_level}_jenkins_master")
 
             self._jenkins_master_ecs_api = ecs_api
         return self._jenkins_master_ecs_api
@@ -917,7 +912,7 @@ class CICDAPI:
                                                                           provision_script_generator, target=target)
         raise NotImplementedError("Not implemented")
 
-    def run_remote_provision_constructor(self, target, function_name, windows=False, timeout=60*60, **kwargs):
+    def run_remote_provision_constructor(self, target, function_name, windows=False, timeout=60 * 60, **kwargs):
         """
         Run the function remotely
 
@@ -979,7 +974,8 @@ class CICDAPI:
                                                 assume_role_policy=assume_role_policy_document)
         policy_text = self.iam_api.generate_ecr_repository_policy(ecs_task_execution_role=exec_role)
 
-        self.ecs_api.provision_ecr_repository(repository_name = self.generate_hagent_repository_name(), repository_policy=policy_text)
+        self.ecs_api.provision_ecr_repository(repository_name=self.generate_hagent_repository_name(),
+                                              repository_policy=policy_text)
 
         cluster_name = self.generate_management_cluster_name()
         self.ecs_api.provision_service_log_group(cluster_name, "hagent")
@@ -1032,8 +1028,10 @@ class CICDAPI:
 
             image_registry_reference = image.tags[0]
 
-        td = self.ecs_api.generate_ecs_task_definition(image_registry_reference, cluster_name=self.generate_management_cluster_name(), slug="hagent", requires_compatibilities=["EC2"])
-        linux_params = {"devices" :[{
+        td = self.ecs_api.generate_ecs_task_definition(image_registry_reference,
+                                                       cluster_name=self.generate_management_cluster_name(),
+                                                       slug="hagent", requires_compatibilities=["EC2"])
+        linux_params = {"devices": [{
             'hostPath': '/var/run/docker.sock',
             'containerPath': '/var/run/docker.sock',
             'permissions': [
@@ -1043,7 +1041,6 @@ class CICDAPI:
         ]}
         raise NotImplementedError("Not implemented")
         # self.jenkins_hagent_ecs_api.generate_ecs_task_definition_storage(td, linux_params=linux_params)
-
 
         # self.jenkins_hagent_ecs_api.provision_ecs_task_definition_ng(td)
 
@@ -1056,22 +1053,22 @@ class CICDAPI:
         :return:
         """
 
-        build_dir_path = self.ecs_api.build_api.prepare_docker_image_horey_package_build_directory(dir_path, "docker_api", build_number)
+        build_dir_path = self.ecs_api.build_api.prepare_docker_image_horey_package_build_directory(dir_path,
+                                                                                                   "docker_api",
+                                                                                                   build_number)
         entrypoint_name = "docker_builder.py"
         with open(build_dir_path / entrypoint_name, "w", encoding="utf-8") as fh:
             fh.writelines([
                 "from horey.docker_api.docker_api import DockerAPI\n",
                 "docker_api = DockerAPI()\n",
                 "print(docker_api.get_all_images())\n"
-                ])
+            ])
         self.ecs_api.build_api.add_docker_instruction_copy(build_dir_path, entrypoint_name)
         self.ecs_api.build_api.add_docker_instruction_entrypoint(build_dir_path, f'["python", "{entrypoint_name}"]')
-
 
         # docker run --mount type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock -it --entrypoint=/bin/bash test
 
         return build_dir_path
-
 
     def provision_github_hagent(self, github_api: GithubAPI, bastions: List[EC2Instance] = None, repository_name=None):
         """
@@ -1082,9 +1079,11 @@ class CICDAPI:
 
         github_token = github_api.request_repository_runner_registration_token(repository_name)
 
-        sec_group = self.ec2_api.provision_security_group(name = self.configuration.github_hagent_security_group_name, description=f"{self.environment_api.configuration.environment_name}, {self.environment_api.configuration.environment_level}")
+        sec_group = self.ec2_api.provision_security_group(name=self.configuration.github_hagent_security_group_name,
+                                                          description=f"{self.environment_api.configuration.environment_name}, {self.environment_api.configuration.environment_level}")
         if bastions:
-            self.ec2_api.security_group_add_rule(sec_group, source_group=bastions[-1].security_groups[0]["GroupId"], port_range=[22,22])
+            self.ec2_api.security_group_add_rule(sec_group, source_group=bastions[-1].security_groups[0]["GroupId"],
+                                                 port_range=[22, 22])
 
         ec2_instance = self.ec2_api.provision_ubuntu_24_04_instance(
             name=f"{self.environment_api.configuration.environment_level}-github-runner",
@@ -1099,7 +1098,7 @@ class CICDAPI:
             self.run_remote_provision_constructor(target,
                                                   "github_agent",
                                                   github_token=github_token["token"],
-                                                  repo_name= repository_name,
+                                                  repo_name=repository_name,
                                                   repo_owner=github_api.configuration.owner
                                                   )
 
@@ -1114,16 +1113,22 @@ class CICDAPI:
         :param build_number:
         :return:
         """
-        build_dir_path = self.hagent_build_api.prepare_docker_image_horey_package_build_directory(_src_dir, "jenkins_api", build_number)
+        build_dir_path = self.hagent_build_api.prepare_docker_image_horey_package_build_directory(_src_dir,
+                                                                                                  "jenkins_api",
+                                                                                                  build_number)
 
         script_name = self.jenkins_api.generate_jenkins_api_actor_script(build_dir_path)
-        self.hagent_build_api.add_docker_instruction_copy(build_dir_path ,script_name , before_comment="add_your_files_here")
+        self.hagent_build_api.add_docker_instruction_copy(build_dir_path, script_name,
+                                                          before_comment="add_your_files_here")
         for tmp_file_path in self.extra_file_paths:
             shutil.copy(tmp_file_path, build_dir_path)
-            self.hagent_build_api.add_docker_instruction_copy(build_dir_path, tmp_file_path.name, before_comment="add_your_files_here")
+            self.hagent_build_api.add_docker_instruction_copy(build_dir_path, tmp_file_path.name,
+                                                              before_comment="add_your_files_here")
         return self.hagent_build_api.docker_build_directory
 
-    def provision_github_hagent_dockerized(self, github_api: GithubAPI, bastions: List[EC2Instance] = None, repository_name=None, horey_repo_path=None, remote_build=True, extra_file_paths=None):
+    def provision_github_hagent_dockerized(self, github_api: GithubAPI, bastions: List[EC2Instance] = None,
+                                           repository_name=None, horey_repo_path=None, remote_build=True,
+                                           extra_file_paths=None):
         """
         Provision multirunner.
 
@@ -1142,7 +1147,8 @@ class CICDAPI:
         self.hagent_build_api.prepare_docker_image_build_directory = self.prepare_github_hagent_docker_build_dir
 
         if not remote_build:
-            image = self.hagent_build_api.run_prepare_and_build_image_routine(branch_name, build_number, tags=["github_hagent"])
+            image = self.hagent_build_api.run_prepare_and_build_image_routine(branch_name, build_number,
+                                                                              tags=["github_hagent"])
             breakpoint()
             # todo: remove:
             # image = self.environment_api.docker_api.get_image("github_hagent:latest")
@@ -1155,7 +1161,6 @@ class CICDAPI:
             else:
                 raise NotImplementedError("Not implemented")
 
-
             image_file_path = Path("/tmp/github_hagent_image.tar")
             self.environment_api.docker_api.save(image, image_file_path)
         else:
@@ -1166,6 +1171,7 @@ class CICDAPI:
 
         github_token = github_api.delete_repository_runner(repository_name, repository_name)
         github_token = github_api.request_repository_runner_registration_token(repository_name)
+
         def entrypoint():
             self.run_remote_provision_constructor(target,
                                                   "docker",
@@ -1173,11 +1179,11 @@ class CICDAPI:
 
             if not remote_build:
                 self.run_remote_provision_constructor(target,
-                                                  "docker",
-                                                  action="copy_image_file",
-                                                  image_file=image_file_path,
-                                                  tag="github_hagent:latest"
-                                                  )
+                                                      "docker",
+                                                      action="copy_image_file",
+                                                      image_file=image_file_path,
+                                                      tag="github_hagent:latest"
+                                                      )
             else:
                 self.run_remote_provision_constructor(target,
                                                       "docker",
@@ -1199,7 +1205,6 @@ class CICDAPI:
         target.append_remote_step("ProvisionGithub", entrypoint)
         return self.run_remote_deployer_deploy_targets([target], asynchronous=False)
 
-
     def provision_github_hagent_ec2_instance(self, bastions=None):
         """
         Provision an instance.
@@ -1208,9 +1213,11 @@ class CICDAPI:
         :return:
         """
 
-        sec_group = self.ec2_api.provision_security_group(name = self.configuration.github_hagent_security_group_name, description=f"{self.environment_api.configuration.environment_name}, {self.environment_api.configuration.environment_level}")
+        sec_group = self.ec2_api.provision_security_group(name=self.configuration.github_hagent_security_group_name,
+                                                          description=f"{self.environment_api.configuration.environment_name}, {self.environment_api.configuration.environment_level}")
         if bastions:
-            self.ec2_api.security_group_add_rule(sec_group, source_group=bastions[-1].security_groups[0]["GroupId"], port_range=[22,22])
+            self.ec2_api.security_group_add_rule(sec_group, source_group=bastions[-1].security_groups[0]["GroupId"],
+                                                 port_range=[22, 22])
 
         ec2_instance = self.ec2_api.provision_ubuntu_24_04_instance(
             name=f"{self.environment_api.configuration.environment_level}-github-runner",

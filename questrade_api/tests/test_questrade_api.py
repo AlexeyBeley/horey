@@ -177,7 +177,7 @@ def test_provision_db(questrade_api):
     assert questrade_api.provision_db_symbols_table()
     assert questrade_api.provision_db_candles_table()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_fetch_symbols_by_max_price(questrade_api):
     assert questrade_api.fetch_symbols_by_max_price(4)
 
@@ -203,6 +203,19 @@ def test_cleanup_candles(questrade_api):
 def test_get_activities(questrade_api):
     assert questrade_api.get_activities()
 
+
+@pytest.mark.unit
+def test_update_symbol_today_candles(questrade_api):
+    symbol = questrade_api.db_get_symbol(symbol_symbol="FEMY")
+    questrade_api.update_symbol_today_candles(symbol)
+
+
+@pytest.mark.unit
+def test_debug_symbol_calculate_vwap_incline(questrade_api):
+    symbol = questrade_api.db_get_symbol(symbol_symbol="FEMY")
+    candles = questrade_api.db_get_today_candles(symbol)
+    questrade_api.calculate_vwap_incline(candles)
+
 @pytest.mark.unit
 def test_calculate_vwap_incline(questrade_api):
     with open(Path(__file__).parent / "candles_sample.json") as fh:
@@ -213,19 +226,26 @@ def test_calculate_vwap_incline(questrade_api):
 
 @pytest.mark.unit
 def test_generate_profit_review(questrade_api):
+    """
+    First week - buy small up to 1 dollar. Complete to 1 dollar
+    Second week - complete to dollar.
+    Third week - buy with slop < 0 and largest spread in vwap_change
+    :param questrade_api:
+    :return:
+    """
     today = datetime.now(timezone.utc)
     if today.hour < 3:
         today -= timedelta(days=1)
-    time_start = today.replace(hour=3, minute=0, second=0, microsecond=0) - timedelta(days=30)
-    time_end = today.replace(hour=20, minute=0, second=0, microsecond=0)
+    time_start = today.replace(hour=3, minute=0, second=0, microsecond=0) - timedelta(days=21)
+    time_end = today.replace(hour=20, minute=0, second=0, microsecond=0) - timedelta(minutes=1)
 
     assert questrade_api.generate_profit_review(time_start, time_end)
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_update_cheap_candles_with_today_data(questrade_api):
     assert questrade_api.update_cheap_candles_with_today_data()
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_make_purchase_plan(questrade_api):
     assert questrade_api.make_purchase_plan()
 
