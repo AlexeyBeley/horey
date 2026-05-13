@@ -6,4 +6,5 @@ horey.aws_cleaner>=1.0.0
 horey.docker_api>=1.0.0
 horey.git_api>=1.0.0
 horey.provision_constructor>=1.0.0
+horey.async_orchestrator>=1.0.0
 horey.pip_api>=1.0.0
