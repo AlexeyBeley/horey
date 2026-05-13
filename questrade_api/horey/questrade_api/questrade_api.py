@@ -410,7 +410,7 @@ class QuestradeAPI:
 
         return True
 
-    def fetch_symbols_by_max_price(self, max_price):
+    def fetch_symbols_by_price_range(self, min_price, max_price):
         """
         Sort symbols by transactions count.
         0.0035*100
@@ -418,17 +418,14 @@ class QuestradeAPI:
         :return:
         """
 
-        one_percent_ecn_fee_limit = 0.0035*100
-        if max_price:
-            self.db_cursor.execute(
-                f"select symbol_id from candles where vwap <= {max_price} and vwap >= {one_percent_ecn_fee_limit} group by symbol_id"
+        today = datetime.now(timezone.utc)
+        start_time = today.replace(hour=3, minute=0, second=0, microsecond=0)  - timedelta(days=3)
+
+        start_timestamp = start_time.timestamp() if start_time else None
+        self.db_cursor.execute(
+                f"select symbol_id from candles where vwap <= {max_price} and vwap >= {min_price} AND start >= {start_timestamp}  group by symbol_id"
             )
-            response = self.db_cursor.fetchall()
-        else:
-            self.db_cursor.execute(
-                "select symbol_id from candles group by symbol_id"
-            )
-            response = self.db_cursor.fetchall()
+        response = self.db_cursor.fetchall()
 
         symbols = []
         for line in response:

@@ -179,7 +179,7 @@ def test_provision_db(questrade_api):
 
 @pytest.mark.unit
 def test_fetch_symbols_by_max_price(questrade_api):
-    assert questrade_api.fetch_symbols_by_max_price(4)
+    assert questrade_api.fetch_symbols_by_price_range(0.1, 2)
 
 
 @pytest.mark.unit
@@ -236,7 +236,7 @@ def test_generate_profit_review(questrade_api):
     today = datetime.now(timezone.utc)
     if today.hour < 3:
         today -= timedelta(days=1)
-    time_start = today.replace(hour=3, minute=0, second=0, microsecond=0) - timedelta(days=21)
+    time_start = today.replace(hour=3, minute=0, second=0, microsecond=0) - timedelta(days=7)
     time_end = today.replace(hour=20, minute=0, second=0, microsecond=0) - timedelta(minutes=1)
 
     assert questrade_api.generate_profit_review(time_start, time_end)

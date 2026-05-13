@@ -214,17 +214,17 @@ class CICDAPI:
         except self._cloudwatch_api.configuration.UndefinedValueError:
             self.cloudwatch_api.configuration.log_group_name = self.ecs_api.configuration.cloudwatch_log_group_name
 
-    def provision_jenkins_master(self):
+    def provision_jenkins_master(self, public_dns_prefix=None, private_dns_prefix=None):
         """
         Provision CICD infrastructure.
 
         :return:
         """
-        self.provision_jenkins_master_infrastructure()
-        self.update_jenkins_master()
+        self.provision_jenkins_master_infrastructure(public_dns_prefix=public_dns_prefix, private_dns_prefix=private_dns_prefix)
+        self.update_jenkins_master(public_dns_prefix=public_dns_prefix, private_dns_prefix=private_dns_prefix)
         self.cloudwatch_api.provision()
 
-    def update_jenkins_master(self, branch_name=None):
+    def update_jenkins_master(self, branch_name=None, public_dns_prefix=None, private_dns_prefix=None):
         """
         Jenkins Master update.
 
@@ -234,16 +234,19 @@ class CICDAPI:
         build_number = self.jenkins_master_ecs_api.get_next_build_number()
         image = self.jenkins_master_ecs_api.build_api.run_build_and_upload_image_routine(branch_name, build_number)
 
-        image_registry_reference = image.tags[0]
+        for image_registry_reference in image.tags:
+            if self.jenkins_master_ecs_api.configuration.ecr_repository_name in image_registry_reference:
+                break
+        else:
+            raise ValueError(f"Was not able to find image with repo {self.jenkins_master_ecs_api.configuration.ecr_repository_name}")
         td = self.jenkins_master_ecs_api.generate_ecs_task_definition(image_registry_reference,
                                                                       slug="jenkins-master",
                                                                       requires_compatibilities=["FARGATE"])
-        (_,
-         jenkins_master_access_point_name,
-         jenkins_master_efs_file_system_name) = self.generate_jenkins_master_efs_component_names()
 
-        master_efs = self.get_efs_file_system(jenkins_master_efs_file_system_name)
-        access_point = self.get_efs_access_point(master_efs.id, jenkins_master_access_point_name)
+        self.generate_jenkins_master_efs_component_names()
+
+        master_efs = self.get_efs_file_system(self.configuration.jenkins_master_efs_file_system_name)
+        access_point = self.get_efs_access_point(master_efs.id, self.configuration.jenkins_master_efs_access_point_name)
         volumes, mount_points = self.generate_jenkins_master_volume_and_mount_configuration(master_efs, access_point,
                                                                                             "/var/jenkins_home")
 
@@ -258,10 +261,15 @@ class CICDAPI:
         td.set_ports(container_port=8080, host_port=8080)
 
         self.jenkins_master_ecs_api.provision_ecs_task_definition_ng(td)
-        target_group = self.loadbalancer_api.get_targetgroup(
-            name=f"tg-cluster-{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level_abbr}-mgmt-jenkins")
-        breakpoint()
-        self.jenkins_master_ecs_api.provision_ecs_service(td, target_groups=[target_group])
+        target_groups = []
+        if public_dns_prefix:
+            tg_public = self.jenkins_master_ecs_api.configuration.service_public_target_group_name
+            target_groups.append(self.loadbalancer_api.get_targetgroup(tg_public))
+        if private_dns_prefix:
+            tg_private = self.jenkins_master_ecs_api.configuration.service_private_target_group_name
+            target_groups.append(self.loadbalancer_api.get_targetgroup(tg_private))
+        self.jenkins_master_ecs_api.provision_ecs_service(td, target_groups=target_groups)
+
 
     def get_efs_file_system(self, file_system_name):
         """
@@ -703,14 +711,12 @@ class CICDAPI:
             ecs_api_configuration.task_definition_desired_count = 1
             ecs_api_configuration.launch_type = "FARGATE"
             ecs_api_configuration.kill_old_containers = False
-            ecs_api_configuration.security_groups = [
-                f"sg_{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-jenkins"]
-            ecs_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_jenkins_master_container_build_directory_callback
-
-            ecs_api.build_api.configuration.docker_repository_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{ecs_api.configuration.ecr_repository_region}.amazonaws.com/{ecs_api_configuration.ecr_repository_name}"
 
             ecs_api.set_ecr_repository_name(
-                f"repo_{self.environment_api.configuration.environment_level}_jenkins_master")
+                f"repo_{ecs_api_configuration.cluster_name}_{ecs_api_configuration.service_name}")
+
+            ecs_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_jenkins_master_container_build_directory_callback
+            ecs_api.build_api.configuration.docker_repository_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{ecs_api.configuration.ecr_repository_region}.amazonaws.com/{ecs_api_configuration.ecr_repository_name}"
 
             self._jenkins_master_ecs_api = ecs_api
         return self._jenkins_master_ecs_api

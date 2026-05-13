@@ -60,7 +60,6 @@ class ECSAPI:
         self.loadbalancer_dns_api_pairs = None
         self._cluster_public_loadbalancer_api = None
         self._cluster_private_loadbalancer_api = None
-        self.init_ecr_repository_name()
 
         try:
             assert self.configuration.ecr_repository_region
@@ -139,22 +138,7 @@ class ECSAPI:
         :return:
         """
 
-        self.configuration.ecr_repository_name = f"repo_{self.environment_api.configuration.environment_level}_jenkins_master"
-
-    def init_ecr_repository_name(self):
-        """
-        If ecr repo name slug set - init the ecr repo name based on it
-
-        :return:
-        """
-
-        if self.configuration._ecr_repository_name is not None:
-            return
-
-        if self.configuration.ecr_repository_name_slug is None:
-            return
-
-        self.configuration.ecr_repository_name = f"repo-{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_name}-{self.configuration.ecr_repository_name_slug}"
+        self.configuration.ecr_repository_name = repo_name
 
     @property
     def ecr_repository(self):
@@ -642,11 +626,16 @@ class ECSAPI:
         :return:
         """
 
+        security_groups = []
         try:
-            security_groups = self.configuration.security_groups
+            security_groups += self.configuration.security_groups
         except self.configuration.UndefinedValueError:
-            security_groups = []
+            pass
 
+        try:
+            security_groups += [self.configuration.service_security_group_name]
+        except self.configuration.UndefinedValueError:
+            pass
 
         if self.loadbalancer_api:
             security_groups.append(self.configuration.lb_facing_security_group_name)
@@ -705,7 +694,6 @@ class ECSAPI:
 
         :return:
         """
-
 
         repo = ECRRepository({})
         repo.region = Region.get_region(self.configuration.ecr_repository_region)
@@ -1315,7 +1303,6 @@ class ECSAPI:
         auto_scaling_group = self.environment_api.provision_auto_scaling_group(asg_name, launch_template)
         capacity_provider = self.provision_ecs_capacity_provider(capacity_provider_name, auto_scaling_group)
         self.attach_capacity_provider_to_ecs_cluster(ecs_cluster, capacity_provider)
-        breakpoint()
         return True
 
     def provision_iam_instance_profile_for_ecs_container_instances(self, slug=None):

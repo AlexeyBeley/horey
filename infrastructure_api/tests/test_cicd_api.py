@@ -799,7 +799,8 @@ def test_provision_jenkins_master_infrastructure(cicd_api_integration, ec2_api_m
 
 @pytest.mark.wip
 def test_update_jenkins_master(cicd_api_integration):
-    assert cicd_api_integration.update_jenkins_master()
+    assert cicd_api_integration.update_jenkins_master(public_dns_prefix="jenkins-public",
+                                                                        private_dns_prefix="jenkins")
 
 @pytest.mark.unit
 def test_provision_jenkins_hagent_infrastructure(cicd_api_integration, ec2_api_mgmt_integration):
