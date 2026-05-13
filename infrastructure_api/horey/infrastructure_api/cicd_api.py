@@ -7,7 +7,6 @@ import time
 import getpass
 from typing import List
 
-from async_orchestrator.horey.async_orchestrator.async_orchestrator import AsyncOrchestrator
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.common_utils.storage_service import StorageService
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
@@ -520,7 +519,7 @@ class CICDAPI:
 
         return dir_path / "jenkins_api" / "horey" / "jenkins_api" / "master"
 
-    def generate_deployment_target_async(self, async_orchestrator:AsyncOrchestrator, name=None, target_ssh_key_secret_name=None, bastions=None):
+    def generate_deployment_target_async(self, async_orchestrator, name=None, target_ssh_key_secret_name=None, bastions=None):
         """
         Generate target
 
