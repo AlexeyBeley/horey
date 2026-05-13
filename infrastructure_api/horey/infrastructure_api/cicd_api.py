@@ -7,6 +7,7 @@ import time
 import getpass
 from typing import List
 
+from async_orchestrator.horey.async_orchestrator.async_orchestrator import AsyncOrchestrator
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.common_utils.storage_service import StorageService
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
@@ -71,7 +72,7 @@ class CICDAPI:
             self._cloudwatch_api = CloudwatchAPI(configuration=config, environment_api=self.environment_api)
             self.init_clouwatch_api_defaults()
         return self._cloudwatch_api
-    
+
     @property
     def ec2_api(self):
         """
@@ -518,6 +519,25 @@ class CICDAPI:
         """
 
         return dir_path / "jenkins_api" / "horey" / "jenkins_api" / "master"
+
+    def generate_deployment_target_async(self, async_orchestrator:AsyncOrchestrator, name=None, target_ssh_key_secret_name=None, bastions=None):
+        """
+        Generate target
+
+        :param async_orchestrator:
+        :param bastions:
+        :param target_ssh_key_secret_name:
+        :param name:
+        :return:
+        """
+
+        if name is None:
+            raise ValueError("name is None")
+        task_name = f"generate_deployment_target_{name}"
+
+        async_orchestrator.start_task_from_function(self.generate_deployment_target, task_name=task_name, name=name, target_ssh_key_secret_name=target_ssh_key_secret_name, bastions=bastions)
+        return task_name
+
 
     def generate_deployment_target(self, name=None, target_ssh_key_secret_name=None, bastions=None):
         """
