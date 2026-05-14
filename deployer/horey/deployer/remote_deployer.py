@@ -610,7 +610,6 @@ class RemoteDeployer:
         lines = data.splitlines()
 
         for line in lines:
-            breakpoint()
             line = RemoteDeployer.clean_line(line)
             logger.info(f"[{remote_address} REMOTE<-] '{line}'")
 
@@ -1651,9 +1650,13 @@ class RemoteDeployer:
 
             channel = ssh_client.invoke_shell()
             channel.settimeout(120)
+            breakpoint()
+            silent_shell_command = "systemctl --user mask systemd-shell-setup.service"
+            stdin, shout, [], exit_status = self.execute_remote_shell(channel, silent_shell_command, target.deployment_target_address)
+
+
             # This is a prefix line to eliminate the SSH command header output
             silent_shell_command = 'export PS1=""'
-
             stdin, shout, [], exit_status = self.execute_remote_shell(channel, silent_shell_command, target.deployment_target_address)
             logger.info(f"[REMOTE] [{target.deployment_target_address}] Initialized remote shell with params: {stdin=}, {shout=}, {exit_status=}")
             def executor(command:str, timeout:int=None, retries=1):
