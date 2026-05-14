@@ -610,6 +610,7 @@ class RemoteDeployer:
         lines = data.splitlines()
 
         for line in lines:
+            breakpoint()
             line = RemoteDeployer.clean_line(line)
             logger.info(f"[{remote_address} REMOTE<-] '{line}'")
 
