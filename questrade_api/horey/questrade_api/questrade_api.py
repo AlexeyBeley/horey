@@ -857,8 +857,9 @@ class QuestradeAPI:
             symbols.append(symbol)
 
         for symbol in symbols:
-
+            # todo: Check low and high instead vwap
             symbol.vwap_change = self.calculate_vwap_change(symbol.candles)
+
             symbol.absolute_low = min([candle.low for candle in symbol.candles])
             symbol.absolute_high = max([candle.high for candle in symbol.candles])
 
@@ -973,18 +974,10 @@ class QuestradeAPI:
 
             if position.symbol_id not in order_by_symbol_id:
                 ret.append(position)
-                candles = self.db_get_today_candles(position)
                 if position.average_entry_price is None:
                     lines.append(f">Time to sell! {position.symbol} {position.open_quantity} {position.average_entry_price}")
                     continue
-                percent_105 =  position.average_entry_price * 1.05
-                percent_110 =  position.average_entry_price * 1.1
-                if candles:
-                    sell_high = max(candle.high for candle in candles)
-                    sell_calculated = percent_110 if sell_high > percent_110 else percent_105
-                else:
-                    sell_calculated = percent_105
-
+                sell_calculated = position.average_entry_price * 1.05
                 sell_calculated = Decimal(str(sell_calculated))
 
                 # Round to 2 decimal places
