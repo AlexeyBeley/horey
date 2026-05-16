@@ -223,6 +223,10 @@ def test_calculate_vwap_incline(questrade_api):
     candles = [Candle(dict_src) for dict_src in candle_dicts]
     assert questrade_api.calculate_vwap_incline(candles)
 
+@pytest.mark.unit
+def test_get_idle_positions(questrade_api):
+    assert questrade_api.get_idle_positions()
+
 
 @pytest.mark.unit
 def test_generate_profit_review(questrade_api):
@@ -255,4 +259,3 @@ def test_get_positions_without_sell_orders(questrade_api):
         assert questrade_api.get_positions_without_sell_orders()
         logger.info("Sleeping 60 seconds...")
         time.sleep(60)
-

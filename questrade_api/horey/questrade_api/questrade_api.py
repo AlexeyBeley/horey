@@ -1199,3 +1199,10 @@ class QuestradeAPI:
                 symbol_to_orders[order.symbol_id] = []
             symbol_to_orders[order.symbol_id].append(order)
         return symbol_to_orders
+
+    @connected
+    def get_idle_positions(self):
+        positions = self.get_positions()
+        for position in positions:
+            if position.average_entry_price*0.6 > position.current_price:
+                print(position.symbol, position.average_entry_price, position.current_price)
