@@ -2605,6 +2605,8 @@ class EnvironmentAPI:
         """
 
         ec2_instances = self.get_ec2_instances(update_info=update_info, tags_dict=tags_dict)
+        for ec2_instance in ec2_instances:
+            logger.info(f"Debugging instance state: {ec2_instance.get_state()}")
         if alive:
             ec2_instances = [ec2_instance for ec2_instance in ec2_instances if ec2_instance.is_alive()]
         if len(ec2_instances) != 1:
