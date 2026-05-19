@@ -537,7 +537,6 @@ class CICDAPI:
         async_orchestrator.start_task_from_function(self.generate_deployment_target, task_name=task_name, name=name, target_ssh_key_secret_name=target_ssh_key_secret_name, bastions=bastions)
         return task_name
 
-
     def generate_deployment_target(self, name=None, target_ssh_key_secret_name=None, bastions=None):
         """
         Generate target
@@ -551,7 +550,7 @@ class CICDAPI:
         if name is None:
             raise ValueError("name is None")
 
-        ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]})
+        ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]}, alive=True)
         return self.init_deployment_target(ec2_instance, target_ssh_key_secret_name=target_ssh_key_secret_name,
                                                    bastions=bastions)
 

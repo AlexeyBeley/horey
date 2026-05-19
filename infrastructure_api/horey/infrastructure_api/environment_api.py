@@ -2594,16 +2594,19 @@ class EnvironmentAPI:
 
         return tags
 
-    def get_ec2_instance(self, update_info=True, tags_dict=None):
+    def get_ec2_instance(self, update_info=True, tags_dict=None, alive=True):
         """
         Find and return the EC2 instance.
 
+        :param alive:
         :param tags_dict:
         :param update_info:
         :return:
         """
 
         ec2_instances = self.get_ec2_instances(update_info=update_info, tags_dict=tags_dict)
+        if alive:
+            ec2_instances = [ec2_instance for ec2_instance in ec2_instances if ec2_instance.is_alive()]
         if len(ec2_instances) != 1:
             raise RuntimeError(f"Expected to find single instance, found: {len(ec2_instances)}")
         return ec2_instances[0]

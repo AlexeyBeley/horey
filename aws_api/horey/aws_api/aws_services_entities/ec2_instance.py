@@ -421,3 +421,15 @@ class EC2Instance(AwsObject):
         TERMINATED = 3
         STOPPING = 4
         STOPPED = 5
+
+    def is_alive(self):
+        """
+        Check if self is alive.
+
+        :return:
+        """
+
+        return self.get_state() in (
+            self.State.PENDING,
+            self.State.RUNNING
+        )
