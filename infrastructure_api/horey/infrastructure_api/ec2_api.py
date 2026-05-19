@@ -195,3 +195,18 @@ class EC2API:
             return True
 
         return self.environment_api.aws_api.ec2_client.dispose_instance(ec2_instance)
+
+    def get_security_group(self, security_group_name):
+        """
+        Get security groups by names.
+
+        :param security_group_name:
+        :return:
+        """
+
+        group = self.environment_api.aws_api.get_security_group_by_vpc_and_name(self.environment_api.vpc, security_group_name)
+
+        if not group:
+            raise ValueError(f"Was not able to find security group: {security_group_name}")
+
+        return group
