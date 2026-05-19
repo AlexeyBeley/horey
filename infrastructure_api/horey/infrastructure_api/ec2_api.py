@@ -188,8 +188,8 @@ class EC2API:
             raise NotImplementedError("Name was not set")
         try:
             ec2_instance = self.get_instance(name=name, update_info=True)
-        except RuntimeError:
-            if "found: 0" not in str(RuntimeError) or not missing_ok:
+        except RuntimeError as inst_err:
+            if "found: 0" not in repr(inst_err) or not missing_ok:
                 raise
 
             return True
