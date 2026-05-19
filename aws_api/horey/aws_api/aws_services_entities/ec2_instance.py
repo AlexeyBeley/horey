@@ -430,6 +430,6 @@ class EC2Instance(AwsObject):
         """
 
         return self.get_state() in (
-            self.State.PENDING,
-            self.State.RUNNING
+            self.State.PENDING.value,
+            self.State.RUNNING.value
         )
