@@ -186,9 +186,12 @@ class EC2API:
 
         if not name:
             raise NotImplementedError("Name was not set")
-        ec2_instance = self.get_instance(name=name, update_info=True)
-        if not ec2_instance:
-            if missing_ok:
-                return True
-            raise ValueError(f"Was not able to find instance by {name=}")
+        try:
+            ec2_instance = self.get_instance(name=name, update_info=True)
+        except RuntimeError:
+            if "found: 0" not in repr(RuntimeError) or not missing_ok:
+                raise
+            
+            return True
+
         return self.environment_api.aws_api.ec2_client.dispose_instance(ec2_instance)
