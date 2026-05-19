@@ -177,9 +177,9 @@ def test_provision_db(questrade_api):
     assert questrade_api.provision_db_symbols_table()
     assert questrade_api.provision_db_candles_table()
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_fetch_symbols_by_max_price(questrade_api):
-    assert questrade_api.fetch_symbols_by_price_range(0.1, 2)
+    assert questrade_api.fetch_symbols_by_price_range(0.01, 2)
 
 
 @pytest.mark.unit

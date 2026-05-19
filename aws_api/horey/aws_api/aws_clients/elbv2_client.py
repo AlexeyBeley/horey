@@ -670,7 +670,6 @@ class ELBV2Client(Boto3Client):
                 self.modify_rule_raw(rule.region, modify_request)
 
             return self.update_rule_information(rule)
-        breakpoint()
 
         response = self.create_rule_raw(rule.region, rule.generate_create_request())
         rule.update_from_raw_response(response)

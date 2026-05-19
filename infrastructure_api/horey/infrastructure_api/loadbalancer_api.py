@@ -8,7 +8,6 @@ from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
 from horey.infrastructure_api.loadbalancer_api_configuration_policy import LoadbalancerAPIConfigurationPolicy
 
-
 logger = get_logger()
 
 
@@ -67,7 +66,9 @@ class LoadbalancerAPI:
         self.environment_api.aws_api.provision_load_balancer(load_balancer)
         return load_balancer
 
-    def provision_load_balancer_target_group(self, name=None):
+    def provision_load_balancer_target_group(self, name=None,
+                                             target_group_protocol=None,
+                                             health_check_path=None):
         """
         Provision load balancer target group.
 
@@ -79,10 +80,10 @@ class LoadbalancerAPI:
         target_group.target_type = self.configuration.target_type
         if target_group.target_type != "lambda":
             target_group.port = self.configuration.target_group_port
-            target_group.protocol = self.configuration.target_group_protocol
+            target_group.protocol = target_group_protocol or self.configuration.target_group_protocol
             target_group.vpc_id = self.environment_api.vpc.id
             target_group.health_check_port = "traffic-port"
-            target_group.health_check_protocol = target_group.protocol
+            target_group.health_check_protocol = target_group_protocol or target_group.protocol
         target_group.health_check_enabled = True
 
         target_group.health_check_interval_seconds = 30
@@ -90,7 +91,7 @@ class LoadbalancerAPI:
         target_group.healthy_threshold_count = 2
         target_group.unhealthy_threshold_count = 2
 
-        target_group.health_check_path = self.configuration.health_check_path
+        target_group.health_check_path = health_check_path or self.configuration.health_check_path
 
         if self.configuration.target_group_targets:
             raise NotImplementedError("todo: add param")
@@ -151,7 +152,10 @@ class LoadbalancerAPI:
 
         # listener 443
         if not certificate:
-            certificates = [self.environment_api.aws_api.acm_client.get_certificate_by_domain_name(self.environment_api.region, dns) for dns in self.configuration.certificates_domain_names + self.configuration.certificates_unmanaged_domain_names]
+            certificates = [
+                self.environment_api.aws_api.acm_client.get_certificate_by_domain_name(self.environment_api.region, dns)
+                for dns in
+                self.configuration.certificates_domain_names + self.configuration.certificates_unmanaged_domain_names]
             raise NotImplementedError("Check for other options")
         else:
             certificates = [certificate]
@@ -195,7 +199,8 @@ class LoadbalancerAPI:
         """
         # todo: cleanup report reorder rules by usage
         # todo: cleanup report host rule without certificate
-        current_rules = self.environment_api.aws_api.elbv2_client.get_region_rules(listener.region, listener_arn=listener.arn)
+        current_rules = self.environment_api.aws_api.elbv2_client.get_region_rules(listener.region,
+                                                                                   listener_arn=listener.arn)
 
         rule = LoadBalancer.Rule({})
 
@@ -212,7 +217,6 @@ class LoadbalancerAPI:
             rule.conditions = [
                 {
                     "Field": "host-header",
-                    "Values": [dns_address],
                     "HostHeaderConfig": {
                         "Values": [dns_address]
                     }
@@ -268,7 +272,8 @@ class LoadbalancerAPI:
         load_balancer.name = self.configuration.load_balancer_name
         load_balancer.region = self.environment_api.region
         if not self.environment_api.aws_api.elbv2_client.update_load_balancer_information(load_balancer):
-            raise RuntimeError(f"Was not able to find loadbalancer '{load_balancer.name }' in region '{load_balancer.region}'")
+            raise RuntimeError(
+                f"Was not able to find loadbalancer '{load_balancer.name}' in region '{load_balancer.region}'")
         return load_balancer
 
     def get_targetgroup(self, name=None):
@@ -283,5 +288,6 @@ class LoadbalancerAPI:
         target_group.name = name or self.configuration.target_group_name
 
         if not self.environment_api.aws_api.elbv2_client.update_target_group_information(target_group):
-            raise RuntimeError(f"Was not able to find target group '{target_group.name }' in region '{target_group.region}'")
+            raise RuntimeError(
+                f"Was not able to find target group '{target_group.name}' in region '{target_group.region}'")
         return target_group

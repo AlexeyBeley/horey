@@ -1467,7 +1467,9 @@ class ECSAPI:
             service_sg =  self.ec2_api.get_security_group(self.configuration.service_security_group_name)
             self.ec2_api.security_group_add_rule(service_sg, lb_sg, port_range=port_range)
         load_balancer = self.cluster_public_loadbalancer_api.provision_load_balancer()
-        tg = self.cluster_public_loadbalancer_api.provision_load_balancer_target_group(name=self.configuration.service_public_target_group_name)
+        tg = self.cluster_public_loadbalancer_api.provision_load_balancer_target_group(name=self.configuration.service_public_target_group_name,
+                                                                                       target_group_protocol=self.configuration.target_group_protocol,
+                                                                                       health_check_path=self.configuration.health_check_path)
         listener = self.cluster_public_loadbalancer_api.provision_load_balancer_listener(certificate=certificate)
         self.cluster_public_loadbalancer_api.provision_listener_rule(listener, tg, dns_address=dns_address)
         return load_balancer
@@ -1489,7 +1491,9 @@ class ECSAPI:
             service_sg =  self.ec2_api.get_security_group(self.configuration.service_security_group_name)
             self.ec2_api.security_group_add_rule(service_sg, lb_sg, port_range=port_range)
         load_balancer = self.cluster_private_loadbalancer_api.provision_load_balancer()
-        tg = self.cluster_private_loadbalancer_api.provision_load_balancer_target_group(name=self.configuration.service_private_target_group_name)
+        tg = self.cluster_private_loadbalancer_api.provision_load_balancer_target_group(name=self.configuration.service_private_target_group_name,
+                                                                                        target_group_protocol=self.configuration.target_group_protocol,
+                                                                                       health_check_path=self.configuration.health_check_path)
         listener = self.cluster_private_loadbalancer_api.provision_load_balancer_listener(certificate=certificate)
         self.cluster_private_loadbalancer_api.provision_listener_rule(listener, tg, dns_address=dns_address)
         return load_balancer

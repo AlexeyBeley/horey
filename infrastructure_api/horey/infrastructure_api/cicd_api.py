@@ -698,6 +698,8 @@ class CICDAPI:
             ecs_api_configuration.ecs_task_definition_memory_reservation = 2048
             ecs_api_configuration.autoscaling_max_capacity = 1
             ecs_api_configuration.network_mode = "awsvpc"
+            ecs_api_configuration.target_group_protocol = "HTTP"
+            ecs_api_configuration.health_check_path = "/login"
             ecs_api_configuration.cluster_name = f"{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level_abbr}-{self.environment_api.configuration.environment_name_abbr}"
 
             ecs_api_configuration._container_definition_port_mappings = [

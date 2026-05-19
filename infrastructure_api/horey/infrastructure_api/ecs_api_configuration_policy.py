@@ -60,7 +60,17 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._cron_name = None
         self._adhoc_task_name = None
         self._service_security_group_name = None
+        self._health_check_path = None
 
+    @property
+    def health_check_path(self):
+        self.check_defined()
+        return self._health_check_path
+
+    @health_check_path.setter
+    def health_check_path(self, value):
+        self._health_check_path = value
+        
     @property
     def adhoc_task_name(self):
         if self._adhoc_task_name is None:
