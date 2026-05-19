@@ -174,3 +174,21 @@ class EC2API:
         if not ec2_instance:
             raise ValueError(f"Was not able to find instance by {name=}")
         self.environment_api.aws_api.ec2_client.stop_instance(ec2_instance)
+
+    def dispose_instance(self, name=None, missing_ok=True):
+        """
+        Stop EC2 instance.
+
+        :param missing_ok:
+        :param name:
+        :return:
+        """
+
+        if not name:
+            raise NotImplementedError("Name was not set")
+        ec2_instance = self.get_instance(name=name, update_info=True)
+        if not ec2_instance:
+            if missing_ok:
+                return True
+            raise ValueError(f"Was not able to find instance by {name=}")
+        return self.environment_api.aws_api.ec2_client.dispose_instance(ec2_instance)
