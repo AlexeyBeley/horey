@@ -550,7 +550,7 @@ class CICDAPI:
         if name is None:
             raise ValueError("name is None")
 
-        ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]}, alive=True)
+        ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]}, alive=True, stopped=True)
         return self.init_deployment_target(ec2_instance, target_ssh_key_secret_name=target_ssh_key_secret_name,
                                                    bastions=bastions)
 

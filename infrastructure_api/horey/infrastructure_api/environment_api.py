@@ -2594,24 +2594,27 @@ class EnvironmentAPI:
 
         return tags
 
-    def get_ec2_instance(self, update_info=True, tags_dict=None, alive=True):
+    def get_ec2_instance(self, update_info=True, tags_dict=None, alive=True, stopped=True):
         """
         Find and return the EC2 instance.
 
+        :param stopped:
         :param alive:
         :param tags_dict:
         :param update_info:
         :return:
         """
 
-        ec2_instances = self.get_ec2_instances(update_info=update_info, tags_dict=tags_dict)
-        for ec2_instance in ec2_instances:
-            logger.info(f"Debugging instance state: {ec2_instance.get_state()}")
+        all_ec2_instances = self.get_ec2_instances(update_info=update_info, tags_dict=tags_dict)
+        desired = []
         if alive:
-            ec2_instances = [ec2_instance for ec2_instance in ec2_instances if ec2_instance.is_alive()]
-        if len(ec2_instances) != 1:
-            raise RuntimeError(f"Expected to find single instance, found: {len(ec2_instances)}")
-        return ec2_instances[0]
+            desired += [ec2_instance for ec2_instance in all_ec2_instances if ec2_instance.is_alive()]
+        if stopped:
+            desired += [ec2_instance for ec2_instance in all_ec2_instances if ec2_instance.is_stopped()]
+
+        if len(desired) != 1:
+            raise RuntimeError(f"Expected to find single instance, found: {len(desired)}")
+        return desired[0]
 
     def get_ec2_instances(self, update_info=True, tags_dict=None):
         """

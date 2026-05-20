@@ -433,3 +433,15 @@ class EC2Instance(AwsObject):
             self.State.PENDING,
             self.State.RUNNING
         )
+
+    def is_stopped(self):
+        """
+        Check if self is stopped
+
+        :return:
+        """
+
+        return self.get_state() in (
+            self.State.STOPPING,
+            self.State.STOPPED
+        )
