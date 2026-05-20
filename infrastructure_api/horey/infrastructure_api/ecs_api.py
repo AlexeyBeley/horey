@@ -179,7 +179,11 @@ class ECSAPI:
         :return:
         """
         configuration = ECSAPIConfigurationPolicy()
-        configuration.init_from_dictionary(self.configuration.convert_to_dict(ignore_undefined=True))
+
+        for key, value in self.configuration.__dict__.items():
+            if not key.startswith("_"):
+                continue
+            setattr(configuration, key, value)
         return ECSAPI(configuration=configuration, environment_api=self.environment_api)
 
     def set_api(self, loadbalancer_api=None, dns_api=None, cloudwatch_api=None, loadbalancer_dns_api_pairs=None):
