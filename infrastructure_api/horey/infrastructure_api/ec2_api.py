@@ -288,3 +288,38 @@ class EC2API:
                                             )
 
         return key_pair
+    def dispose_instance(self, name=None, missing_ok=True):
+        """
+        Stop EC2 instance.
+
+        :param missing_ok:
+        :param name:
+        :return:
+        """
+
+        if not name:
+            raise NotImplementedError("Name was not set")
+        try:
+            ec2_instance = self.get_instance(name=name, update_info=True)
+        except RuntimeError as inst_err:
+            if "found: 0" not in repr(inst_err) or not missing_ok:
+                raise
+
+            return True
+
+        return self.environment_api.aws_api.ec2_client.dispose_instance(ec2_instance)
+
+    def get_security_group(self, security_group_name):
+        """
+        Get security groups by names.
+
+        :param security_group_name:
+        :return:
+        """
+
+        group = self.environment_api.aws_api.get_security_group_by_vpc_and_name(self.environment_api.vpc, security_group_name)
+
+        if not group:
+            raise ValueError(f"Was not able to find security group: {security_group_name}")
+
+        return group

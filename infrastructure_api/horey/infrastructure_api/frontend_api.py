@@ -365,6 +365,7 @@ class FrontendAPI:
         :return:
         """
 
+        paths = ["/"+path.lstrip("/") for path in paths]
         if distribution is None:
             if distribution_name is None:
                 ValueError("Either distribution or distribution_name must be provided")
