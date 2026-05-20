@@ -126,6 +126,7 @@ class EC2API:
             raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
         return amis[0]
 
+    # pylint: disable= too-many-arguments,too-many-positional-arguments
     def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None, instance_type="t3a.medium", asynchronous=True):
         """
         Provision instance.
@@ -308,18 +309,3 @@ class EC2API:
             return True
 
         return self.environment_api.aws_api.ec2_client.dispose_instance(ec2_instance)
-
-    def get_security_group(self, security_group_name):
-        """
-        Get security groups by names.
-
-        :param security_group_name:
-        :return:
-        """
-
-        group = self.environment_api.aws_api.get_security_group_by_vpc_and_name(self.environment_api.vpc, security_group_name)
-
-        if not group:
-            raise ValueError(f"Was not able to find security group: {security_group_name}")
-
-        return group
