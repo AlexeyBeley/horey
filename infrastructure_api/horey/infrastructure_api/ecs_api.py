@@ -172,6 +172,16 @@ class ECSAPI:
             self._ecr_images = self.environment_api.aws_api.ecr_client.get_repository_images(self.ecr_repository)
         return self._ecr_images
 
+    def copy(self):
+        """
+        Create copy of self.
+
+        :return:
+        """
+        configuration = ECSAPIConfigurationPolicy()
+        configuration.init_from_dictionary(self.configuration.convert_to_dict(ignore_undefined=True))
+        return ECSAPI(configuration=configuration, environment_api=self.environment_api)
+
     def set_api(self, loadbalancer_api=None, dns_api=None, cloudwatch_api=None, loadbalancer_dns_api_pairs=None):
         """
         Standard.
