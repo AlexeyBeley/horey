@@ -3103,7 +3103,6 @@ class EC2Client(Boto3Client):
                 [ec2_instance.State.PENDING],
                 [ec2_instance.State.SHUTTING_DOWN, ec2_instance.State.TERMINATED, ec2_instance.State.STOPPING],
             )
-        time.sleep(60)
 
     def start_instances_raw(self, region, request):
         """
