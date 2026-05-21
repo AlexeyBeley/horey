@@ -250,14 +250,14 @@ class Kayesauction(Provider):
             else:
                 raise ValueError("Name")
 
-            for _ in range(50):
+            for _ in range(5):
                 try:
                     logger.info(f"Looking for {auction_event.url} 'Auction Details' btn")
                     btn_details = self.selenium_api.get_element(By.CSS_SELECTOR, "[title='Auction Details']")
                     btn_details.click()
                     self.selenium_api.wait_for_page_load()
                 except Exception as inst_error:
-                    logger.error(f"Auction description Auction Details btn not found: {repr(inst_error)}")
+                    logger.warning(f"Auction description Auction Details btn not found: {repr(inst_error)}")
 
                 try:
                     auction_event.description = self.selenium_api.get_element(By.ID, "panel-auction-detail-auction-information").text
@@ -266,7 +266,8 @@ class Kayesauction(Provider):
                     logger.error(f"Auction description auction-information not found: {repr(inst_error)} retrying")
                     time.sleep(0.1)
             else:
-                raise TimeoutError("Was not able to fetch auction description")
+                auction_event.description = auction_event.name
+
 
             if not auction_event.address:
                 auction_event.address = self.selenium_api.get_element(By.TAG_NAME, "app-city-state-zip-link").text
