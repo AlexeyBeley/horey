@@ -3077,10 +3077,11 @@ class EC2Client(Boto3Client):
             self.clear_cache(EC2Instance)
             return response
 
-    def start_instances(self, instances):
+    def start_instances(self, instances, asynchronous=False):
         """
         Start instances and wait.
 
+        :param asynchronous:
         :param instances:
         :return:
         """
@@ -3095,6 +3096,9 @@ class EC2Client(Boto3Client):
         for region, ec2_instances in instance_by_region.items():
             self.start_instances_raw(region, request={"InstanceIds": [ec2_instance.id for ec2_instance in ec2_instances]})
 
+        if asynchronous:
+            return True
+
         for ec2_instance in instances:
             self.wait_for_status(
                 ec2_instance,
@@ -3104,6 +3108,7 @@ class EC2Client(Boto3Client):
                 [ec2_instance.State.SHUTTING_DOWN, ec2_instance.State.TERMINATED, ec2_instance.State.STOPPING],
             )
         time.sleep(60)
+        return True
 
     def start_instances_raw(self, region, request):
         """

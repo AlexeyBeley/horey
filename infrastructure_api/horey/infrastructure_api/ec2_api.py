@@ -161,6 +161,28 @@ class EC2API:
         self.environment_api.aws_api.provision_ec2_instance(ec2_instance)
         return ec2_instance
 
+    def start_instance(self, name=None, asynchronous=True):
+        """
+        Stop EC2 instance.
+
+        :param asynchronous:
+        :param name:
+        :return:
+        """
+
+        if not name:
+            raise NotImplementedError("Name was not set")
+        ec2_instance = self.get_instance(name=name, update_info=True)
+        if not ec2_instance:
+            raise ValueError(f"Was not able to find instance by {name=}")
+
+        if ec2_instance.is_alive():
+            return True
+
+        self.environment_api.aws_api.ec2_client.start_instances([ec2_instance], asynchronous=asynchronous)
+        return ec2_instance
+
+
     def stop_instance(self, name=None, asynchronous=True):
         """
         Stop EC2 instance.
