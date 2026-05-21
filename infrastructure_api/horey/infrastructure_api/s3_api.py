@@ -143,7 +143,8 @@ class S3API:
                                   "png": {"ContentType": "image/png"},
                                   "txt": {"ContentType": "text/plain"},
                                   "exe": {"ContentType": "application/x-msdownload"},
-                                  "zip": {"ContentType": "application/zip"}
+                                  "zip": {"ContentType": "application/zip"},
+                                  "run": {"ContentType": "application/octet-stream"}
                                   }
 
             _, extension_string = os.path.splitext(file_path)
