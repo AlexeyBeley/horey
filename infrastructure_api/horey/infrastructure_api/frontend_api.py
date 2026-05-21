@@ -423,7 +423,8 @@ class FrontendAPI:
         paths = [f"{bucket_path.rstrip('/')}/*"]
         ret = self.create_invalidation(distribution, paths)
         if local_paths:
-            logger.info(f"File at: {dns_address}/{bucket_path}/{local_paths[0].name}")
+            logger.info("DOWNLOAD file from:")
+            logger.info(f"https://{dns_address}/{bucket_path}/{local_paths[0].name}")
         else:
-            logger.info(f"Files at: {dns_address}/{bucket_path}")
+            logger.info(f"Files at: https://{dns_address}/{bucket_path}")
         return ret
