@@ -245,11 +245,11 @@ def test_generate_profit_review(questrade_api):
 
     assert questrade_api.generate_profit_review(time_start, time_end)
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_update_cheap_candles_with_today_data(questrade_api):
     assert questrade_api.update_cheap_candles_with_today_data()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_make_purchase_plan(questrade_api):
     assert questrade_api.make_purchase_plan()
 
