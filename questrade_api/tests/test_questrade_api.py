@@ -177,11 +177,6 @@ def test_provision_db(questrade_api):
     assert questrade_api.provision_db_symbols_table()
     assert questrade_api.provision_db_candles_table()
 
-@pytest.mark.wip
-def test_fetch_symbols_by_max_price(questrade_api):
-    assert questrade_api.fetch_symbols_by_price_range(0.001, 2)
-
-
 @pytest.mark.unit
 def test_sort_and_print_cheapest_by_price(questrade_api):
     response = questrade_api.sort_and_print_cheapest_by_price()
@@ -244,6 +239,11 @@ def test_generate_profit_review(questrade_api):
     time_end = today.replace(hour=20, minute=0, second=0, microsecond=0) - timedelta(minutes=1)
 
     assert questrade_api.generate_profit_review(time_start, time_end)
+
+
+@pytest.mark.unit
+def test_fetch_symbols_by_max_price(questrade_api):
+    assert questrade_api.fetch_symbols_by_price_range(0.001, 2)
 
 @pytest.mark.wip
 def test_update_cheap_candles_with_today_data(questrade_api):
