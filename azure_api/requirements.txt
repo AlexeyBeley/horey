@@ -14,4 +14,4 @@ azure-mgmt-core==1.6.0
 azure-mgmt-compute==38.0.0
 azure-mgmt-subscription==3.1.1
 azure-identity==1.25.3
-azure-mgmt-resource-locks>=1.0.0
+azure-mgmt-resource-locks
