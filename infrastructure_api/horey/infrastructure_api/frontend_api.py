@@ -391,7 +391,7 @@ class FrontendAPI:
         distribution.tags = self.environment_api.get_tags_with_name(distribution.aliases[0])
 
         if not self.environment_api.aws_api.cloudfront_client.update_distribution_information(distribution):
-            return None
+            raise ValueError(f"Was not able to find distribution by {domain_name=}")
 
         return distribution
 
