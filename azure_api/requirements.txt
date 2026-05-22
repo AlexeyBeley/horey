@@ -5,7 +5,6 @@ horey.configuration_policy>=1.0.0
 horey.h_logger>=1.0.0
 horey.common_utils>=1.0.0
 horey.network>=1.0.0
-azure-mgmt-resource-locks>1.0.0
 azure-common==1.1.28
 azure-core==1.41.0
 azure-mgmt-resource==25.0.0
