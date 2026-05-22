@@ -51,7 +51,7 @@ class VirtualMachine(AzureObject):
 
         if self._resource_group_name is None:
             if self.network_profile:
-                lst_id = self.network_profile["network_interfaces"][0]["id"].split("/")
+                lst_id = self.network_interfaces[0]["id"].split("/")
                 if lst_id[3] != "resourceGroups":
                     raise RuntimeError(f"Can not parse ID: {lst_id}")
                 self._resource_group_name = lst_id[4]
