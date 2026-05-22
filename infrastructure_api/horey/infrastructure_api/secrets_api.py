@@ -36,5 +36,18 @@ class SecretsAPI:
         :return:
         """
 
-        logger.info(f"Tests: Downloading secret {secret_name} to {file_path}")
+        logger.info(f"Downloading secret {secret_name} to {file_path}")
         return self.environment_api.aws_api.get_secret_file(secret_name, file_path, region=self.region)
+
+    def get_secret(self, secret_name: str, ignore_missing=False):
+        """
+        Get secret string from AWS Secrets Manager
+
+        :param ignore_missing:
+        :param secret_name:
+        :return:
+        """
+
+        logger.info(f"Downloading secret {secret_name}")
+        return self.environment_api.aws_api.get_secret_value(secret_name, region=self.region, ignore_missing=ignore_missing)
+
