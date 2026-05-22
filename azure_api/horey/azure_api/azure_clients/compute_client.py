@@ -7,6 +7,7 @@ import time
 
 from azure.mgmt.compute import ComputeManagementClient
 from azure.mgmt.compute.models import Disk as DiskRaw
+from azure.mgmt.compute.models import VirtualMachine as VirtualMachineRaw
 from horey.azure_api.azure_clients.azure_client import AzureClient
 from horey.azure_api.azure_service_entities.disk import Disk
 from horey.azure_api.azure_service_entities.ssh_key import SSHKey
@@ -58,9 +59,13 @@ class ComputeClient(AzureClient):
                     virtual_machine.update_after_creation(existing_machine)
                     return virtual_machine
 
+        # creating VM
+        request = virtual_machine.generate_create_request(tags_only=tags_only)
+        vm_raw = VirtualMachineRaw(**request[2])
+
         try:
             return self.raw_create_virtual_machines(
-            virtual_machine.generate_create_request(tags_only=tags_only), asynchronous=asynchronous
+            request[:2] + [vm_raw], asynchronous=asynchronous
             )
         except Exception as inst_error:
             if "did not start in the allotted time" not in repr(inst_error):
