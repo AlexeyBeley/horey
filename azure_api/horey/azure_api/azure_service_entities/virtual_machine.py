@@ -33,6 +33,10 @@ class VirtualMachine(AzureObject):
         self.update_from_raw_response(dict_src)
 
     @property
+    def network_interfaces(self):
+        return self.network_profile.get("network_interfaces") or self.network_profile.get("networkInterfaces")
+
+    @property
     def resource_group_name(self):
         """
         Generate or use one explicitly set.

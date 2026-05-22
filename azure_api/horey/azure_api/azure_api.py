@@ -545,7 +545,7 @@ class AzureAPI:
         public_ip_addresses = public_ip_addresses or self.network_client.get_all_public_ip_addresses(None, resource_group_name=vm.resource_group_name)
         if "network_interfaces" not in vm.network_profile:
             raise ValueError(f"Unexpected format of network interfaces for '{vm.name}': {vm.dict_src}. Not 'network_interfaces' in the dict.")
-        network_interface_id = vm.network_profile["network_interfaces"][0]["id"]
+        network_interface_id = vm.network_interfaces[0]["id"]
         public_ips = [ip.ip_address for ip in public_ip_addresses if
                        ip.ip_configuration and network_interface_id in ip.ip_configuration["id"]]
         if not public_ips:
