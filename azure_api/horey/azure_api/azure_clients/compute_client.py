@@ -216,9 +216,9 @@ class ComputeClient(AzureClient):
         """
 
         request = disk.generate_create_request()
+        disk_raw = DiskRaw(**request[2])
 
-
-        response = self.raw_create_disk(request[:2] + [DiskRaw(request[2])])
+        response = self.raw_create_disk(request[:2] + [disk_raw])
         if asynchronous:
             return response
         response.wait()
