@@ -93,7 +93,7 @@ class VirtualMachine(AzureObject):
             "storageProfile": lambda _, value: self.init_default_attr("storage_profile", value),
             "securityProfile": lambda _, value: self.init_default_attr("security_profile", value),
             "os_profile": self.init_default_attr,
-            "osProfile": self.init_default_attr,
+            "osProfile": lambda _, value: self.init_default_attr("os_profile", value),
             "network_profile": self.init_default_attr,
             "networkProfile": lambda _, value: self.init_default_attr("network_profile", value),
             "diagnostics_profile": self.init_default_attr,

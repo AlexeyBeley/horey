@@ -16,7 +16,7 @@ venv:
 	python -m pip install --upgrade pip &&\
 	python -m pip install -U setuptools\>=54.1.2 &&\
 	python -m pip install -U packaging\>=24.2 &&\
-	python -m pip install pytest &&\
+	pip install pytest &&\
 	cd ${HOREY_DIR_PATH} &&\
 	make recursive_install_from_source_local_venv-pip_api
 
