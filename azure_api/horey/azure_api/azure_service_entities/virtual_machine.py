@@ -33,6 +33,15 @@ class VirtualMachine(AzureObject):
         self.update_from_raw_response(dict_src)
 
     @property
+    def network_interfaces(self):
+        """
+        Fugg Microsoft!!!!
+        
+        :return:
+        """
+        return self.network_profile.get("network_interfaces") or self.network_profile.get("networkInterfaces")
+
+    @property
     def resource_group_name(self):
         """
         Generate or use one explicitly set.
@@ -70,20 +79,29 @@ class VirtualMachine(AzureObject):
 
         init_options = {
             "id": self.init_default_attr,
+            "vmId": lambda key, val:  self.init_default_attr("id", val),
             "name": self.init_default_attr,
             "type": self.init_default_attr,
             "location": self.init_default_attr,
             "hardware_profile": self.init_default_attr,
+            "hardwareProfile": self.init_default_attr,
             "storage_profile": self.init_default_attr,
+            "storageProfile": self.init_default_attr,
+            "securityProfile": self.init_default_attr,
             "os_profile": self.init_default_attr,
+            "osProfile": self.init_default_attr,
             "network_profile": self.init_default_attr,
+            "networkProfile": self.init_default_attr,
             "diagnostics_profile": self.init_default_attr,
             "provisioning_state": self.init_default_attr,
+            "provisioningState": self.init_default_attr,
             "vm_id": self.init_default_attr,
             "tags": self.init_default_attr,
             "zones": self.init_default_attr,
             "time_created": self.init_default_attr,
+            "timeCreated": self.init_default_attr,
             "etag": self.init_default_attr,
+            "properties": lambda key, val : self.update_from_raw_response(dict_src["properties"])
         }
 
         self.init_attrs(dict_src, init_options)
