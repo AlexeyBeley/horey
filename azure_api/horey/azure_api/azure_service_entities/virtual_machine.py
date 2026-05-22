@@ -34,6 +34,11 @@ class VirtualMachine(AzureObject):
 
     @property
     def network_interfaces(self):
+        """
+        Fugg Microsoft!!!!
+        
+        :return:
+        """
         return self.network_profile.get("network_interfaces") or self.network_profile.get("networkInterfaces")
 
     @property
