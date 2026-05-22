@@ -14,10 +14,14 @@ from horey.common_utils.common_utils import CommonUtils
 
 # pylint: disable= missing-function-docstring
 
+@pytest.fixture(name="compute_client")
+def compute_client_fixture():
+    client = ComputeClient()
+    return client
 
-@pytest.mark.done
-def test_get_available_vm_sizes():
-    ret = compute_client.get_available_vm_sizes(region)
+@pytest.mark.wip
+def test_get_available_vm_sizes(compute_client):
+    ret = compute_client.get_available_vm_sizes(Region({"name": "uksouth"}))
     assert ret is not None
 
 
