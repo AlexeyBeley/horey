@@ -114,8 +114,8 @@ class Disk(AzureObject):
 
         dict_ret = {
             "location": self.location,
-            "DiskSizeGB": self.disk_size_gb,
-            "creationData": {"createOption": DiskCreateOption.empty},
+            "disk_size_gb": self.disk_size_gb,
+            "creationData": {"create_option": DiskCreateOption.empty},
             "tags": self.tags,
         }
 

@@ -6,6 +6,7 @@ import datetime
 import time
 
 from azure.mgmt.compute import ComputeManagementClient
+from azure.mgmt.compute.models import Disk as DiskRaw
 from horey.azure_api.azure_clients.azure_client import AzureClient
 from horey.azure_api.azure_service_entities.disk import Disk
 from horey.azure_api.azure_service_entities.ssh_key import SSHKey
@@ -214,7 +215,10 @@ class ComputeClient(AzureClient):
         :return:
         """
 
-        response = self.raw_create_disk(disk.generate_create_request())
+        request = disk.generate_create_request()
+
+
+        response = self.raw_create_disk(request[:2] + [DiskRaw(request[2])])
         if asynchronous:
             return response
         response.wait()
