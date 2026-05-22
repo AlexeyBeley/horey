@@ -4,6 +4,8 @@ Azure VM object.
 """
 
 from horey.azure_api.azure_service_entities.azure_object import AzureObject
+from horey.h_logger import get_logger
+logger = get_logger()
 
 
 class VirtualMachine(AzureObject):
@@ -39,6 +41,8 @@ class VirtualMachine(AzureObject):
         
         :return:
         """
+
+        logger.info(f"self.network_profile: {self.network_profile}")
         return self.network_profile.get("network_interfaces") or self.network_profile.get("networkInterfaces")
 
     @property
