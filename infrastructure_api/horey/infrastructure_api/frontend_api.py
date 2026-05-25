@@ -402,9 +402,8 @@ class FrontendAPI:
         """
 
         distribution = self.get_cloudfront_distribution(domain_name=dns_address)
-        bucket_name = distribution.origins["Items"][0]["DomainName"].replace(".s3.amazonaws.com", "")
-        if bucket_path is None:
-            bucket_path = distribution.origins["Items"][0].get("OriginPath") or "/"
+        bucket_name, current_bucket_path = self.get_origin_s3_bucket_and_path(distribution=distribution)
+        bucket_path = bucket_path or current_bucket_path
 
         if len(local_paths) > 1:
             raise NotImplementedError("Only one path is supported for now")
@@ -428,3 +427,20 @@ class FrontendAPI:
         else:
             logger.info(f"Files at: https://{dns_address}/{bucket_path}")
         return ret
+
+    def get_origin_s3_bucket_and_path(self, dns_address=None, distribution=None):
+        """
+        Get origin s3 bucket name and path.
+
+        :param dns_address:
+        :return:
+        """
+
+        if distribution is None:
+            if dns_address is None:
+                raise ValueError("Either dns_address or distribution must be specified")
+            distribution = self.get_cloudfront_distribution(domain_name=dns_address)
+
+        bucket_name = distribution.origins["Items"][0]["DomainName"].replace(".s3.amazonaws.com", "")
+        bucket_path = distribution.origins["Items"][0].get("OriginPath") or "/"
+        return bucket_name, bucket_path
