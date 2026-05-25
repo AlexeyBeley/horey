@@ -200,7 +200,7 @@ class FrontendAPI:
         return self.environment_api.provision_wafv2_web_acl(self.configuration.ip_set_name, permitted_addresses,
                                                             self.configuration.web_acl_name)
 
-    # pylint: disable = (too-many-arguments
+    # pylint: disable = too-many-arguments, too-many-positional-arguments
     def provision_cloudfront_distribution(self, aliases, cloudfront_origin_access_identity,
                                           cloudfront_certificate,
                                           s3_bucket, origin_path, response_headers_policy,
@@ -368,7 +368,7 @@ class FrontendAPI:
         paths = ["/"+path.lstrip("/") for path in paths]
         if distribution is None:
             if distribution_name is None:
-                ValueError("Either distribution or distribution_name must be provided")
+                raise ValueError("Either distribution or distribution_name must be provided")
             distribution = CloudfrontDistribution({})
             distribution.comment = distribution_name
             distribution.tags = self.environment_api.get_tags_with_name(distribution_name)
@@ -432,6 +432,7 @@ class FrontendAPI:
         """
         Get origin s3 bucket name and path.
 
+        :param distribution:
         :param dns_address:
         :return:
         """
