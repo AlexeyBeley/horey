@@ -30,11 +30,19 @@ class FrontendAPI:
 
     @property
     def dns_api(self):
+        """
+        Generate DNS API
+        :return:
+        """
         configuration = DNSAPIConfigurationPolicy()
         return DNSAPI(configuration, self.environment_api)
 
     @property
     def s3_api(self):
+        """
+        Generate S3 API
+        :return:
+        """
         configuration = S3APIConfigurationPolicy()
         return S3API(configuration, self.environment_api)
 
