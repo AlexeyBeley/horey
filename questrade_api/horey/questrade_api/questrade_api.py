@@ -773,6 +773,9 @@ class QuestradeAPI:
         """
 
         today = datetime.now(timezone.utc)
+        # todo:
+        today -= timedelta(days=3)
+
         if today.hour < 5:
             today -= timedelta(days=1)
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)

@@ -341,4 +341,22 @@ class OpensearchAPI:
             self.provision_monitor(monitor)
         breakpoint()
 
+    def create_user(self, user_name, password, roles):
+        """
+        Create user.
+
+        :param user_name:
+        :param password:
+        :param roles:
+        :return:
+        """
+
+        request = {
+            "password": password,
+            "opendistro_security_roles": roles,
+            "backend_roles": []
+        }
+        breakpoint()
+        return self.put(f"_plugins/_security/api/internalusers/{user_name}", request)
+
 
