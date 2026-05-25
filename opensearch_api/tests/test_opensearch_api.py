@@ -176,4 +176,4 @@ def test_restore(opensearch_api_ng):
     @return:
     """
 
-    ret = opensearch_api_ng.create_user("test1", "test2", ["readall"])
+    ret = opensearch_api_ng.create_user("test1", "P@ssword1", ["readall"])
