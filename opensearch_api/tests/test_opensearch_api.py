@@ -176,4 +176,4 @@ def test_restore(opensearch_api_ng):
     @return:
     """
 
-    ret = opensearch_api_ng.create_user(Path("/opt/backup_opensearch"))
+    ret = opensearch_api_ng.create_user("test1", "test2", ["readall"])
