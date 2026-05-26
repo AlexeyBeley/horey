@@ -773,8 +773,6 @@ class QuestradeAPI:
         """
 
         today = datetime.now(timezone.utc)
-        # todo:
-        today -= timedelta(days=3)
 
         if today.hour < 5:
             today -= timedelta(days=1)
@@ -850,6 +848,7 @@ class QuestradeAPI:
         symbols = []
 
         len_symbol_ids = len(symbol_ids)
+        breakpoint()
         for i, symbol_id in enumerate(symbol_ids):
             logger.info(f"Fetching {i}/{len_symbol_ids}")
 
