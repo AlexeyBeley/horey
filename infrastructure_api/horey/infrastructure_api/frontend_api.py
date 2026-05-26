@@ -450,6 +450,15 @@ class FrontendAPI:
                 raise ValueError("Either dns_address or distribution must be specified")
             distribution = self.get_cloudfront_distribution(domain_name=dns_address)
 
-        bucket_name = distribution.origins["Items"][0]["DomainName"].replace(".s3.amazonaws.com", "")
+        bucket_dns_name = distribution.origins["Items"][0]["DomainName"]
+        bucket_dns_name = bucket_dns_name.split(".")
+        if bucket_dns_name[-3] != "s3":
+            if bucket_dns_name[-4] != "s3":
+                raise ValueError(f"Unknown bucket dns name format: {bucket_dns_name}")
+            bucket_name = ".".join(bucket_dns_name[:-4])
+        else:
+            bucket_name = ".".join(bucket_dns_name[:-3])
+
+
         bucket_path = distribution.origins["Items"][0].get("OriginPath") or "/"
         return bucket_name, bucket_path
