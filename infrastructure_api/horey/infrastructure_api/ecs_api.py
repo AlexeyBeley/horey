@@ -784,7 +784,6 @@ class ECSAPI:
         """
 
         self.set_service_task_role_name(role_name=role_name)
-        breakpoint()
 
         assume_role_policy_document = json.dumps({
             "Version": "2012-10-17",
