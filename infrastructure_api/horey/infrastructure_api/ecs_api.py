@@ -10,7 +10,6 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from build_test.horey.aws_api.tests.test_k8s import cluster_name
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
