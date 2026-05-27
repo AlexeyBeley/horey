@@ -419,7 +419,7 @@ class QuestradeAPI:
         """
 
         today = datetime.now(timezone.utc)
-        start_time = today.replace(hour=3, minute=0, second=0, microsecond=0)  - timedelta(days=3)
+        start_time = today.replace(hour=3, minute=0, second=0, microsecond=0)  - timedelta(days=10)
 
         start_timestamp = start_time.timestamp() if start_time else None
         self.db_cursor.execute(
@@ -848,7 +848,6 @@ class QuestradeAPI:
         symbols = []
 
         len_symbol_ids = len(symbol_ids)
-        breakpoint()
         for i, symbol_id in enumerate(symbol_ids):
             logger.info(f"Fetching {i}/{len_symbol_ids}")
 
