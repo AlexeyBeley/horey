@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+from build_test.horey.aws_api.tests.test_k8s import cluster_name
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
@@ -736,6 +737,21 @@ class ECSAPI:
                                                           service_registry_dicts=service_registry_dicts
                                                           )
 
+    def get_cluster_name_slug(self):
+        """
+        Get clean from "cluster" string.
+        :return:
+        """
+
+        cluster_name_clean = self.configuration.cluster_name
+        replace_strings = ["cluster", "--", "_-", "__", "-_"]
+
+        while any([substr in cluster_name_clean for substr in replace_strings]):
+            for substr in replace_strings:
+                cluster_name_clean = cluster_name_clean.replace(substr, "-")
+
+        return cluster_name_clean.strip("-").strip("_")
+
     def set_service_task_role_name(self, role_name=None):
         """
         Set role name for the task.
@@ -757,7 +773,9 @@ class ECSAPI:
                     # pylint: disable = raise-missing-from
                     raise NotImplementedError(self.configuration.cluster_name)
 
-                self.configuration.ecs_task_role_name = f"role_{self.environment_api.configuration.environment_level}-{self.configuration.cluster_name}-{self.configuration.service_name}-task"
+                cluster_name_clean = self.get_cluster_name_slug()
+
+                self.configuration.ecs_task_role_name = f"role_{self.environment_api.configuration.environment_level}-{cluster_name_clean}-{self.configuration.service_name}-tsk"
 
     def provision_service_task_role(self, role_name=None, inline_policies=None):
         """
@@ -806,8 +824,8 @@ class ECSAPI:
                 if self.environment_api.configuration.environment_level in self.configuration.service_name:
                     # pylint: disable = raise-missing-from
                     raise NotImplementedError(self.configuration.cluster_name)
-
-                self.configuration.ecs_task_execution_role_name = f"role_{self.environment_api.configuration.environment_level}-{self.configuration.cluster_name}-{self.configuration.service_name}-exec"
+                cluster_name_clean = self.get_cluster_name_slug()
+                self.configuration.ecs_task_execution_role_name = f"role_{self.environment_api.configuration.environment_level}-{cluster_name_clean}-{self.configuration.service_name}-exc"
 
     def provision_service_execution_role(self, role_name=None):
         """
