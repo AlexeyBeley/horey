@@ -70,7 +70,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @health_check_path.setter
     def health_check_path(self, value):
         self._health_check_path = value
-        
+
     @property
     def adhoc_task_name(self):
         if self._adhoc_task_name is None:
@@ -214,12 +214,11 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
             cluster_slug = self.cluster_name.replace('cluster_', '').replace('cluster-', '')
             if self.provision_service:
                 return f"{cluster_slug}-{self.service_name.replace('service_', '')}"
-            elif self.provision_cron:
+            if self.provision_cron:
                 return f"{cluster_slug}-{self.cron_name.replace('cron_', '')}"
-            elif self.provision_adhoc_task:
+            if self.provision_adhoc_task:
                 return f"{cluster_slug}-{self.adhoc_task_name.replace('adhoc_task_', '')}"
-            else:
-                raise ValueError("Not a service or a cron")
+            raise ValueError("Not a service or a cron")
 
         return self._slug
 
@@ -313,8 +312,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def ecs_task_execution_role_name(self):
-        if self._ecs_task_execution_role_name is None:
-            raise self.UndefinedValueError("ecs_task_execution_role_name")
+        self.check_defined()
         return self._ecs_task_execution_role_name
 
     @ecs_task_execution_role_name.setter
@@ -366,8 +364,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         if self._requires_compatibilities is None:
             if self.launch_type == "FARGATE":
                 return ["FARGATE"]
-            else:
-                raise self.UndefinedValueError("requires_compatibilities")
+            raise self.UndefinedValueError("requires_compatibilities")
 
         return self._requires_compatibilities
 
@@ -380,12 +377,12 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         if self._cloudwatch_log_group_name is None:
             if self.provision_service:
                 return f"/ecs/{self.cluster_name}/{self.service_name}"
-            elif self.provision_cron:
+            if self.provision_cron:
                 return f"/ecs/{self.cluster_name}/{self.cron_name}"
-            elif self.provision_adhoc_task:
+            if self.provision_adhoc_task:
                 return f"/ecs/{self.cluster_name}/{self.adhoc_task_name}"
-            else:
-                raise ValueError("Not a service or cron")
+
+            raise ValueError("Not a service or cron")
 
         return self._cloudwatch_log_group_name
 
@@ -452,6 +449,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def ecr_repository_policy_text(self):
         # todo: cleanup report It is recommended to use resource policy on ecr repos.
+        self.check_defined()
         return self._ecr_repository_policy_text
 
     @ecr_repository_policy_text.setter

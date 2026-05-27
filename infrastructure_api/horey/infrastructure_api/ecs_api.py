@@ -52,7 +52,6 @@ class ECSAPI:
         self._ecr_repository = None
         self._ecr_images = None
         self._cloudwatch_api = None
-        self._aws_iam_api = None
         self.loadbalancer_api = None
         self.dns_api = None
         self._ec2_api = None
@@ -60,11 +59,26 @@ class ECSAPI:
         self.loadbalancer_dns_api_pairs = None
         self._cluster_public_loadbalancer_api = None
         self._cluster_private_loadbalancer_api = None
+        self._iam_api = None
+        self._service_execution_role = None
 
         try:
             assert self.configuration.ecr_repository_region
         except self.configuration.UndefinedValueError:
             self.configuration.ecr_repository_region = self.environment_api.configuration.region
+
+    @property
+    def iam_api(self):
+        """
+        Generate IAM API config
+
+        :return:
+        """
+
+        if self._iam_api is None:
+            self._iam_api = AWSIAMAPI(AWSIAMAPIConfigurationPolicy(), self.environment_api)
+
+        return self._iam_api
 
     @property
     def load_balancer_api(self):
@@ -80,6 +94,11 @@ class ECSAPI:
 
     @property
     def cluster_public_loadbalancer_api(self):
+        """
+        Get public loadbalancer api.
+        :return:
+        """
+
         if self._cluster_public_loadbalancer_api is None:
             config = LoadbalancerAPIConfigurationPolicy()
             config.slug = self.configuration.cluster_name
@@ -91,6 +110,10 @@ class ECSAPI:
 
     @property
     def cluster_private_loadbalancer_api(self):
+        """
+        Get private loadbalancer api.
+        :return:
+        """
         if self._cluster_private_loadbalancer_api is None:
             config = LoadbalancerAPIConfigurationPolicy()
             config.slug = self.configuration.cluster_name
@@ -171,6 +194,16 @@ class ECSAPI:
             self.environment_api.aws_api.ecr_client.clear_cache(ECRImage)
             self._ecr_images = self.environment_api.aws_api.ecr_client.get_repository_images(self.ecr_repository)
         return self._ecr_images
+    
+    @property
+    def service_execution_role(self):
+        """
+        Get service execution role.
+        :return:
+        """
+        if self._service_execution_role is None:
+            self._service_execution_role = self.iam_api.get_role(self.configuration.ecs_task_execution_role_name)
+        return self._service_execution_role
 
     def copy(self):
         """
@@ -186,6 +219,7 @@ class ECSAPI:
             setattr(configuration, key, value)
         return ECSAPI(configuration=configuration, environment_api=self.environment_api)
 
+    # pylint: disable = too-many-statements, too-many-branches
     def set_api(self, loadbalancer_api=None, dns_api=None, cloudwatch_api=None, loadbalancer_dns_api_pairs=None):
         """
         Standard.
@@ -702,6 +736,168 @@ class ECSAPI:
                                                           service_registry_dicts=service_registry_dicts
                                                           )
 
+    def set_service_task_role_name(self, role_name=None):
+        """
+        Set role name for the task.
+
+        :return:
+        """
+        try:
+            if self.configuration.ecs_task_role_name and role_name:
+                raise ValueError("Pass repo name via 'role_name' OR via 'configuration.ecs_task_execution_role_name'")
+        except self.configuration.UndefinedValueError:
+            if role_name:
+                self.configuration.ecs_task_role_name = role_name
+            else:
+                if self.environment_api.configuration.environment_level in self.configuration.cluster_name:
+                    # pylint: disable = raise-missing-from
+                    raise NotImplementedError(self.configuration.cluster_name)
+
+                if self.environment_api.configuration.environment_level in self.configuration.service_name:
+                    # pylint: disable = raise-missing-from
+                    raise NotImplementedError(self.configuration.cluster_name)
+
+                self.configuration.ecs_task_role_name = f"role_{self.environment_api.configuration.environment_level}-{self.configuration.cluster_name}-{self.configuration.service_name}-task"
+
+    def provision_service_task_role(self, role_name=None, inline_policies=None):
+        """
+        Provision role used by the task.
+
+        :return:
+        """
+
+        self.set_service_task_role_name(role_name=role_name)
+        breakpoint()
+
+        assume_role_policy_document = json.dumps({
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "ecs-tasks.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        })
+
+        return self.iam_api.provision_role(policies=inline_policies, role_name=self.configuration.ecs_task_role_name,
+                                               assume_role_policy=assume_role_policy_document)
+
+    def set_service_execution_role_name(self, role_name=None):
+        """
+        Set role name for the task.
+
+        :return:
+        """
+        try:
+            if self.configuration.ecs_task_execution_role_name and role_name:
+                raise ValueError("Pass repo name via 'role_name' OR via 'configuration.ecs_task_execution_role_name'")
+        except self.configuration.UndefinedValueError:
+            if role_name:
+                self.configuration.ecs_task_execution_role_name = role_name
+            else:
+                if self.environment_api.configuration.environment_level in self.configuration.cluster_name:
+                    # pylint: disable = raise-missing-from
+                    raise NotImplementedError(self.configuration.cluster_name)
+
+                if self.environment_api.configuration.environment_level in self.configuration.service_name:
+                    # pylint: disable = raise-missing-from
+                    raise NotImplementedError(self.configuration.cluster_name)
+
+                self.configuration.ecs_task_execution_role_name = f"role_{self.environment_api.configuration.environment_level}-{self.configuration.cluster_name}-{self.configuration.service_name}-exec"
+
+    def provision_service_execution_role(self, role_name=None):
+        """
+        Role used by ECS service task running on the container instance to manage containers.
+
+        :return:
+        """
+
+        self.set_service_execution_role_name(role_name=role_name)
+        breakpoint()
+        assume_role_policy_document = json.dumps({
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "ecs-tasks.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole",
+                    "Condition": {
+                        "ArnLike": {
+                            "aws:SourceArn": f"arn:aws:ecs:{self.environment_api.configuration.region}:{self.environment_api.aws_api.ecs_client.account_id}:*"
+                        },
+                        "StringEquals": {
+                            "aws:SourceAccount": self.environment_api.aws_api.ecs_client.account_id
+                        }
+                    }
+                }
+            ]
+        })
+
+        managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"]
+        return self.iam_api.provision_role(managed_policies_arns=managed_policies_arns,
+                                               role_name= self.configuration.ecs_task_execution_role_name,
+                                               assume_role_policy=assume_role_policy_document,
+                                               description="ECS task role used to control containers lifecycle")
+
+
+
+
+    def provision_service_ecr_repository(self, repository_name=None, repository_policy=None):
+        """
+        Create or update the ECR repo
+
+        :return:
+        """
+
+        if repository_name is None:
+            try:
+                assert self.configuration.ecr_repository_name
+            except self.configuration.UndefinedValueError:
+                self.set_ecr_repository_name(
+                    f"repo_{self.configuration.cluster_name}_{self.configuration.service_name}")
+        else:
+            try:
+                if self.configuration.ecr_repository_name:
+                    raise ValueError("Pass repo name via 'repository_name' OR via 'configuration.ecr_repository_name'")
+            except self.configuration.UndefinedValueError:
+                self.configuration.ecr_repository_name = repository_name
+
+        if repository_policy is None:
+            try:
+                assert self.configuration.ecr_repository_policy_text
+            except self.configuration.UndefinedValueError:
+                policy_text = self.iam_api.generate_ecr_repository_policy(ecs_task_execution_role=self.service_execution_role)
+
+                self.configuration.ecr_repository_policy_text = policy_text
+        else:
+            try:
+                if self.configuration.ecr_repository_policy_text:
+                    raise ValueError("Pass policy via 'repository_policy' OR via 'configuration.ecr_repository_policy_text'")
+            except self.configuration.UndefinedValueError:
+                self.configuration.ecr_repository_policy_text = repository_policy
+
+        breakpoint()
+        repo = ECRRepository({})
+        repo.region = Region.get_region(self.configuration.ecr_repository_region)
+        repo.name = self.configuration.ecr_repository_name
+        repo.policy_text = self.configuration.ecr_repository_policy_text
+
+        repo.tags = self.environment_api.get_tags_with_name(repo.name)
+
+        repo.tags.append({
+            "Key": self.configuration.infrastructure_update_time_tag,
+            "Value": datetime.now().strftime("%Y_%m_%d_%H_%M")
+        })
+
+        self.environment_api.aws_api.provision_ecr_repository(repo)
+        return repo
+
     def provision_ecr_repository(self, repository_name=None, repository_policy=None):
         """
         Create or update the ECR repo
@@ -857,19 +1053,6 @@ class ECSAPI:
             raise ValueError(value)
         self._cloudwatch_api = value
 
-    @property
-    def aws_iam_api(self):
-        """
-        Standard
-
-        :return:
-        """
-
-        if self._aws_iam_api is None:
-            config = AWSIAMAPIConfigurationPolicy()
-            self._aws_iam_api = AWSIAMAPI(configuration=config, environment_api=self.environment_api)
-        return self._aws_iam_api
-
     def provision_monitoring(self, alerts_api):
         """
         Provision alert system and alerts.
@@ -908,7 +1091,7 @@ class ECSAPI:
                 }
             ]
         })
-        return self.aws_iam_api.provision_role(policies=policies, role_name=self.configuration.ecs_task_role_name,
+        return self.iam_api.provision_role(policies=policies, role_name=self.configuration.ecs_task_role_name,
                                                assume_role_policy=assume_role_policy_document)
 
     def provision_execution_role(self, name=None):
@@ -940,7 +1123,7 @@ class ECSAPI:
         })
 
         managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"]
-        return self.aws_iam_api.provision_role(managed_policies_arns=managed_policies_arns,
+        return self.iam_api.provision_role(managed_policies_arns=managed_policies_arns,
                                                role_name= name or self.configuration.ecs_task_execution_role_name,
                                                assume_role_policy=assume_role_policy_document,
                                                description="ECS task role used to control containers lifecycle")
@@ -1168,6 +1351,7 @@ class ECSAPI:
 
         return ecs_service
 
+    # pylint: disable = too-many-arguments, too-many-positional-arguments
     def generate_ecs_task_definition(self, ecr_image_id, cluster_name=None, service_name=None, slug=None, requires_compatibilities=None):
 
         """
@@ -1354,11 +1538,12 @@ class ECSAPI:
 
         resources = ["*"]
         actions = ["ssm:UpdateInstanceInformation"]
-        ssm_policy = self.aws_iam_api.generate_inline_policy("ssm_access", resources, actions)
-        role = self.aws_iam_api.provision_role(policies=[ssm_policy], role_name=role_name, assume_role_policy=assume_role_policy, managed_policies_arns=["arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"])
-        instance_profile = self.aws_iam_api.provision_instance_profile(instance_profile_name, role)
+        ssm_policy = self.iam_api.generate_inline_policy("ssm_access", resources, actions)
+        role = self.iam_api.provision_role(policies=[ssm_policy], role_name=role_name, assume_role_policy=assume_role_policy, managed_policies_arns=["arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"])
+        instance_profile = self.iam_api.provision_instance_profile(instance_profile_name, role)
         return instance_profile
 
+    # pylint: disable = too-many-arguments, too-many-positional-arguments
     def provision_container_instance_launch_template(self, name, security_group, ssh_key_pair, instance_profile, ecs_cluster):
         """
         Provision container instance launch template.
@@ -1518,5 +1703,4 @@ class ECSAPI:
 
         :return:
         """
-        return self.ec2_api.provision_security_group(self.configuration.service_security_group_name)
-
+        return self.ec2_api.provision_security_group(name=self.configuration.service_security_group_name)

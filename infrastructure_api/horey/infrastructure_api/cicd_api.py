@@ -357,13 +357,11 @@ class CICDAPI:
         self.iam_api.provision_role(policies=policies, role_name=self.get_task_role_name("jenkins-master"),
                                     assume_role_policy=assume_role_policy_document)
 
-        exec_role = self.jenkins_master_ecs_api.provision_execution_role(
+        self.jenkins_master_ecs_api.provision_execution_role(
             name=self.get_task_role_name("jenkins-master-exec"),
             )
 
-        policy_text = self.iam_api.generate_ecr_repository_policy(ecs_task_execution_role=exec_role)
-
-        self.jenkins_master_ecs_api.provision_ecr_repository(repository_policy=policy_text)
+        self.jenkins_master_ecs_api.provision_service_ecr_repository()
 
         self.jenkins_master_ecs_api.provision_ecs_autoscaling_group_capacity_provider(cluster, "management")
         return True
@@ -672,7 +670,7 @@ class CICDAPI:
     @property
     def iam_api(self):
         """
-        Generate environment config
+        Generate IAM API config
 
         :return:
         """
