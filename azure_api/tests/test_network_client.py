@@ -106,9 +106,9 @@ def test_get_all_public_ip_addresses():
     assert len(ret) > 0
 
 
-@pytest.mark.done
-def test_get_all_network_interfaces():
-    ret = network_client.get_all_network_interfaces(None, resource_group_name=mock_values["network_client_resource_group_name"])
+@pytest.mark.unit
+def test_get_all_network_interfaces(network_client):
+    ret = network_client.get_all_network_interfaces(None, resource_group_name=Configuration.TEST_CONFIG.network_client_resource_group_name)
     assert len(ret) > 0
 
 
@@ -117,7 +117,7 @@ def test_get_all_route_tables(network_client):
     ret = network_client.get_all_route_tables(resource_group_name= Configuration.TEST_CONFIG.network_client_resource_group_name)
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_provision_route_table(network_client):
     route_table = RouteTable({})
     route_table.resource_group_name = Configuration.TEST_CONFIG.network_client_resource_group_name

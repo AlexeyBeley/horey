@@ -30,11 +30,19 @@ class FrontendAPI:
 
     @property
     def dns_api(self):
+        """
+        Generate DNS API
+        :return:
+        """
         configuration = DNSAPIConfigurationPolicy()
         return DNSAPI(configuration, self.environment_api)
 
     @property
     def s3_api(self):
+        """
+        Generate S3 API
+        :return:
+        """
         configuration = S3APIConfigurationPolicy()
         return S3API(configuration, self.environment_api)
 
@@ -200,7 +208,7 @@ class FrontendAPI:
         return self.environment_api.provision_wafv2_web_acl(self.configuration.ip_set_name, permitted_addresses,
                                                             self.configuration.web_acl_name)
 
-    # pylint: disable = (too-many-arguments
+    # pylint: disable = too-many-arguments, too-many-positional-arguments
     def provision_cloudfront_distribution(self, aliases, cloudfront_origin_access_identity,
                                           cloudfront_certificate,
                                           s3_bucket, origin_path, response_headers_policy,
@@ -368,7 +376,7 @@ class FrontendAPI:
         paths = ["/"+path.lstrip("/") for path in paths]
         if distribution is None:
             if distribution_name is None:
-                ValueError("Either distribution or distribution_name must be provided")
+                raise ValueError("Either distribution or distribution_name must be provided")
             distribution = CloudfrontDistribution({})
             distribution.comment = distribution_name
             distribution.tags = self.environment_api.get_tags_with_name(distribution_name)
@@ -402,9 +410,8 @@ class FrontendAPI:
         """
 
         distribution = self.get_cloudfront_distribution(domain_name=dns_address)
-        bucket_name = distribution.origins["Items"][0]["DomainName"].replace(".s3.amazonaws.com", "")
-        if bucket_path is None:
-            bucket_path = distribution.origins["Items"][0].get("OriginPath") or "/"
+        bucket_name, current_bucket_path = self.get_origin_s3_bucket_and_path(distribution=distribution)
+        bucket_path = bucket_path or current_bucket_path
 
         if len(local_paths) > 1:
             raise NotImplementedError("Only one path is supported for now")
@@ -428,3 +435,30 @@ class FrontendAPI:
         else:
             logger.info(f"Files at: https://{dns_address}/{bucket_path}")
         return ret
+
+    def get_origin_s3_bucket_and_path(self, dns_address=None, distribution=None):
+        """
+        Get origin s3 bucket name and path.
+
+        :param distribution:
+        :param dns_address:
+        :return:
+        """
+
+        if distribution is None:
+            if dns_address is None:
+                raise ValueError("Either dns_address or distribution must be specified")
+            distribution = self.get_cloudfront_distribution(domain_name=dns_address)
+
+        bucket_dns_name = distribution.origins["Items"][0]["DomainName"]
+        bucket_dns_name = bucket_dns_name.split(".")
+        if bucket_dns_name[-3] != "s3":
+            if bucket_dns_name[-4] != "s3":
+                raise ValueError(f"Unknown bucket dns name format: {bucket_dns_name}")
+            bucket_name = ".".join(bucket_dns_name[:-4])
+        else:
+            bucket_name = ".".join(bucket_dns_name[:-3])
+
+
+        bucket_path = distribution.origins["Items"][0].get("OriginPath") or "/"
+        return bucket_name, bucket_path

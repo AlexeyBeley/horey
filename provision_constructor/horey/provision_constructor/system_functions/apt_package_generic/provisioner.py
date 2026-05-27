@@ -63,7 +63,7 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-        return self.run_apt_bash_command(f"sudo NEEDRESTART_MODE={self.needrestart_mode} apt full-upgrade -y")
+        return self.run_apt_bash_command(f"sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE={self.needrestart_mode} apt full-upgrade -y")
 
     def provision_remote(self, remoter: Remoter):
         """
@@ -112,7 +112,7 @@ class Provisioner(SystemFunctionCommon):
 
         logger.info(f"Installing apt packages: {package_names}")
 
-        command = f"sudo NEEDRESTART_MODE={needrestart_mode} apt{' --upgrade ' if self.upgrade else ' '}install -y -o Dpkg::Options::=\"--force-confnew\" {' '.join(package_names)}"
+        command = f"sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE={needrestart_mode} apt{' --upgrade ' if self.upgrade else ' '}install -y -o Dpkg::Options::=\"--force-confnew\" {' '.join(package_names)}"
 
         def raise_on_error_callback(lst_stdout, lst_stderr, status_code):
             """

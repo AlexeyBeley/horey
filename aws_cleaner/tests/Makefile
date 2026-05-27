@@ -13,7 +13,7 @@ echo:
 bootstrap:
 	python ${HOREY_DIR_PATH}/pip_api/horey/pip_api/pip_api_make.py --bootstrap --pip_api_configuration ${HOREY_DIR_PATH}/pip_api_configuration.py &&\
 	source ${VENV_BIN_DIR}/activate &&\
-	python -m pip install pytest
+	pip install pytest
 
 build_ng:
 	python ${HOREY_DIR_PATH}/pip_api/horey/pip_api/pip_api_make.py --install horey.aws_cleaner --force_reinstall --pip_api_configuration ${HOREY_DIR_PATH}/pip_api_configuration.py

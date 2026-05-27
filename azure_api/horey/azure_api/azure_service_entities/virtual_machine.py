@@ -4,6 +4,8 @@ Azure VM object.
 """
 
 from horey.azure_api.azure_service_entities.azure_object import AzureObject
+from horey.h_logger import get_logger
+logger = get_logger()
 
 
 class VirtualMachine(AzureObject):
@@ -39,6 +41,8 @@ class VirtualMachine(AzureObject):
         
         :return:
         """
+
+        logger.info(f"self.network_profile: {self.network_profile}")
         return self.network_profile.get("network_interfaces") or self.network_profile.get("networkInterfaces")
 
     @property
@@ -84,22 +88,22 @@ class VirtualMachine(AzureObject):
             "type": self.init_default_attr,
             "location": self.init_default_attr,
             "hardware_profile": self.init_default_attr,
-            "hardwareProfile": self.init_default_attr,
+            "hardwareProfile": lambda _, value: self.init_default_attr("hardware_profile", value),
             "storage_profile": self.init_default_attr,
-            "storageProfile": self.init_default_attr,
-            "securityProfile": self.init_default_attr,
+            "storageProfile": lambda _, value: self.init_default_attr("storage_profile", value),
+            "securityProfile": lambda _, value: self.init_default_attr("security_profile", value),
             "os_profile": self.init_default_attr,
-            "osProfile": self.init_default_attr,
+            "osProfile": lambda _, value: self.init_default_attr("os_profile", value),
             "network_profile": self.init_default_attr,
-            "networkProfile": self.init_default_attr,
+            "networkProfile": lambda _, value: self.init_default_attr("network_profile", value),
             "diagnostics_profile": self.init_default_attr,
             "provisioning_state": self.init_default_attr,
-            "provisioningState": self.init_default_attr,
+            "provisioningState": lambda _, value: self.init_default_attr("provisioning_state", value),
             "vm_id": self.init_default_attr,
             "tags": self.init_default_attr,
             "zones": self.init_default_attr,
             "time_created": self.init_default_attr,
-            "timeCreated": self.init_default_attr,
+            "timeCreated": lambda _, value: self.init_default_attr("time_created", value),
             "etag": self.init_default_attr,
             "properties": lambda key, val : self.update_from_raw_response(dict_src["properties"])
         }

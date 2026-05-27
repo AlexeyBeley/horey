@@ -4,6 +4,8 @@ Azure API
 """
 # pylint: disable= too-many-instance-attributes, no-name-in-module
 import json
+
+from horey.azure_api.azure_api_configuration_policy import AzureAPIConfigurationPolicy
 from horey.azure_api.azure_clients.compute_client import ComputeClient
 from horey.azure_api.azure_clients.resource_client import ResourceClient
 from horey.azure_api.azure_clients.resource_management_lock_client import ResourceManagementLockClient
@@ -31,7 +33,7 @@ class AzureAPI:
 
     """
 
-    def __init__(self, configuration=None):
+    def __init__(self, configuration:AzureAPIConfigurationPolicy=None):
         self.compute_client = ComputeClient()
         self.resource_client = ResourceClient()
         self.network_client = NetworkClient()
