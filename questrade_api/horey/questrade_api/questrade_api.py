@@ -1207,3 +1207,4 @@ class QuestradeAPI:
         for position in positions:
             if position.average_entry_price*0.6 > position.current_price:
                 print(position.symbol, position.average_entry_price, position.current_price)
+        return True
