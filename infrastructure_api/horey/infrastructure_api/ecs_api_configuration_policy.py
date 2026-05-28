@@ -61,6 +61,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._adhoc_task_name = None
         self._service_security_group_name = None
         self._health_check_path = None
+        self._target_group_protocol = None
 
     @property
     def health_check_path(self):
@@ -538,3 +539,13 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def service_private_target_group_name(self):
         return f"tg-prvt-{self.cluster_name}-{self.service_name}"
+
+    @property
+    def target_group_protocol(self):
+        self.check_defined()
+        return self._target_group_protocol
+
+    @target_group_protocol.setter
+    def target_group_protocol(self, value):
+        assert value in ["HTTP", "HTTPS"]
+        self._target_group_protocol = value

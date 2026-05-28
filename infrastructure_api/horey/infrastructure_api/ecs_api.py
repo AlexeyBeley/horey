@@ -833,7 +833,6 @@ class ECSAPI:
         """
 
         self.set_service_execution_role_name(role_name=role_name)
-        breakpoint()
         assume_role_policy_document = json.dumps({
             "Version": "2012-10-17",
             "Statement": [
@@ -861,13 +860,11 @@ class ECSAPI:
                                                assume_role_policy=assume_role_policy_document,
                                                description="ECS task role used to control containers lifecycle")
 
-
-
-
-    def provision_service_ecr_repository(self, repository_name=None, repository_policy=None):
+    def set_service_ecr_repository_name(self, repository_name=None):
         """
-        Create or update the ECR repo
+        Set or generate ECR repo name.
 
+        :param repository_name:
         :return:
         """
 
@@ -884,6 +881,15 @@ class ECSAPI:
             except self.configuration.UndefinedValueError:
                 self.configuration.ecr_repository_name = repository_name
 
+    def provision_service_ecr_repository(self, repository_name=None, repository_policy=None):
+        """
+        Create or update the ECR repo
+
+        :return:
+        """
+
+        self.set_service_ecr_repository_name(repository_name=repository_name)
+
         if repository_policy is None:
             try:
                 assert self.configuration.ecr_repository_policy_text
@@ -898,7 +904,6 @@ class ECSAPI:
             except self.configuration.UndefinedValueError:
                 self.configuration.ecr_repository_policy_text = repository_policy
 
-        breakpoint()
         repo = ECRRepository({})
         repo.region = Region.get_region(self.configuration.ecr_repository_region)
         repo.name = self.configuration.ecr_repository_name
@@ -1665,7 +1670,7 @@ class ECSAPI:
         return capacity_provider
 
 
-    def provision_public_service_load_balancing(self, dns_address=None):
+    def provision_public_service_load_balancing(self, dns_address=None, path_pattern=None):
         """
         Provision public ALB for the cluster and the needed resources
 
@@ -1686,7 +1691,7 @@ class ECSAPI:
                                                                                        target_group_protocol=self.configuration.target_group_protocol,
                                                                                        health_check_path=self.configuration.health_check_path)
         listener = self.cluster_public_loadbalancer_api.provision_load_balancer_listener(certificate=certificate)
-        self.cluster_public_loadbalancer_api.provision_listener_rule(listener, tg, dns_address=dns_address)
+        self.cluster_public_loadbalancer_api.provision_listener_rule(listener, tg, dns_address=dns_address, path_pattern=path_pattern)
         return load_balancer
 
     def provision_private_service_load_balancing(self, dns_address=None):
@@ -1720,3 +1725,42 @@ class ECSAPI:
         :return:
         """
         return self.ec2_api.provision_security_group(name=self.configuration.service_security_group_name)
+
+    def provision_service(self, branch_name, public_dns_prefix, private_dns_prefix):
+        """
+
+        :return:
+        """
+        build_number = self.jenkins_master_ecs_api.get_next_build_number()
+        image = self.jenkins_master_ecs_api.build_api.run_build_and_upload_image_routine(branch_name, build_number)
+        for image_registry_reference in image.tags:
+            if self.jenkins_master_ecs_api.configuration.ecr_repository_name in image_registry_reference:
+                break
+        else:
+            raise ValueError(f"Was not able to find image with repo {self.jenkins_master_ecs_api.configuration.ecr_repository_name}")
+        td = self.jenkins_master_ecs_api.generate_ecs_task_definition(image_registry_reference,
+                                                                      slug="jenkins-master",
+                                                                      requires_compatibilities=["FARGATE"])
+
+        td.set_roles(task_role=task_role.arn, execution_role=exec_role.arn)
+        td.set_ports(container_port=self.configuration.container_definition_port_mappings, host_port=8080)
+        self.jenkins_master_ecs_api.provision_ecs_task_definition_ng(td)
+        target_groups = []
+        if public_dns_prefix:
+            tg_public = self.jenkins_master_ecs_api.configuration.service_public_target_group_name
+            target_groups.append(self.loadbalancer_api.get_targetgroup(tg_public))
+        if private_dns_prefix:
+            tg_private = self.jenkins_master_ecs_api.configuration.service_private_target_group_name
+            target_groups.append(self.loadbalancer_api.get_targetgroup(tg_private))
+        self.jenkins_master_ecs_api.provision_ecs_service(td, target_groups=target_groups)
+
+        ecr_image_tag = self.get_build_tag()
+        ecs_task_definition = self.provision_ecs_task_definition(ecr_image_tag)
+
+        if self.configuration.provision_cron:
+            return ecs_task_definition
+
+        if not self.configuration.provision_service:
+            raise ValueError("Unknown status")
+
+        return self.provision_ecs_service(ecs_task_definition)

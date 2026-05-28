@@ -191,7 +191,7 @@ class LoadbalancerAPI:
 
         return listener
 
-    def provision_listener_rule(self, listener, target_group, dns_address=None):
+    def provision_listener_rule(self, listener, target_group, dns_address=None, path_pattern=None):
         """
         Provision rule for specific service.
 
@@ -213,16 +213,26 @@ class LoadbalancerAPI:
         })
 
         rule.priority = self.configuration.rule_priority or rule.priority
+        rule.conditions = []
         if dns_address:
-            rule.conditions = [
+            rule.conditions.append(
                 {
                     "Field": "host-header",
                     "HostHeaderConfig": {
                         "Values": [dns_address]
                     }
-                }
-            ]
-        else:
+                })
+
+        if path_pattern:
+            rule.conditions.append(
+                {
+                    "Field": "path-pattern",
+                    "PathPatternConfig": {
+                        "Values": [path_pattern]
+                    }
+                })
+
+        if not rule.conditions:
             raise NotImplementedError("rule.conditions = self.configuration.rule_conditions")
 
         rule.actions = [
