@@ -91,6 +91,16 @@ class Provisioner(SystemFunctionCommon):
                 if not file_path.endswith(".deb"):
                     continue
                 options.append(file_path)
+        elif arch == "aarch64":
+            for file_path in self.storage_service.list():
+                if "falcon-sensor" not in file_path:
+                    continue
+                if "arm64"  not in file_path:
+                    continue
+                if not file_path.endswith(".deb"):
+                    continue
+                options.append(file_path)
+            breakpoint()
         else:
             raise NotImplementedError(f"CPU arch '{arch}' is not supported")
 
