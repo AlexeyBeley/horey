@@ -151,7 +151,7 @@ class Provisioner(SystemFunctionCommon):
         logger.info(f"Fetched {cpu_data=}")
         cpu_data = json.loads(cpu_data)
         cpu_arch = cpu_data["lscpu"][0]["data"]
-        if cpu_arch !="x86_64":
+        if cpu_arch not in ["x86_64", "aarch64"]:
             raise NotImplementedError(f"CPU arch '{cpu_arch}' is not supported")
 
         return cpu_arch
