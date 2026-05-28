@@ -130,10 +130,11 @@ class EC2API:
         return amis[0]
 
     # pylint: disable=too-many-positional-arguments, too-many-arguments
-    def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None, instance_type=None, architecture="amd64"):
+    def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None, instance_type=None, architecture="amd64", asynchronous=False):
         """
         Provision instance.
 
+        :param asynchronous:
         :param instance_type:
         :param architecture:
         :param key_name:
