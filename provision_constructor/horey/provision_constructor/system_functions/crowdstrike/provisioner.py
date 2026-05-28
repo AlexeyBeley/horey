@@ -100,7 +100,6 @@ class Provisioner(SystemFunctionCommon):
                 if not file_path.endswith(".deb"):
                     continue
                 options.append(file_path)
-            breakpoint()
         else:
             raise NotImplementedError(f"CPU arch '{arch}' is not supported")
 
