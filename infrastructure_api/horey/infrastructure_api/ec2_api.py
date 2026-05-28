@@ -96,8 +96,8 @@ class EC2API:
         """
         if name:
             filters = {"Filters": [
-            {"Name": "vpc-id", "Values": [self.environment_api.vpc.id]},
-            {"Name": "group-name", "Values": [name]}
+                {"Name": "vpc-id", "Values": [self.environment_api.vpc.id]},
+                {"Name": "group-name", "Values": [name]}
             ]}
         elif group_id:
             filters = {"Filters": [
@@ -106,13 +106,14 @@ class EC2API:
             ]}
         else:
             raise NotImplementedError("Name and group_id not set")
-        security_groups = self.environment_api.aws_api.ec2_client.get_region_security_groups(self.environment_api.region,
-                                                                                             filters=filters)
+        security_groups = self.environment_api.aws_api.ec2_client.get_region_security_groups(
+            self.environment_api.region,
+            filters=filters)
         if len(security_groups) != 1:
             raise RuntimeError(f"Expected to find single security group, found: {len(security_groups)}")
         return security_groups[0]
 
-    def get_ubuntu24_04_image(self):
+    def get_ubuntu24_04_image(self, architecture="amd64"):
         """
         Get latest Ubuntu24.04 image in this region.
 
@@ -120,7 +121,7 @@ class EC2API:
         """
 
         param = self.environment_api.aws_api.ssm_client.get_region_parameter(self.environment_api.region,
-                                                             "/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id")
+                                                             f"/aws/service/canonical/ubuntu/server/24.04/stable/current/{architecture}/hvm/ebs-gp3/ami-id")
 
         filter_request = {"ImageIds": [param.value]}
         amis = self.environment_api.aws_api.ec2_client.get_region_amis(self.environment_api.region, custom_filters=filter_request)
@@ -128,17 +129,27 @@ class EC2API:
             raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
         return amis[0]
 
-    # pylint: disable= too-many-arguments,too-many-positional-arguments
-    def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None, instance_type="t3a.medium", asynchronous=True):
+    # pylint: disable=too-many-positional-arguments, too-many-arguments
+    def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None, instance_type=None, architecture="amd64"):
         """
         Provision instance.
 
-        :param key_name: 
+        :param instance_type:
+        :param architecture:
+        :param key_name:
         :param name: 
         :param security_groups: 
         :param volume_size: 
         :return: 
         """
+
+        if instance_type is None:
+            if architecture == "amd64":
+                instance_type="t3a.medium"
+            elif architecture == "arm64":
+                instance_type="t4g.medium"
+            else:
+                raise NotImplementedError("Unsupported architecture")
 
         if key_name is None:
             key = self.provision_ssh_key(f"key_{name}")
@@ -146,7 +157,7 @@ class EC2API:
 
         ec2_instance = EC2Instance({})
 
-        ec2_instance.image_id = self.get_ubuntu24_04_image().id
+        ec2_instance.image_id = self.get_ubuntu24_04_image(architecture=architecture).id
         ec2_instance.instance_type = instance_type
 
         ec2_instance.key_name = key_name
