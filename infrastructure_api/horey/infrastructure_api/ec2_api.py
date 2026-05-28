@@ -83,7 +83,7 @@ class EC2API:
 
         return security_group
 
-    def get_ubuntu24_04_image(self):
+    def get_ubuntu24_04_image(self, architecture="amd64"):
         """
         Get latest Ubuntu24.04 image in this region.
 
@@ -91,7 +91,7 @@ class EC2API:
         """
 
         param = self.environment_api.aws_api.ssm_client.get_region_parameter(self.environment_api.region,
-                                                             "/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id")
+                                                             f"/aws/service/canonical/ubuntu/server/24.04/stable/current/{architecture}/hvm/ebs-gp3/ami-id")
 
         filter_request = {"ImageIds": [param.value]}
         amis = self.environment_api.aws_api.ec2_client.get_region_amis(self.environment_api.region, custom_filters=filter_request)
@@ -100,23 +100,33 @@ class EC2API:
         return amis[0]
 
     # pylint: disable=too-many-positional-arguments, too-many-arguments
-    def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None, instance_type="t3a.medium"):
+    def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None, instance_type=None, architecture="amd64"):
         """
         Provision instance.
 
-        :param key_name: 
+        :param instance_type:
+        :param architecture:
+        :param key_name:
         :param name: 
         :param security_groups: 
         :param volume_size: 
         :return: 
         """
 
+        if instance_type is None:
+            if architecture == "amd64":
+                instance_type="t3a.medium"
+            elif architecture == "arm64":
+                instance_type="t4g.medium"
+            else:
+                raise NotImplementedError("Unsupported architecture")
+
         if key_name is None:
             raise NotImplementedError("key_name")
 
         ec2_instance = EC2Instance({})
 
-        ec2_instance.image_id = self.get_ubuntu24_04_image().id
+        ec2_instance.image_id = self.get_ubuntu24_04_image(architecture=architecture).id
         ec2_instance.instance_type = instance_type
 
         ec2_instance.key_name = key_name
