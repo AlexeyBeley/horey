@@ -21,7 +21,7 @@ class CloudwatchAPI:
         self.configuration = configuration
         self.environment_api = environment_api
 
-    def provision_log_group(self, log_group_name):
+    def provision_log_group(self, log_group_name=None):
         """
         Provision log group.
 
@@ -30,7 +30,7 @@ class CloudwatchAPI:
 
         log_group = CloudWatchLogGroup({})
         log_group.region = self.environment_api.region
-        log_group.name = log_group_name
+        log_group.name = log_group_name or self.configuration.log_group_name
         log_group.retention_in_days = self.configuration.retention_in_days
         log_group.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.configuration.tags}
         log_group.tags["name"] = log_group.name
@@ -107,7 +107,7 @@ class CloudwatchAPI:
 
         return alarm
 
-    def yield_logs(self, log_group_name, start_time=None, streams=None):
+    def yield_logs(self, log_group_name=None, start_time=None, streams=None):
         """
         Get logs from the group.
 
@@ -116,7 +116,7 @@ class CloudwatchAPI:
         :param start_time:
         :return:
         """
-
+        log_group_name = log_group_name or self.configuration.log_group_name
         log_group = self.get_cloudwatch_log_group(log_group_name)
         # LogStreamName'|'LastEventTime
         streams = streams or self.yield_streams(log_group=log_group)

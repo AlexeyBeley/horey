@@ -52,10 +52,14 @@ class ECSClient(Boto3Client):
         :return:
         """
 
+        logger.info(f"Running ECS Task: {request_dict}")
+
         for response in self.execute(
                 self.get_session_client(region=region).run_task, "tasks", filters_req=request_dict
         ):
             return response
+
+        return None
 
     def start_task(self, region, request_dict):
         """

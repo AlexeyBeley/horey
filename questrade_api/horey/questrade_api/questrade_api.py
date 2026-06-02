@@ -857,15 +857,23 @@ class QuestradeAPI:
                 continue
             symbols.append(symbol)
 
+        filtered_symbols = []
         for symbol in symbols:
             # todo: Check low and high instead vwap
             symbol.vwap_change = self.calculate_vwap_change(symbol.candles)
 
             symbol.absolute_low = min([candle.low for candle in symbol.candles])
             symbol.absolute_high = max([candle.high for candle in symbol.candles])
+            if symbol.vwap_change == 0:
+                continue
+            if symbol.vwap_change < 0:
+                continue
+            if len(symbol.candles) < 10:
+                continue
+            filtered_symbols.append(symbol)
 
         str_ret = ""
-        for i, symbol in enumerate(sorted(symbols, key=lambda x: abs(x.vwap_change))):
+        for i, symbol in enumerate(sorted(filtered_symbols, key=lambda x: abs(x.vwap_change))):
             str_ret += f"[{i+1}] {symbol.symbol}, abs_low={symbol.absolute_low}, vwap_change={symbol.vwap_change}, deals={len(symbol.candles)}\n"
 
         with open(self.configuration.data_directory/ "purchase_plan.txt", "w") as file:
@@ -969,7 +977,7 @@ class QuestradeAPI:
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
         for position in positions:
             # todo: fix
-            if position.symbol in ["ZOOZ.44137140"]:
+            if position.symbol in ["ZOOZ.44137140", "PRHI.10774080"]:
                 continue
 
 

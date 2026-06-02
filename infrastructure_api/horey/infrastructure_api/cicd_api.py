@@ -104,6 +104,7 @@ class CICDAPI:
         self.environment_api = environment_api
         self._cloudwatch_api = None
         self._jenkins_master_ecs_api = None
+        self._jenkins_hagent_ecs_api = None
         self._ec2_api = None
         self._dns_api = None
         self._remote_deployer = None
@@ -220,7 +221,8 @@ class CICDAPI:
 
         :return:
         """
-        self.provision_jenkins_master_infrastructure(public_dns_prefix=public_dns_prefix, private_dns_prefix=private_dns_prefix)
+        self.provision_jenkins_master_infrastructure(public_dns_prefix=public_dns_prefix,
+                                                     private_dns_prefix=private_dns_prefix)
         self.update_jenkins_master(public_dns_prefix=public_dns_prefix, private_dns_prefix=private_dns_prefix)
         self.cloudwatch_api.provision()
 
@@ -233,12 +235,14 @@ class CICDAPI:
 
         build_number = self.jenkins_master_ecs_api.get_next_build_number()
         image = self.jenkins_master_ecs_api.build_api.run_build_and_upload_image_routine(branch_name, build_number)
+        breakpoint()
 
         for image_registry_reference in image.tags:
             if self.jenkins_master_ecs_api.configuration.ecr_repository_name in image_registry_reference:
                 break
         else:
-            raise ValueError(f"Was not able to find image with repo {self.jenkins_master_ecs_api.configuration.ecr_repository_name}")
+            raise ValueError(
+                f"Was not able to find image with repo {self.jenkins_master_ecs_api.configuration.ecr_repository_name}")
         td = self.jenkins_master_ecs_api.generate_ecs_task_definition(image_registry_reference,
                                                                       slug="jenkins-master",
                                                                       requires_compatibilities=["FARGATE"])
@@ -269,7 +273,6 @@ class CICDAPI:
             tg_private = self.jenkins_master_ecs_api.configuration.service_private_target_group_name
             target_groups.append(self.loadbalancer_api.get_targetgroup(tg_private))
         self.jenkins_master_ecs_api.provision_ecs_service(td, target_groups=target_groups)
-
 
     def get_efs_file_system(self, file_system_name):
         """
@@ -311,7 +314,7 @@ class CICDAPI:
         :return:
         """
 
-        self.jenkins_master_ecs_api.provision_service_log_group()
+        self.jenkins_master_ecs_api.provision_log_group()
         master_service_security_group = self.jenkins_master_ecs_api.provision_service_security_group()
 
         cluster = self.jenkins_master_ecs_api.provision_cluster()
@@ -359,7 +362,7 @@ class CICDAPI:
 
         self.jenkins_master_ecs_api.provision_execution_role(
             name=self.get_task_role_name("jenkins-master-exec"),
-            )
+        )
 
         self.jenkins_master_ecs_api.provision_service_ecr_repository()
 
@@ -421,7 +424,13 @@ class CICDAPI:
                         "ssmmessages:OpenControlChannel",
                         "ssmmessages:OpenDataChannel"
                     ],
-                    "Resource": "*",
+                    "Resource": "*"
+                }
+            ]
+        }
+
+        """todo:
+        ,
                     "Condition": {
                         "StringEquals": {
                             "aws:ResourceTag/env_level": self.environment_api.configuration.environment_level,
@@ -432,9 +441,8 @@ class CICDAPI:
                             "aws:PrincipalTag/project_name": self.environment_api.configuration.project_name,
                         }
                     }
-                }
-            ]
-        }
+        """
+
         policy_ssm.name = "inline_ssm_messages"
         policy_ssm.description = "Allow task to access SSM service for remote connections"
         policy_ssm.tags = self.environment_api.configuration.tags
@@ -714,9 +722,13 @@ class CICDAPI:
 
             ecs_api.set_ecr_repository_name(
                 f"repo_{ecs_api_configuration.cluster_name}_{ecs_api_configuration.service_name}")
+            ecs_api.set_log_group_name()
 
-            ecs_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_jenkins_master_container_build_directory_callback
+            ecs_api.build_api = self.hagent_build_api
+
+            ecs_api.build_api.prepare_docker_image_build_directory = self.prepare_jenkins_master_image_build_directory
             ecs_api.build_api.configuration.docker_repository_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{ecs_api.configuration.ecr_repository_region}.amazonaws.com/{ecs_api_configuration.ecr_repository_name}"
+            ecs_api.set_ecs_task_definition_family()
 
             self._jenkins_master_ecs_api = ecs_api
         return self._jenkins_master_ecs_api
@@ -728,19 +740,20 @@ class CICDAPI:
 
         :return:
         """
-        if self._ecs_api is None:
+        if self._jenkins_hagent_ecs_api is None:
             ecs_api_configuration = ECSAPIConfigurationPolicy()
-            ecs_api_configuration.slug = "hagent"
-            ecs_api = ECSAPI(ecs_api_configuration, self.environment_api)
 
             ecs_api_configuration.ecs_task_definition_cpu_reservation = 1024
             ecs_api_configuration.ecs_task_definition_memory_reservation = 2048
             ecs_api_configuration.autoscaling_max_capacity = 1
+            ecs_api_configuration.cluster_name = f"{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level_abbr}-{self.environment_api.configuration.environment_name_abbr}"
             ecs_api_configuration.network_mode = "awsvpc"
 
             ecs_api_configuration.task_definition_desired_count = 1
             ecs_api_configuration.launch_type = "EC2"
             ecs_api_configuration.kill_old_containers = False
+            ecs_api_configuration.slug = "hagent"
+            ecs_api = ECSAPI(ecs_api_configuration, self.environment_api)
 
             if self.environment_api.git_api is None:
                 configuration = GitAPIConfigurationPolicy()
@@ -750,20 +763,35 @@ class CICDAPI:
                 configuration.branch_name = "main"
                 self.environment_api.git_api = GitAPI(configuration)
 
-            ecs_api.prepare_container_build_directory_callback = self.prepare_container_build_directory_callback
-            self._ecs_api = ecs_api
-        return self._ecs_api
+            ecs_api.prepare_container_build_directory_callback = self.prepare_hagent_container_build_directory
+            ecs_api.set_ecr_repository_name()
+            ecs_api.set_log_group_name()
+            ecs_api.set_ecs_task_definition_family()
 
-    def prepare_jenkins_master_container_build_directory_callback(self, dir_path: Path):
+            self._jenkins_hagent_ecs_api = ecs_api
+        return self._jenkins_hagent_ecs_api
+
+    def prepare_jenkins_master_image_build_directory(self, source_code_directory_path, build_number):
         """
 
-        :param dir_path:
+        :param source_code_directory_path:
         :return:
         """
 
-        return dir_path / "jenkins_api" / "horey" / "jenkins_api" / "master"
+        self.jenkins_master_ecs_api.build_api.docker_build_directory.mkdir(exist_ok=True)
+        shutil.copy2(source_code_directory_path / "jenkins_api" / "horey" / "jenkins_api" / "master" / "Dockerfile",
+                     self.jenkins_master_ecs_api.build_api.docker_build_directory / "Dockerfile")
 
-    def generate_deployment_target_async(self, async_orchestrator, name=None, target_ssh_key_secret_name=None, bastions=None):
+        build_dir_path = self.jenkins_master_ecs_api.build_api.prepare_docker_image_horey_package_build_directory(
+            source_code_directory_path,
+            "infrastructure_api",
+            )
+
+        self.jenkins_master_ecs_api.build_api.add_build_metadata_file(build_dir_path, build_number)
+        return build_dir_path
+
+    def generate_deployment_target_async(self, async_orchestrator, name=None, target_ssh_key_secret_name=None,
+                                         bastions=None):
         """
         Generate target
 
@@ -778,7 +806,9 @@ class CICDAPI:
             raise ValueError("name is None")
         task_name = f"generate_deployment_target_{name}"
 
-        async_orchestrator.start_task_from_function(self.generate_deployment_target, task_name=task_name, name=name, target_ssh_key_secret_name=target_ssh_key_secret_name, bastions=bastions)
+        async_orchestrator.start_task_from_function(self.generate_deployment_target, task_name=task_name, name=name,
+                                                    target_ssh_key_secret_name=target_ssh_key_secret_name,
+                                                    bastions=bastions)
         return task_name
 
     def generate_deployment_target(self, name=None, target_ssh_key_secret_name=None, bastions=None):
@@ -977,33 +1007,21 @@ class CICDAPI:
 
         :return:
         """
-        assume_role_policy_document = json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Sid": "",
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "ecs-tasks.amazonaws.com"
-                    },
-                    "Action": "sts:AssumeRole"
-                }
-            ]
-        })
 
-        task_role = self.iam_api.provision_role(role_name=self.get_task_role_name("jenkins-hagent"),
-                                                assume_role_policy=assume_role_policy_document)
+        ecs_cluster = self.jenkins_hagent_ecs_api.get_cluster()
+        self.jenkins_hagent_ecs_api.provision_ecs_autoscaling_group_capacity_provider(ecs_cluster, ecs_cluster.name)
+        self.jenkins_hagent_ecs_api.provision_task_role()
 
-        exec_role = self.iam_api.provision_role(role_name=self.get_task_role_name("jenkins-hagent-exec"),
-                                                assume_role_policy=assume_role_policy_document)
+        exec_role = self.jenkins_hagent_ecs_api.provision_task_execution_role()
         policy_text = self.iam_api.generate_ecr_repository_policy(ecs_task_execution_role=exec_role)
 
-        self.ecs_api.provision_ecr_repository(repository_name=self.generate_hagent_repository_name(),
-                                              repository_policy=policy_text)
+        self.jenkins_hagent_ecs_api.provision_ecr_repository(
+            repository_policy=policy_text)
+        self.jenkins_hagent_ecs_api.provision_task_security_group()
 
-        cluster_name = self.generate_management_cluster_name()
-        self.ecs_api.provision_service_log_group(cluster_name, "hagent")
-        self.update_hagent()
+        self.jenkins_hagent_ecs_api.provision_log_group()
+
+        self.update_jenkins_hagent()
         return True
 
     def generate_management_cluster_name(self):
@@ -1024,7 +1042,7 @@ class CICDAPI:
         """
         return f"repo_{self.environment_api.configuration.environment_level}_jenkins_hagent"
 
-    def update_hagent(self, branch_name=None, from_docker_repository=False):
+    def update_jenkins_hagent(self, branch_name=None, from_docker_repository=False):
         """
         Update jenkins hagent
 
@@ -1033,28 +1051,23 @@ class CICDAPI:
         :return:
         """
 
-        self.hagent_ecs_api.configuration.slug = "hagent"
-
-        self.ecs_api.build_api.prepare_docker_image_build_directory = self.prepare_hagent_container_build_directory
+        self.jenkins_hagent_ecs_api.build_api.prepare_docker_image_build_directory = self.prepare_hagent_container_build_directory
         if from_docker_repository:
-            image_tag_raw = self.ecs_api.fetch_latest_artifact_metadata().image_tags[0]
-            image_registry_reference = self.ecs_api.generate_image_registry_reference(image_tag_raw)
+            image_tag_raw = self.jenkins_hagent_ecs_api.fetch_latest_artifact_metadata().image_tags[0]
+            image_registry_reference = self.jenkins_hagent_ecs_api.generate_image_registry_reference(image_tag_raw)
         else:
-            build_number = self.ecs_api.get_next_build_number()
+            build_number = self.jenkins_hagent_ecs_api.get_next_build_number()
 
-            self.ecs_api.build_api.configuration.docker_build_arguments["platform"] = "linux/amd64"
-            self.ecs_api.build_api.configuration.docker_build_arguments["pull"] = True
+            self.jenkins_hagent_ecs_api.build_api.configuration.docker_build_arguments["platform"] = "linux/amd64"
+            self.jenkins_hagent_ecs_api.build_api.configuration.docker_build_arguments["pull"] = True
+            self.jenkins_hagent_ecs_api.build_api.configuration.docker_repository_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.jenkins_hagent_ecs_api.configuration.ecr_repository_region}.amazonaws.com/{self.jenkins_hagent_ecs_api.configuration.ecr_repository_name}"
 
-            repo_name = self.generate_hagent_repository_name()
-            self.ecs_api.build_api.configuration.docker_repository_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.ecs_api.configuration.ecr_repository_region}.amazonaws.com/{repo_name}"
-
-            image = self.ecs_api.build_api.run_build_and_upload_image_routine(branch_name, build_number)
+            image = self.jenkins_hagent_ecs_api.build_api.run_build_and_upload_image_routine(branch_name, build_number)
 
             image_registry_reference = image.tags[0]
 
-        td = self.ecs_api.generate_ecs_task_definition(image_registry_reference,
-                                                       cluster_name=self.generate_management_cluster_name(),
-                                                       slug="hagent", requires_compatibilities=["EC2"])
+        td = self.jenkins_hagent_ecs_api.generate_ecs_task_definition(image_registry_reference,
+                                                                      slug="hagent", requires_compatibilities=["EC2"])
         linux_params = {"devices": [{
             'hostPath': '/var/run/docker.sock',
             'containerPath': '/var/run/docker.sock',
@@ -1063,10 +1076,24 @@ class CICDAPI:
             ]
         },
         ]}
-        raise NotImplementedError("Not implemented")
-        # self.jenkins_hagent_ecs_api.generate_ecs_task_definition_storage(td, linux_params=linux_params)
+        mount_points = [
+            {
+                "sourceVolume": "docker-socket",
+                "containerPath": "/var/run/docker.sock",
+                "readOnly": False
+            }
+        ]
+        volumes = [
+            {
+                "name": "docker-socket",
+                "host": {
+                    "sourcePath": "/var/run/docker.sock"
+                }
+            }
+        ]
+        td.set_storage(volumes=volumes, mount_points=mount_points)
 
-        # self.jenkins_hagent_ecs_api.provision_ecs_task_definition_ng(td)
+        return self.jenkins_hagent_ecs_api.provision_ecs_task_definition_ng(td)
 
     def prepare_hagent_container_build_directory(self, dir_path: pathlib.Path, build_number):
         """
@@ -1077,9 +1104,10 @@ class CICDAPI:
         :return:
         """
 
-        build_dir_path = self.ecs_api.build_api.prepare_docker_image_horey_package_build_directory(dir_path,
-                                                                                                   "docker_api",
-                                                                                                   build_number)
+        build_dir_path = self.jenkins_hagent_ecs_api.build_api.prepare_docker_image_horey_package_build_directory(
+            dir_path,
+            "docker_api"
+            )
         entrypoint_name = "docker_builder.py"
         with open(build_dir_path / entrypoint_name, "w", encoding="utf-8") as fh:
             fh.writelines([
@@ -1087,8 +1115,10 @@ class CICDAPI:
                 "docker_api = DockerAPI()\n",
                 "print(docker_api.get_all_images())\n"
             ])
-        self.ecs_api.build_api.add_docker_instruction_copy(build_dir_path, entrypoint_name)
-        self.ecs_api.build_api.add_docker_instruction_entrypoint(build_dir_path, f'["python", "{entrypoint_name}"]')
+        self.jenkins_hagent_ecs_api.build_api.add_docker_instruction_copy(build_dir_path, entrypoint_name)
+        self.jenkins_hagent_ecs_api.build_api.add_docker_instruction_entrypoint(build_dir_path,
+                                                                                f'["python", "{entrypoint_name}"]')
+        self.jenkins_master_ecs_api.build_api.add_build_metadata_file(build_dir_path, build_number)
 
         # docker run --mount type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock -it --entrypoint=/bin/bash test
 
@@ -1250,3 +1280,32 @@ class CICDAPI:
             instance_type="t3a.small",
             asynchronous=False)
         return ec2_instance
+
+    def trigger_hagent_job(self):
+        """
+        Trigger job on hagent.
+
+        :return:
+        """
+
+        task = self.jenkins_hagent_ecs_api.start_task()
+        desired_statuses = [
+            task.State.STOPPING,
+            task.State.DEPROVISIONING,
+            task.State.STOPPED,
+            task.State.DEACTIVATING]
+        permit_statues = [task.State.RUNNING,
+                          task.State.PROVISIONING,
+                          task.State.PENDING,
+                          task.State.ACTIVATING
+                          ]
+        error_statuses = [task.State.FAILED]
+        self.environment_api.aws_api.ecs_client.wait_for_status(task,
+                                                                self.environment_api.aws_api.ecs_client.update_task_information,
+                                                                desired_statuses, permit_statues, error_statuses)
+
+        logs = self.jenkins_hagent_ecs_api.get_task_logs(task)
+        for log in logs:
+            print(log["message"])
+
+        return True

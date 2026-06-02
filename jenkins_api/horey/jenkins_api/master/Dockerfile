@@ -1,5 +1,8 @@
 FROM jenkins/jenkins:lts-jdk17
 
+RUN apt update -yqq && apt install -yqq --no-install-recommends \
+    python3 python3-venv python3-pip python-is-python3 && \
+    rm -rf /var/lib/apt/lists/*
 #USER root
 #CMD chown -R jenkins:jenkins /var/jenkins_home
 

@@ -27,7 +27,6 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._family = None
         self._container_name = None
         self._container_definition_port_mappings = None
-        self._cloudwatch_log_group_name = None
         self._requires_compatibilities = None
         self._network_mode = None
         self._ecs_task_definition_cpu_reservation = None
@@ -374,24 +373,6 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._requires_compatibilities = value
 
     @property
-    def cloudwatch_log_group_name(self):
-        if self._cloudwatch_log_group_name is None:
-            if self.provision_service:
-                return f"/ecs/{self.cluster_name}/{self.service_name}"
-            if self.provision_cron:
-                return f"/ecs/{self.cluster_name}/{self.cron_name}"
-            if self.provision_adhoc_task:
-                return f"/ecs/{self.cluster_name}/{self.adhoc_task_name}"
-
-            raise ValueError("Not a service or cron")
-
-        return self._cloudwatch_log_group_name
-
-    @cloudwatch_log_group_name.setter
-    def cloudwatch_log_group_name(self, value):
-        self._cloudwatch_log_group_name = value
-
-    @property
     def container_definition_port_mappings(self):
         return self._container_definition_port_mappings
 
@@ -531,6 +512,10 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def service_security_group_name(self):
         return f"sg_{self.cluster_name}-service-{self.service_name}"
+
+    @property
+    def task_security_group_name(self):
+        return f"sg_{self.cluster_name}-task-{self.slug}"
 
     @property
     def service_public_target_group_name(self):

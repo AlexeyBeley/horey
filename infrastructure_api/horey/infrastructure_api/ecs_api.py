@@ -153,15 +153,11 @@ class ECSAPI:
             self._build_api = build_api
         return self._build_api
 
-    def set_ecr_repository_name(self, repo_name:str):
-        """
-        Set repo name.
-
-        :param repo_name:
-        :return:
-        """
-
-        self.configuration.ecr_repository_name = repo_name
+    @build_api.setter
+    def build_api(self, value):
+        if not isinstance(value,BuildAPI):
+            raise ValueError("Must be BuildAPI")
+        self._build_api = value
 
     @property
     def ecr_repository(self):
@@ -641,7 +637,7 @@ class ECSAPI:
             contaner_name=self.configuration.container_name,
             ecr_image_id=ecr_image_tag,
             port_mappings=self.configuration.container_definition_port_mappings,
-            cloudwatch_log_group_name=self.configuration.cloudwatch_log_group_name,
+            cloudwatch_log_group_name=self.cloudwatch_api.configuration.log_group_name,
             entry_point=self.configuration.task_definition_entry_point,
             environ_values=self.environment_variables_callback(),
             requires_compatibilities=self.configuration.requires_compatibilities,
@@ -751,12 +747,17 @@ class ECSAPI:
 
         return cluster_name_clean.strip("-").strip("_")
 
-    def set_service_task_role_name(self, role_name=None):
+    def set_task_role_name(self, role_name=None):
         """
         Set role name for the task.
 
         :return:
         """
+        try:
+            slug = self.configuration.service_name
+        except self.configuration.UndefinedValueError:
+            slug = self.configuration.slug
+
         try:
             if self.configuration.ecs_task_role_name and role_name:
                 raise ValueError("Pass repo name via 'role_name' OR via 'configuration.ecs_task_execution_role_name'")
@@ -768,22 +769,22 @@ class ECSAPI:
                     # pylint: disable = raise-missing-from
                     raise NotImplementedError(self.configuration.cluster_name)
 
-                if self.environment_api.configuration.environment_level in self.configuration.service_name:
+                if self.environment_api.configuration.environment_level in slug:
                     # pylint: disable = raise-missing-from
                     raise NotImplementedError(self.configuration.cluster_name)
 
                 cluster_name_clean = self.get_cluster_name_slug()
 
-                self.configuration.ecs_task_role_name = f"role_{self.environment_api.configuration.environment_level}-{cluster_name_clean}-{self.configuration.service_name}-tsk"
+                self.configuration.ecs_task_role_name = f"role_{self.environment_api.configuration.environment_level}-{cluster_name_clean}-{slug}-tsk"
 
-    def provision_service_task_role(self, role_name=None, inline_policies=None):
+    def provision_task_role(self, role_name=None, inline_policies=None):
         """
         Provision role used by the task.
 
         :return:
         """
 
-        self.set_service_task_role_name(role_name=role_name)
+        self.set_task_role_name(role_name=role_name)
 
         assume_role_policy_document = json.dumps({
             "Version": "2012-10-17",
@@ -802,12 +803,13 @@ class ECSAPI:
         return self.iam_api.provision_role(policies=inline_policies, role_name=self.configuration.ecs_task_role_name,
                                                assume_role_policy=assume_role_policy_document)
 
-    def set_service_execution_role_name(self, role_name=None):
+    def set_task_execution_role_name(self, role_name=None):
         """
         Set role name for the task.
 
         :return:
         """
+
         try:
             if self.configuration.ecs_task_execution_role_name and role_name:
                 raise ValueError("Pass repo name via 'role_name' OR via 'configuration.ecs_task_execution_role_name'")
@@ -815,24 +817,29 @@ class ECSAPI:
             if role_name:
                 self.configuration.ecs_task_execution_role_name = role_name
             else:
+                try:
+                    slug = self.configuration.service_name
+                except self.configuration.UndefinedValueError:
+                    slug = self.configuration.slug
+
                 if self.environment_api.configuration.environment_level in self.configuration.cluster_name:
                     # pylint: disable = raise-missing-from
                     raise NotImplementedError(self.configuration.cluster_name)
 
-                if self.environment_api.configuration.environment_level in self.configuration.service_name:
+                if self.environment_api.configuration.environment_level in slug:
                     # pylint: disable = raise-missing-from
                     raise NotImplementedError(self.configuration.cluster_name)
                 cluster_name_clean = self.get_cluster_name_slug()
-                self.configuration.ecs_task_execution_role_name = f"role_{self.environment_api.configuration.environment_level}-{cluster_name_clean}-{self.configuration.service_name}-exc"
+                self.configuration.ecs_task_execution_role_name = f"role_{self.environment_api.configuration.environment_level}-{cluster_name_clean}-{slug}-exc"
 
-    def provision_service_execution_role(self, role_name=None):
+    def provision_task_execution_role(self, role_name=None):
         """
         Role used by ECS service task running on the container instance to manage containers.
 
         :return:
         """
 
-        self.set_service_execution_role_name(role_name=role_name)
+        self.set_task_execution_role_name(role_name=role_name)
         assume_role_policy_document = json.dumps({
             "Version": "2012-10-17",
             "Statement": [
@@ -860,7 +867,7 @@ class ECSAPI:
                                                assume_role_policy=assume_role_policy_document,
                                                description="ECS task role used to control containers lifecycle")
 
-    def set_service_ecr_repository_name(self, repository_name=None):
+    def set_ecr_repository_name(self, repository_name=None):
         """
         Set or generate ECR repo name.
 
@@ -868,12 +875,17 @@ class ECSAPI:
         :return:
         """
 
+        try:
+            slug = self.configuration.service_name
+        except self.configuration.UndefinedValueError:
+            slug = self.configuration.slug
+
         if repository_name is None:
             try:
                 assert self.configuration.ecr_repository_name
             except self.configuration.UndefinedValueError:
                 self.set_ecr_repository_name(
-                    f"repo_{self.configuration.cluster_name}_{self.configuration.service_name}")
+                    f"repo_{self.configuration.cluster_name}_{slug}")
         else:
             try:
                 if self.configuration.ecr_repository_name:
@@ -888,7 +900,7 @@ class ECSAPI:
         :return:
         """
 
-        self.set_service_ecr_repository_name(repository_name=repository_name)
+        self.set_ecr_repository_name(repository_name=repository_name)
 
         if repository_policy is None:
             try:
@@ -1088,33 +1100,6 @@ class ECSAPI:
 
         return True
 
-    def provision_task_role(self):
-        """
-        Provision role used by the task.
-
-        :return:
-        """
-
-        if not self.configuration.provision_service and not self.configuration.provision_cron:
-            return True
-
-        policies = self.task_role_inline_policies_callback()
-        assume_role_policy_document = json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Sid": "",
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "ecs-tasks.amazonaws.com"
-                    },
-                    "Action": "sts:AssumeRole"
-                }
-            ]
-        })
-        return self.iam_api.provision_role(policies=policies, role_name=self.configuration.ecs_task_role_name,
-                                               assume_role_policy=assume_role_policy_document)
-
     def provision_execution_role(self, name=None):
         """
         Role used by ECS service task running on the container instance to manage containers.
@@ -1241,27 +1226,48 @@ class ECSAPI:
             return task_definition
         raise RuntimeError(f"Empty Family: {self.configuration.family}")
 
-    def start_task(self, overrides=None):
+    def start_task(self, overrides=None)->ECSTask:
         """
         Start latest TD of the task.
+
+        overrides={
+        'containerOverrides': [
+            {
+                'environment': [
+                    {
+                        'name': 'string',
+                        'value': 'string'
+                    },
+                ],
+            },
+        ]
+        }
 
         :return:
         """
 
         self.validate_input()
-        # task_definition = self.ecs_api.get_task_definition()
+        task_definition = self.get_task_definition()
+        try:
+            if self.configuration.security_groups:
+                raise NotImplementedError("Fix and test multiple groups")
+        except self.configuration.UndefinedValueError:
+            pass
 
+        sec_group_ids = [sec_group.id for sec_group in
+                         self.environment_api.get_security_groups([self.configuration.task_security_group_name])]
+
+        launch_type =  task_definition.requires_compatibilities[0]
         dict_run_task_request = {
             "cluster": self.configuration.cluster_name,
-            "taskDefinition": self.configuration.family,
-            "launchType": "FARGATE",
+            "taskDefinition": task_definition.arn,
+            "launchType": launch_type,
             "networkConfiguration": {
                 "awsvpcConfiguration": {
                     "subnets": [subnet.id for subnet in
                                 self.environment_api.private_subnets],
-                    "securityGroups": [sec_group.id for sec_group in
-                                       self.environment_api.get_security_groups(self.configuration.security_groups)],
-                    "assignPublicIp": "ENABLED",
+                    "securityGroups": sec_group_ids,
+                    "assignPublicIp": "ENABLED" if launch_type == "FARGATE" else "DISABLED",
                 }
             },
         }
@@ -1372,8 +1378,23 @@ class ECSAPI:
 
         return ecs_service
 
+    def set_ecs_task_definition_family(self, cluster_name=None, slug=None):
+        """
+        Set task definition family name.
+
+        :return:
+        """
+        cluster_name = cluster_name or self.configuration.cluster_name
+
+        if not cluster_name:
+            raise ValueError("Cluster name was not set")
+
+        slug = slug or self.configuration.slug
+        self.configuration.family = f"td-{cluster_name}-{slug}"
+
+
     # pylint: disable = too-many-arguments, too-many-positional-arguments
-    def generate_ecs_task_definition(self, ecr_image_id, cluster_name=None, service_name=None, slug=None, requires_compatibilities=None):
+    def generate_ecs_task_definition(self, ecr_image_id, slug=None, requires_compatibilities=None) -> ECSTaskDefinition:
 
         """
         Provision task definition.
@@ -1396,18 +1417,8 @@ class ECSAPI:
         ecs_task_definition = ECSTaskDefinition({})
 
         ecs_task_definition.region = self.environment_api.region
+        ecs_task_definition.family = self.configuration.family
 
-        cluster_name = cluster_name or self.configuration.cluster_name
-
-        if not cluster_name:
-            raise ValueError("Cluster name was not set")
-        service_name = service_name or self.configuration.service_name
-        if service_name:
-            ecs_task_definition.family = f"td-{cluster_name}-{service_name}-{slug}"
-            log_group_name = self.get_ecs_service_log_group_name(cluster_name, service_name)
-        else:
-            ecs_task_definition.family = f"td-{cluster_name}-{slug}"
-            log_group_name = self.get_ecs_service_log_group_name(cluster_name, slug)
 
         # Why? Because AWS! `Unknown parameter in tags[0]: "Key", must be one of: key, value`
         ecs_task_definition.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
@@ -1419,7 +1430,7 @@ class ECSAPI:
             "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
-                    "awslogs-group": log_group_name,
+                    "awslogs-group": self.cloudwatch_api.configuration.log_group_name,
                     "awslogs-region": self.environment_api.configuration.region,
                     "awslogs-stream-prefix": "ecs"
                 }
@@ -1454,33 +1465,46 @@ class ECSAPI:
             raise ValueError(f"Task definition request length {len(str(request))} while expected less then 65536")
 
         return ecs_task_definition
+    
+    def set_log_group_name(self, cluster_name=None, slug=None):
+        """
+        Generate and set log group name
 
-    def provision_service_log_group(self, cluster_name=None, service_name=None):
+        :param cluster_name:
+        :param slug:
+        :return:
+        """
+
+        cluster_name = cluster_name or self.configuration.cluster_name
+        slug = slug or self.configuration.slug
+        name = self.get_ecs_service_log_group_name(cluster_name, slug)
+        self.cloudwatch_api.configuration.log_group_name = name
+        
+    def provision_log_group(self):
         """
         Provision log group for the service.
 
         :param cluster_name:
-        :param service_name:
+        :param slug:
         :return:
         """
-        cluster_name = cluster_name or self.configuration.cluster_name
-        service_name = service_name or self.configuration.service_name
-        name = self.get_ecs_service_log_group_name(cluster_name, service_name)
-        return self.cloudwatch_api.provision_log_group(name)
 
-    def get_ecs_service_log_group_name(self, cluster_name, service_name):
+        return self.cloudwatch_api.provision_log_group()
+
+    @staticmethod
+    def get_ecs_service_log_group_name(cluster_name, slug):
         """
         Generate log group name for the service.
 
         :param cluster_name:
-        :param service_name:
+        :param slug:
         :return:
         """
         if not cluster_name:
             raise ValueError("cluster_name was not provided")
-        if not service_name:
-            raise ValueError("service_name was not provided")
-        return f"/ecs/{cluster_name}/{service_name}"
+        if not slug:
+            raise ValueError("slug was not provided")
+        return f"/ecs/{cluster_name}/{slug}"
 
     def attach_capacity_provider_to_ecs_cluster(self, ecs_cluster: ECSCluster, capacity_provider: ECSCapacityProvider):
         """
@@ -1720,11 +1744,20 @@ class ECSAPI:
 
     def provision_service_security_group(self):
         """
-        Provision security group for the service.
+        Provision service security group
 
         :return:
         """
         return self.ec2_api.provision_security_group(name=self.configuration.service_security_group_name)
+
+    def provision_task_security_group(self):
+        """
+        Provision task security group
+
+        :return:
+        """
+
+        return self.ec2_api.provision_security_group(name=self.configuration.task_security_group_name)
 
     def provision_service(self, branch_name, public_dns_prefix, private_dns_prefix):
         """
@@ -1764,3 +1797,22 @@ class ECSAPI:
             raise ValueError("Unknown status")
 
         return self.provision_ecs_service(ecs_task_definition)
+
+    def get_task_logs(self, task: ECSTask):
+        """
+        Task logs list
+
+        :param task:
+        :return:
+        """
+        breakpoint()
+        task_id = task.arn.split("/")[-1]
+        log_group = self.cloudwatch_api.get_cloudwatch_log_group(self.cloudwatch_api.configuration.log_group_name)
+        for stream in self.cloudwatch_api.yield_streams(log_group=log_group):
+            if task_id in stream.name:
+                streams = [stream]
+                break
+        else:
+            raise ValueError(f"Task {task_id=} log stream was not found")
+        return list(self.cloudwatch_api.yield_logs(streams=streams))
+

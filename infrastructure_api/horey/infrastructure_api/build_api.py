@@ -172,15 +172,15 @@ class BuildAPI:
         shutil.copytree(str(source_code_directory_path), str(self.docker_build_directory), ignore=ignore_git)
 
         build_dir_path = self.prepare_docker_image_build_directory_callback(self.docker_build_directory)
-
+        breakpoint()
         self.add_build_metadata_file(build_dir_path, build_number)
 
         logger.info(f"Prepared docker build directory. Took {time.perf_counter() - perf_counter_start}")
 
         return build_dir_path
 
-    def prepare_docker_image_horey_package_build_directory(self, source_code_directory_path, package_raw_name,
-                                                           build_number):
+    def prepare_docker_image_horey_package_build_directory(self, source_code_directory_path, package_raw_name
+                                                           ):
         """
         Copy source code to tmp dir.
 
@@ -207,8 +207,8 @@ class BuildAPI:
 
         build_dir_path = self.prepare_docker_image_build_directory_callback(self.docker_build_directory)
 
-        file_name = self.add_build_metadata_file(build_dir_path, build_number)
-        self.add_docker_instruction_copy(dockerfile_path, file_name)
+        #file_name = self.add_build_metadata_file(build_dir_path, build_number)
+        #self.add_docker_instruction_copy(dockerfile_path, file_name)
 
         logger.info(f"Prepared docker build directory. Took {time.perf_counter() - perf_counter_start}")
         return build_dir_path
@@ -335,8 +335,11 @@ class BuildAPI:
         horey_base_lines = [
             "USER root\n",
             "RUN apt update\n",
-            "RUN apt install -y python3 python3-pip git make wget which findutils\n",
+            "RUN apt install -yqq python3 python3-pip git make wget which findutils\n",
             "RUN ln -s /usr/bin/python3 /usr/bin/python\n",
+            "RUN apt-get update && apt-get remove -y python3-packaging && rm -rf /var/lib/apt/lists/*\n",
+            "RUN apt-get update && apt-get install -yqq --upgrade python3-packaging python3-pip  && rm -rf /var/lib/apt/lists/*\n",
+            "RUN  pip3 install --break-system-packages twine\n",
             "#HOREY_REPOS_END\n"
         ]
 
