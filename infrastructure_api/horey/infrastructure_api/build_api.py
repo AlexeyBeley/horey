@@ -315,7 +315,34 @@ class BuildAPI:
         file_name = "build_metadata.json"
         with open(build_dir_path / file_name, "w", encoding="utf-8") as file_handler:
             json.dump({"commit": self.commit_id, "build": str(build_number)}, file_handler)
+
+        self.add_file(build_dir_path, build_dir_path/file_name)
         return file_name
+
+    def add_file(self, build_dir_path:Path, file_path:Path):
+        """
+        Copy to build dir if needed and add to Dockerfile
+        :param build_dir_path:
+        :param file_path:
+        :return:
+        """
+
+        if not file_path.is_relative_to(build_dir_path):
+            shutil.copy2(file_path, build_dir_path/file_path.name)
+        dockerfile_path = build_dir_path / "Dockerfile"
+        with open(dockerfile_path, encoding="utf-8") as fh:
+            lines = fh.readlines()
+
+        for i, line in enumerate(lines):
+            if line.startswith("COPY"):
+                lines = lines[:i+1] + [f"COPY {file_path.name} /{file_path.name}\n"] + lines[i+1:]
+                break
+        else:
+            raise NotImplementedError("Was not able to find anchor COPY instruction")
+
+        with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
+            file_handler.writelines(lines)
+
 
     @staticmethod
     def add_horey_base_to_dockerfile(dockerfile_path: Path):

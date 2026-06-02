@@ -18,7 +18,6 @@ class CICDAPIConfigurationPolicy(ConfigurationPolicy):
     def __init__(self):
         super().__init__()
         self._build_environment_variable = None
-        self._efs_master_security_group_name = None
         self._master_efs_access_point_name = None
         self._master_file_system_name = None
         self._github_hagent_security_group_name = None

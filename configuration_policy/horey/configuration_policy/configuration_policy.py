@@ -275,15 +275,16 @@ class ConfigurationPolicy:
         for key, value in self.convert_to_dict(ignore_undefined=True).items():
             print(f"{key}: {value}")
 
-    def generate_configuration_file(self, output_file_name):
+    def generate_configuration_file(self, output_file_name, ignore_undefined=False):
         """
         Generated JSON configuration file from self properties.
 
+        :param ignore_undefined:
         :param output_file_name:
         :return:
         """
 
-        dict_values = self.convert_to_dict()
+        dict_values = self.convert_to_dict(ignore_undefined=ignore_undefined)
         try:
             del dict_values["configuration_file_full_path"]
         except KeyError:
@@ -292,7 +293,7 @@ class ConfigurationPolicy:
         with open(output_file_name, "w+", encoding="utf-8") as file_handler:
             json.dump(dict_values, file_handler, indent=4)
 
-    def generate_configuration_file_ng(self, output_file_name: Path):
+    def generate_configuration_file_ng(self, output_file_name: Path, ignore_undefined=False):
         """
         Generated JSON configuration file from self properties.
 

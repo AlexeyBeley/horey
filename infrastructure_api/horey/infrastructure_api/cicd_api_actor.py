@@ -25,8 +25,8 @@ action_manager = ActionsManager()
 def trigger_hagent_job_parser():
     description = "Login to ECR repo"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--region", required=True, type=str, help="AWS Region")
-    parser.add_argument("--logout", required=False, type=str, help="Logout before login")
+    parser.add_argument("--env_api_config_file_path", required=True, type=str, help="env_api_config_file_path")
+    parser.add_argument("--cicd_api_config_file_path", required=True, type=str, help="cicd_api_config_file_path")
     return parser
 
 

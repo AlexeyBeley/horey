@@ -236,6 +236,7 @@ def fixture_cicd_api_integration(env_api_integration):
     cicd_api = CICDAPI(cicd_api_configuration, env_api_integration)
 
     cicd_api.jenkins_master_ecs_api.build_api.git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
+    cicd_api.jenkins_hagent_ecs_api.build_api.git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
     yield cicd_api
     try:
         shutil.rmtree(cicd_api.hagent_build_api.docker_build_directory)
@@ -797,7 +798,7 @@ def test_provision_jenkins_master_infrastructure(cicd_api_integration, ec2_api_m
     assert cicd_api_integration.provision_jenkins_master_infrastructure(public_dns_prefix="jenkins-public",
                                                                         private_dns_prefix="jenkins")
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_update_jenkins_master(cicd_api_integration):
     cicd_api_integration.hagent_build_api.horey_git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
     assert cicd_api_integration.update_jenkins_master(public_dns_prefix="jenkins-public",
@@ -815,7 +816,7 @@ def test_update_jenkins_hagent(cicd_api_integration, ec2_api_mgmt_integration):
     assert cicd_api_integration.update_jenkins_hagent()
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_trigger_hagent_job(cicd_api_integration):
     cicd_api_integration.hagent_build_api.horey_git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
     assert cicd_api_integration.trigger_hagent_job()

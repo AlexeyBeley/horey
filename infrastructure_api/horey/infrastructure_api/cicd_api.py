@@ -235,7 +235,6 @@ class CICDAPI:
 
         build_number = self.jenkins_master_ecs_api.get_next_build_number()
         image = self.jenkins_master_ecs_api.build_api.run_build_and_upload_image_routine(branch_name, build_number)
-        breakpoint()
 
         for image_registry_reference in image.tags:
             if self.jenkins_master_ecs_api.configuration.ecr_repository_name in image_registry_reference:
@@ -718,7 +717,7 @@ class CICDAPI:
 
             ecs_api_configuration.task_definition_desired_count = 1
             ecs_api_configuration.launch_type = "FARGATE"
-            ecs_api_configuration.kill_old_containers = False
+            ecs_api_configuration.kill_old_containers = True
 
             ecs_api.set_ecr_repository_name(
                 f"repo_{ecs_api_configuration.cluster_name}_{ecs_api_configuration.service_name}")
@@ -786,6 +785,15 @@ class CICDAPI:
             source_code_directory_path,
             "infrastructure_api",
             )
+
+        config_file_path = self.jenkins_master_ecs_api.build_api.docker_build_directory / "cicd_api_configuration.json"
+        self.configuration.generate_configuration_file_ng(config_file_path, ignore_undefined=True)
+        self.jenkins_master_ecs_api.build_api.add_file(build_dir_path, config_file_path)
+
+        config_file_path = self.jenkins_master_ecs_api.build_api.docker_build_directory / "environment_api_configuration.json"
+        self.environment_api.configuration.generate_configuration_file_ng(config_file_path, ignore_undefined=True)
+        self.jenkins_master_ecs_api.build_api.add_file(build_dir_path, config_file_path)
+
 
         self.jenkins_master_ecs_api.build_api.add_build_metadata_file(build_dir_path, build_number)
         return build_dir_path
