@@ -130,22 +130,35 @@ class ConfigurationPolicy:
         :return:
         """
 
-        if seed_params is None:
-            seed_params = []
+        if seed_params:
+            sorted_dict_src = {param: dict_src[param] for param in seed_params}
+            sorted_dict_src.update(
+            {key: value for key, value in dict_src.items() if key not in seed_params})
+        else:
+            sorted_dict_src = dict_src
 
-        sorted_key_value_pairs = [(param, dict_src[param]) for param in seed_params] + \
-                                 [(key, value) for key, value in dict_src.items() if key not in seed_params]
 
-        for key, value in sorted_key_value_pairs:
-            if custom_source_log is not None:
-                log_line = custom_source_log.format(key)
-            else:
-                log_line = f"Init attribute '{key}' from dictionary"
-            logger.info(log_line)
+        tmp_self = self.__class__()
+        custom_types = {}
+        for key, value in sorted_dict_src.items():
+            if not hasattr(self, f"_{key}"):
+                raise ValueError(
+                    f"No attribute found with name _{key} in {self.__class__.__name__}"
+                )
             try:
-                self._set_attribute_value(key, value, ignore_undefined=ignore_undefined)
-            except self.StaticValueError as error_inst:
-                logger.warning(f"Ignoring static value: {error_inst}")
+                setattr(tmp_self, key, value)
+                if custom_source_log:
+                    logger.info(f"Initializing attribute {key} from dict")
+
+            except self.StaticValueError:
+                custom_types[key] = lambda _: True
+            except self.UndefinedValueError:
+                if not ignore_undefined:
+                    raise
+                custom_types[key] = lambda _: True
+
+
+        CommonUtils.init_from_dict(self, sorted_dict_src, custom_types=custom_types)
 
     def init_from_environ(self):
         """

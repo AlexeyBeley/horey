@@ -239,7 +239,7 @@ def test_generate_profit_review(questrade_api):
     time_end = today.replace(hour=20, minute=0, second=0, microsecond=0) - timedelta(minutes=1)
 
     assert questrade_api.generate_profit_review(time_start, time_end)
-
+    breakpoint()
 
 @pytest.mark.unit
 def test_fetch_symbols_by_max_price(questrade_api):
