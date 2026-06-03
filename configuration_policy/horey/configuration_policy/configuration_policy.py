@@ -123,6 +123,7 @@ class ConfigurationPolicy:
         self, dict_src, custom_source_log=None, ignore_undefined=False, seed_params=None
     ):
         """
+        Init params from dictionary.
 
         :param seed_params: Basic parameters used to compose other parameters.
         :param dict_src:
@@ -148,7 +149,7 @@ class ConfigurationPolicy:
             try:
                 setattr(tmp_self, key, value)
                 if custom_source_log:
-                    logger.info(f"Initializing attribute {key} from dict")
+                    logger.info(custom_source_log.format(key))
 
             except self.StaticValueError:
                 custom_types[key] = lambda _: True
@@ -306,7 +307,7 @@ class ConfigurationPolicy:
         with open(output_file_name, "w+", encoding="utf-8") as file_handler:
             json.dump(dict_values, file_handler, indent=4)
 
-    def generate_configuration_file_ng(self, output_file_name: Path, ignore_undefined=False):
+    def generate_configuration_file_ng(self, output_file_name: Path):
         """
         Generated JSON configuration file from self properties.
 
