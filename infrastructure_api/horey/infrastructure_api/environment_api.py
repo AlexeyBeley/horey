@@ -79,7 +79,7 @@ class EnvironmentAPI:
         self.git_api = git_api
         self._docker_api = None
 
-        cache_dir = Path(self.configuration.data_directory_path, "cache")
+        cache_dir = Path(self.configuration.data_directory_path)/ "cache"
         if not cache_dir.exists():
             os.makedirs(cache_dir)
 

@@ -271,7 +271,7 @@ class CICDAPI:
         if private_dns_prefix:
             tg_private = self.jenkins_master_ecs_api.configuration.service_private_target_group_name
             target_groups.append(self.loadbalancer_api.get_targetgroup(tg_private))
-        self.jenkins_master_ecs_api.provision_ecs_service(td, target_groups=target_groups)
+        return self.jenkins_master_ecs_api.provision_ecs_service(td, target_groups=target_groups)
 
     def get_efs_file_system(self, file_system_name):
         """
@@ -359,13 +359,13 @@ class CICDAPI:
         self.iam_api.provision_role(policies=policies, role_name=self.get_task_role_name("jenkins-master"),
                                     assume_role_policy=assume_role_policy_document)
 
-        self.jenkins_master_ecs_api.provision_execution_role(
-            name=self.get_task_role_name("jenkins-master-exec"),
-        )
+        exec_role = self.jenkins_master_ecs_api.provision_task_execution_role()
+        policy_text = self.iam_api.generate_ecr_repository_policy(ecs_task_execution_role=exec_role)
 
-        self.jenkins_master_ecs_api.provision_service_ecr_repository()
+        self.jenkins_master_ecs_api.provision_ecr_repository(
+            repository_policy=policy_text)
 
-        self.jenkins_master_ecs_api.provision_ecs_autoscaling_group_capacity_provider(cluster, "management")
+        # self.jenkins_master_ecs_api.provision_ecs_autoscaling_group_capacity_provider(cluster, "management")
         return True
 
     def generate_jenkins_master_efs_component_names(self):

@@ -377,6 +377,7 @@ class AutoScalingClient(Boto3Client):
             filters_req=filter_request))
 
         if len(ret) != 1:
+            breakpoint()
             raise RuntimeError(f"Found {len(ret)=} != 1 items with params: {filter_request=}")
 
         activity.update_from_raw_response(ret[0])
