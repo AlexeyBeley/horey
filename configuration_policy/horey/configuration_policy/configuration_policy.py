@@ -311,6 +311,8 @@ class ConfigurationPolicy:
         """
         Generated JSON configuration file from self properties.
 
+        todo: ignore_undefined=False
+
         :param output_file_name:
         :return:
         """

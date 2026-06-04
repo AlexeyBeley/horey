@@ -764,13 +764,14 @@ class RemoteDeployer:
         stdin, stdout, stderr = ssh_client.exec_command(cmd + f" & {echo_cmd}", timeout=timeout)
         stdout_ret = [line.strip("\r\n")for line in stdout.readlines()]
         stderr_ret = [line.strip("\r\n")for line in stderr.readlines()]
-        if not stdout_ret[-1].startswith("HoreyReturnCode"):
-            raise ValueError(f"Could not find return code. stdout: {stdout_ret}")
 
         for line in stdout_ret:
             logger.info(f"[{remote_address} REMOTE<-][stdout] {line}")
         for line in stderr_ret:
             logger.info(f"[{remote_address} REMOTE<-][stderr] {line}")
+
+        if not stdout_ret or not stdout_ret[-1].startswith("HoreyReturnCode"):
+            raise ValueError(f"Could not find return code. stdout: {stdout_ret}")
         exit_status = int(stdout_ret.pop(-1).split(" ")[-1])
         return None, stdout_ret[:-1], stderr_ret, exit_status
 
