@@ -3205,7 +3205,7 @@ class EC2Client(Boto3Client):
                 ]
             },
         ]
-
+        breakpoint()
         return list(self.execute(
             self.get_session_client(region=region).describe_instance_type_offerings, "InstanceTypeOfferings", filters_req=filters_req
         ))
