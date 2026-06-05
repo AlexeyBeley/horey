@@ -174,7 +174,7 @@ class EC2API:
 
         ec2_instance.ebs_optimized = True
         ec2_instance.instance_initiated_shutdown_behavior = "stop"
-
+        breakpoint()
         ec2_instance.network_interfaces = [
             {
                 "AssociatePublicIpAddress": False,

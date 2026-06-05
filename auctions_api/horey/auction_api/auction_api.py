@@ -27,7 +27,6 @@ class AuctionAPI:
         self.async_orchestrator = AsyncOrchestrator()
         self._db_connection = None
         self._db_cursor = None
-
     @property
     def db_connection(self):
         if self._db_connection is None:
