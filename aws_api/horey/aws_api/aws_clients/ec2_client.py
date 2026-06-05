@@ -3207,7 +3207,7 @@ class EC2Client(Boto3Client):
             {
                 "Name": "LocationType",
                 "Values": [
-                    "availability-zone", "availability-zone-id"
+                    "availability-zone"
                 ]
             },
         ]}
