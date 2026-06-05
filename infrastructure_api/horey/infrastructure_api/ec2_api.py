@@ -3,6 +3,9 @@ Standard EC2 maintainer.
 
 """
 from typing import Union
+from zoneinfo import available_timezones
+
+from keyring.backends.libsecret import available
 
 from horey.aws_api.aws_services_entities.key_pair import KeyPair
 from horey.h_logger import get_logger
@@ -174,7 +177,8 @@ class EC2API:
 
         ec2_instance.ebs_optimized = True
         ec2_instance.instance_initiated_shutdown_behavior = "stop"
-        breakpoint()
+        available_subnets = self.choose_subnets_with_instance_type_offerings(instance_type, self.environment_api.private_subnets)
+
         ec2_instance.network_interfaces = [
             {
                 "AssociatePublicIpAddress": False,
@@ -185,7 +189,7 @@ class EC2API:
                     security_group.id for security_group in security_groups
                 ],
                 "Ipv6AddressCount": 0,
-                "SubnetId": self.environment_api.private_subnets[0].id,
+                "SubnetId": available_subnets[0].id,
                 "InterfaceType": "interface",
             }
         ]
@@ -203,6 +207,26 @@ class EC2API:
         ec2_instance.monitoring = {"Enabled": False}
         self.environment_api.aws_api.provision_ec2_instance(ec2_instance, wait_until_active=asynchronous)
         return ec2_instance
+
+    def choose_subnets_with_instance_type_offerings(self, instance_type, subnets):
+        """
+        Choose subnets with instance type offerings.
+
+        :param instance_type:
+        :param subnets:
+        :return:
+        """
+
+        ret = []
+        responses = self.environment_api.aws_api.ec2_client.describe_instance_type_offerings_raw(self.environment_api.region, instance_type=instance_type)
+        breakpoint()
+        available_zones = [response["Location"] for response in responses]
+        breakpoint()
+        for subnet in subnets:
+            breakpoint()
+            if instance_type in subnet.available_instance_types:
+                ret.append(subnet)
+        return ret
 
     def start_instance(self, name=None):
         """
