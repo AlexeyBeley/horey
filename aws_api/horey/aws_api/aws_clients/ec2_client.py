@@ -3197,14 +3197,14 @@ class EC2Client(Boto3Client):
         :return:
         """
 
-        filters_req = [
+        filters_req = {"Filters": [
             {
                 "Name": "instance-type",
                 "Values": [
                     instance_type
                 ]
             },
-        ]
+        ]}
         breakpoint()
         return list(self.execute(
             self.get_session_client(region=region).describe_instance_type_offerings, "InstanceTypeOfferings", filters_req=filters_req
