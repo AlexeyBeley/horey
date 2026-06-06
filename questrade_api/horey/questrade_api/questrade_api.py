@@ -977,7 +977,7 @@ class QuestradeAPI:
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
         for position in positions:
             # todo: fix
-            if position.symbol in ["VREOF"]:
+            if position.symbol in ["VREOF.55447153"]:
                 continue
 
 

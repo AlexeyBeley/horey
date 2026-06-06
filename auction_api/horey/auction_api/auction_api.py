@@ -2,15 +2,15 @@ import datetime
 import time
 
 from horey.async_orchestrator.async_orchestrator import AsyncOrchestrator
-from horey.selenium_api.maauction import MAauction
-from horey.selenium_api.mcsherryauction import Mcsherryauction
-from horey.selenium_api.auction_event import AuctionEvent
-from horey.selenium_api.pennerauction import Pennerauction
-from horey.selenium_api.mcdougallauction import Mcdougallauction
-from horey.selenium_api.kayesauction import Kayesauction
-from horey.selenium_api.neighbourhoodauctions import Neighbourhoodauctions
+from horey.auction_api.maauction import MAauction
+from horey.auction_api.mcsherryauction import Mcsherryauction
+from horey.auction_api.auction_event import AuctionEvent
+from horey.auction_api.pennerauction import Pennerauction
+from horey.auction_api.mcdougallauction import Mcdougallauction
+from horey.auction_api.kayesauction import Kayesauction
+from horey.auction_api.neighbourhoodauctions import Neighbourhoodauctions
 
-from horey.selenium_api.lot import Lot
+from horey.auction_api.lot import Lot
 import sqlite3
 from horey.h_logger import get_logger
 
