@@ -974,10 +974,16 @@ class QuestradeAPI:
 
         positions = self.get_positions()
         orders = self.api_get_orders()
+
+        #closed_orders = self.api_get_orders(state_filter="Closed")
+        #executed_sell_orders = [order for order in closed_orders if order.side == "Sell" and order.state == "Executed"]
+        #ret = self.db_get_symbol(63320693)
+        #breakpoint()
+
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
         for position in positions:
             # todo: fix
-            if position.symbol in ["VREOF.55447153"]:
+            if position.symbol in ["FEMY.36519387", "CDLX.20434764", "VREOF.55447153"]:
                 continue
 
 

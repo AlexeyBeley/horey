@@ -59,6 +59,13 @@ class Server:
         self.html_dir_path = Path(__file__).parent / "html"
         self.reports_html_template_name = "reports_page.html"
 
+    def run(self):
+        if Server.self is None:
+            Server.self = Server()
+            app.logger.info("Starting Flask server on http://127.0.0.1:8000")
+            app.run(host='127.0.0.1', port=8000, debug=True)
+
+
     # 2. Main Route ("/")
     # This serves the HTML page defined above
 
@@ -182,12 +189,11 @@ class Server:
         return str_contents.replace("STRING_REPLACEMENT_REPORTS_NAVIGATION_BUTTONS", reports_navigation).replace(
             "STRING_REPLACEMENT_PROVIDERS_NAVIGATION_BUTTONS", providers_navigation)
 
-    def run(self):
-        if Server.self is None:
-            Server.self = Server()
-            app.logger.info("Starting Flask server on http://127.0.0.1:8000")
-            app.run(host='127.0.0.1', port=8000, debug=True)
-
+    def handle_remote_request_get_auction_event(self):
+        """
+        Load auction event info from remote source.
+        :return:
+        """
 
 # 5. Run the application
 if __name__ == '__main__':
