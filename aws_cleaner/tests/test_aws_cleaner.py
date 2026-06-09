@@ -25,7 +25,6 @@ def fixture_configuration():
     _configuration = AWSCleanerConfigurationPolicy()
     _configuration.reports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
     _configuration.cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
-    _configuration.aws_api_account_name = "development"
     _configuration.managed_accounts_file_path = os.path.abspath(
         os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -35,13 +34,8 @@ def fixture_configuration():
             "aws_managed_accounts.py",
         )
     )
-    _configuration.managed_accounts_file_path = os.path.abspath(
-        os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "aws_managed_accounts.py",
-        )
-    )
-    _configuration.aws_api_account_name = "cleaner"
+
+    _configuration.aws_api_account_name = "dev"
     return _configuration
 
 
@@ -224,10 +218,10 @@ def test_cleanup_report_security_groups(configuration):
     assert os.path.exists(configuration.ec2_security_groups_report_file_path)
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_cleanup_report_ecr_images(configuration):
     cleaner = AWSCleaner(configuration)
-    ret = cleaner.cleanup_report_ecr_images()
+    ret = cleaner.cleanup_report_ecr_images(ignore_pulled_access=True)
     assert len(cleaner.aws_api.ecr_images) > 0
     assert ret is not None
     assert os.path.exists(configuration.ec2_security_groups_report_file_path)

@@ -157,9 +157,12 @@ def test_init_repository_self_hosted_runners(github_api, tests_config):
 def test_request_runner_registration_token(github_api, tests_config):
     assert github_api.request_runner_registration_token("test")
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_request_repository_runner_registration_token(github_api, tests_config):
     assert github_api.request_repository_runner_registration_token(tests_config.src_repo_name)
 
 
+@pytest.mark.wip
+def test_copy_repository_rule_sets(github_api, tests_config):
+    assert github_api.copy_repository_rule_sets(tests_config.src_repo_name, tests_config.dst_repo_name)
 

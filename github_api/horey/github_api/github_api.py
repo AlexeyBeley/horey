@@ -50,7 +50,12 @@ class GithubAPI:
 
         headers = {"Authorization": f"Bearer {self.configuration.pat}"}
         response = requests.get(request, headers=headers)
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except Exception:
+            logger.error(f"{response.status_code}: {response.text}")
+            raise
+
         try:
             return response.json()
         except Exception:
@@ -186,6 +191,29 @@ class GithubAPI:
                     break
         return True
 
+    def copy_repository_rule_sets(self, src_repo_name:str, dst_repo_name:str):
+        """
+        Copy permissions from one repo to another.
+
+        :param src_repo_name:
+        :param dst_repo_name:
+        :return:
+        """
+
+        rule_set = self.get_repository_rule_sets(src_repo_name)
+        breakpoint()
+        for team in teams:
+            for level in ["admin", "maintain", "push", "triage", "pull"]:
+                if team["permissions"][level]:
+                    data = {
+                        "permission": level
+                        }
+                    self.put(f"/orgs/{self.configuration.owner}/teams/{team['slug']}/repos/{self.configuration.owner}/{dst_repo_name}", data)
+                    break
+        return True
+
+
+
     def get_repository_direct_teams(self, repo_name):
         """
         List teams with direct repository access (not organization-level access).
@@ -203,6 +231,32 @@ class GithubAPI:
 
                 self.get(
                 f"orgs/{self.configuration.owner}/teams/{team['slug']}/repos/{self.configuration.owner}/{repo_name}")
+                direct_teams.append(team)
+            except Exception as inst_err:
+                if "Not Found for url" not in repr(inst_err):
+                    raise
+                pass
+
+        return direct_teams
+
+    def get_repository_rule_sets(self, repo_name):
+        """
+        List teams with direct repository access (not organization-level access).
+
+        :param repo_name: Repository name
+        :return: List of teams with direct access only
+        """
+        breakpoint()
+        all_rullsets = self.get(f"repos/{self.configuration.owner}/{repo_name}/rulesets")
+        breakpoint()
+        direct_teams = []
+
+        for team in all_teams:
+            # Check if team has explicit repository permissions
+            try:
+
+                self.get(
+                    f"orgs/{self.configuration.owner}/teams/{team['slug']}/repos/{self.configuration.owner}/{repo_name}")
                 direct_teams.append(team)
             except Exception as inst_err:
                 if "Not Found for url" not in repr(inst_err):

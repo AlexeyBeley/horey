@@ -860,27 +860,43 @@ class QuestradeAPI:
         filtered_symbols = []
         for symbol in symbols:
             # todo: Check low and high instead vwap
-            symbol.vwap_change = self.calculate_vwap_change(symbol.candles)
+            #symbol.price_change = self.calculate_vwap_change(symbol.candles)
+            symbol.price_change = self.calculate_low_change(symbol.candles)
 
             symbol.absolute_low = min([candle.low for candle in symbol.candles])
             symbol.absolute_high = max([candle.high for candle in symbol.candles])
-            if symbol.vwap_change == 0:
+            if symbol.price_change == 0:
                 continue
-            if symbol.vwap_change < 0:
+            if symbol.price_change < 0:
                 continue
             if len(symbol.candles) < 10:
                 continue
             filtered_symbols.append(symbol)
 
         str_ret = ""
-        for i, symbol in enumerate(sorted(filtered_symbols, key=lambda x: abs(x.vwap_change))):
-            str_ret += f"[{i+1}] {symbol.symbol}, abs_low={symbol.absolute_low}, vwap_change={symbol.vwap_change}, deals={len(symbol.candles)}\n"
+        for i, symbol in enumerate(sorted(filtered_symbols, key=lambda x: abs(x.price_change))):
+            str_ret += f"[{i+1}] {symbol.symbol}, abs_low={symbol.absolute_low}, price_change={symbol.price_change}, deals={len(symbol.candles)}\n"
 
         with open(self.configuration.data_directory/ "purchase_plan.txt", "w") as file:
             file.write(str_ret)
         print(f"Purchase_plan is ready: {self.configuration.data_directory/ 'purchase_plan.txt'}")
         return True
-    
+
+    @staticmethod
+    def calculate_low_change(candles):
+        """
+        Calculate vwap change
+        :param candles:
+        :return:
+        """
+        candles_lows = [candle.low for candle in candles]
+        min_price = min(candles_lows)
+        max_price = max(candles_lows)
+        if min_price == max_price:
+            return 0
+        price_change = min_price / max_price * 100
+        return QuestradeAPI.calculate_price_incline(candles, lambda x: x.low) * price_change
+
     @staticmethod
     def calculate_vwap_change(candles):
         """
@@ -895,18 +911,19 @@ class QuestradeAPI:
         if min_vwap == max_vwap:
             return 0
         vwap_change = min_vwap / max_vwap * 100
-        return QuestradeAPI.calculate_vwap_incline(candles) * vwap_change
+        return QuestradeAPI.calculate_price_incline(candles, lambda x: x.vwap) * vwap_change
     
     @staticmethod
-    def calculate_vwap_incline(candles):
+    def calculate_price_incline(candles, callback_price):
         """
         Create a line on the vwap change and calculate incline.
+        :param callback_price:
         :param candles:
         :return:
         """
 
         x_data = [(candle.float_end + candle.float_start)/2 for candle in candles]
-        y_data = [candle.vwap for candle in candles]
+        y_data = [callback_price(candle) for candle in candles]
         slope, intercept, r_value, p_value, std_err = stats.linregress(x_data, y_data)
         return 1 if (slope > 0) else -1
 
