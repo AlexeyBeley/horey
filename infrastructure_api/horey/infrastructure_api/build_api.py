@@ -76,7 +76,7 @@ class BuildAPI:
         configuration.remote = "https://github.com/AlexeyBeley/horey.git"
         self._horey_git_api = GitAPI(configuration=configuration)
 
-    def run_prepare_image_routine(self, branch_name, build_number):
+    def run_prepare_image_build_directory_routine(self, branch_name, build_number):
         """
         Run the prepare routine
 
@@ -94,7 +94,7 @@ class BuildAPI:
         :return:
         """
 
-        build_directory = self.run_prepare_image_routine(branch_name, build_number)
+        build_directory = self.run_prepare_image_build_directory_routine(branch_name, build_number)
         tags = tags or []
         image = self.build_docker_image(build_directory, tags, nocache=nocache, dockerfile=dockerfile)
         return image
@@ -313,6 +313,7 @@ class BuildAPI:
         """
 
         file_name = "build_metadata.json"
+        breakpoint()
         with open(build_dir_path / file_name, "w", encoding="utf-8") as file_handler:
             json.dump({"commit": self.commit_id, "build": str(build_number)}, file_handler)
 
