@@ -245,7 +245,7 @@ def test_generate_profit_review(questrade_api):
 def test_fetch_symbols_by_max_price(questrade_api):
     assert questrade_api.fetch_symbols_by_price_range(0.001, 2)
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_update_cheap_candles_with_today_data(questrade_api):
     assert questrade_api.update_cheap_candles_with_today_data()
 

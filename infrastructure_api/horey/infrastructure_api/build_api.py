@@ -172,7 +172,7 @@ class BuildAPI:
         shutil.copytree(str(source_code_directory_path), str(self.docker_build_directory), ignore=ignore_git)
 
         build_dir_path = self.prepare_docker_image_build_directory_callback(self.docker_build_directory)
-        breakpoint()
+
         self.add_build_metadata_file(build_dir_path, build_number)
 
         logger.info(f"Prepared docker build directory. Took {time.perf_counter() - perf_counter_start}")
