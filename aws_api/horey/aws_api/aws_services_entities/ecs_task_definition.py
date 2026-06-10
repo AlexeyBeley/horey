@@ -190,3 +190,17 @@ class ECSTaskDefinition(AwsObject):
         return True
 
 
+    def set_environment_variables(self, env_vars):
+        """
+        Set environment variables.
+
+        :param env_vars:
+        :return:
+        """
+
+        if len(self.container_definitions) != 1:
+            raise NotImplementedError("Only 1 container is supported for now")
+
+        self.container_definitions[0]["environment"] = env_vars
+
+        return True
