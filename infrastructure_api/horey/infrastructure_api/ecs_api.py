@@ -1466,18 +1466,21 @@ class ECSAPI:
 
         return ecs_task_definition
     
-    def set_log_group_name(self, cluster_name=None, slug=None):
+    def set_log_group_name(self, cluster_name=None, slug=None, name=None):
         """
         Generate and set log group name
 
+        :param name:
         :param cluster_name:
         :param slug:
         :return:
         """
 
-        cluster_name = cluster_name or self.configuration.cluster_name
-        slug = slug or self.configuration.slug
-        name = self.get_ecs_service_log_group_name(cluster_name, slug)
+        if not name:
+            cluster_name = cluster_name or self.configuration.cluster_name
+            slug = slug or self.configuration.slug
+            name = self.get_ecs_service_log_group_name(cluster_name, slug)
+
         self.cloudwatch_api.configuration.log_group_name = name
         
     def provision_log_group(self):
