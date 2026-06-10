@@ -313,7 +313,6 @@ class BuildAPI:
         """
 
         file_name = "build_metadata.json"
-        breakpoint()
         with open(build_dir_path / file_name, "w", encoding="utf-8") as file_handler:
             json.dump({"commit": self.commit_id, "build": str(build_number)}, file_handler)
 
