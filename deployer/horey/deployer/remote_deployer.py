@@ -771,6 +771,7 @@ class RemoteDeployer:
             logger.info(f"[{remote_address} REMOTE<-][stderr] {line}")
 
         if not stdout_ret or not stdout_ret[-1].startswith("HoreyReturnCode"):
+            breakpoint()
             raise ValueError(f"Could not find return code. stdout: {stdout_ret}")
         exit_status = int(stdout_ret.pop(-1).split(" ")[-1])
         return None, stdout_ret, stderr_ret, exit_status
