@@ -676,10 +676,11 @@ class ECSAPI:
         except self.configuration.UndefinedValueError:
             pass
 
-        try:
-            security_groups += [self.configuration.service_security_group_name]
-        except self.configuration.UndefinedValueError:
-            pass
+        if not security_groups:
+            try:
+                security_groups += [self.configuration.service_security_group_name]
+            except self.configuration.UndefinedValueError:
+                pass
 
         if self.loadbalancer_api:
             security_groups.append(self.configuration.lb_facing_security_group_name)

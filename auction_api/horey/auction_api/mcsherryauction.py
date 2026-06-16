@@ -40,6 +40,10 @@ class Mcsherryauction(Provider):
                 if "Start Price" in lot_element.text:
                     for line in lot_element.text.split("\n"):
                         if "Start Price" in line:
+                            # 6,500.00
+                            line = line.replace(",", "")
+                            if "." in line:
+                                line = line[:line.index(".")]
                             lot.starting_bid = float(line.split(":")[1].strip())
             elif ("No Online Bidding For This Lot" in lot_element.text or
                   "Please Read Before Bidding" in lot_element.text or

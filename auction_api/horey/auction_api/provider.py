@@ -2,8 +2,8 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from typing import List
 from horey.selenium_api.selenium_api import SeleniumAPI
-from horey.selenium_api.auction_event import AuctionEvent
-from horey.selenium_api.lot import Lot
+from horey.auction_api.auction_event import AuctionEvent
+from horey.auction_api.lot import Lot
 from horey.h_logger import get_logger
 
 logger = get_logger()

@@ -11,7 +11,6 @@ from horey.aws_cleaner.aws_cleaner_configuration_policy import (
     AWSCleanerConfigurationPolicy,
 )
 from horey.aws_api.base_entities.region import Region
-from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 
 
 @pytest.fixture(name="configuration")

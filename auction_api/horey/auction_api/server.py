@@ -1,8 +1,7 @@
-import datetime
 from pathlib import Path
 
 from flask import Flask, render_template_string, jsonify, request
-from horey.selenium_api.aucton_api import AuctionAPI
+from horey.auction_api.auction_api import AuctionAPI
 
 
 # Initialize the Flask app
