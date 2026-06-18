@@ -533,14 +533,20 @@ class LoadBalancer(AwsObject):
 
             if condition_self["Field"] != "path-pattern":
                 raise NotImplementedError("Not implemented for other than path-pattern")
-            breakpoint()
+
             if "PathPatternConfig" in condition_self:
                 self_values = condition_self["PathPatternConfig"]["Values"]
             else:
                 self_values = condition_self["Values"]
+            if len(self_values) != 1:
+                raise NotImplementedError("Not implemented for more than 1 value")
 
             if "PathPatternConfig" in condition_self:
                 other_values = condition_other["PathPatternConfig"]["Values"]
             else:
                 other_values = condition_other["Values"]
-            breakpoint()
+
+            if len(other_values) != 1:
+                raise NotImplementedError("Not implemented for more than 1 value")
+
+            return self_values[0] == other_values[0]
