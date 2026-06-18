@@ -623,31 +623,33 @@ class ELBV2Client(Boto3Client):
         if len(rule.actions[0]["ForwardConfig"]["TargetGroups"]) != 1:
             raise NotImplementedError(rule.actions)
 
-        target_group_arn = rule.actions[0]["ForwardConfig"]["TargetGroups"][0]["TargetGroupArn"]
-        by_tag = []
-        by_target_group = []
+        found_rule = None
         for region_rule in region_rules:
             if region_rule.get_tagname(ignore_missing_tag=True) == rule.get_tagname():
-                by_tag.append(region_rule)
-            try:
-                current_tg_arn = region_rule.actions[0]["ForwardConfig"]["TargetGroups"][0]["TargetGroupArn"]
-                if target_group_arn == current_tg_arn:
-                    by_target_group.append(region_rule)
-            except Exception:
-                pass
+                if found_rule:
+                    raise ValueError(f"Expected single rule, found one: {found_rule.arn} two: {region_rule.arn} by tag name")
+                found_rule = region_rule
+                continue
+            if rule.compare_conditions(region_rule):
+                if found_rule:
+                    raise ValueError(f"Expected single rule, found one: {found_rule.arn} two: {region_rule.arn} by conditions")
+                found_rule = region_rule
+                continue
+            if region_rule.priority == rule.priority:
+                if found_rule:
+                    raise ValueError(f"Expected single rule, found one: {found_rule.arn} two: {region_rule.arn} by priority")
+                found_rule = region_rule
+                continue
 
-        if len(by_tag) > 1:
-            raise ValueError(f"Expected single rule, found {[_rule.arn for _rule in by_tag]}")
+        if not found_rule:
+            return False
+        breakpoint()
 
-        if by_tag and not by_target_group:
-            raise ValueError("Found rule by tag but not by target group")
 
-        if {_rule.arn for _rule in by_tag} != {_rule.arn for _rule in by_target_group}:
-            raise ValueError(f"{by_tag[0].arn} != {by_target_group[0].arn}")
+        current_tg_arn = region_rule.actions[0]["ForwardConfig"]["TargetGroups"][0]["TargetGroupArn"]
 
-        if by_tag:
-            by_tag[0].listener_arn = rule.listener_arn
-            return rule.update_from_attrs(by_tag[0])
+        found_rule.listener_arn = rule.listener_arn
+        return rule.update_from_attrs(found_rule)
 
         return False
 

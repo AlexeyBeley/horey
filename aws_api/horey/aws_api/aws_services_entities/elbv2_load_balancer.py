@@ -513,3 +513,34 @@ class LoadBalancer(AwsObject):
             }
 
             self.init_attrs(dict_src, init_options)
+
+        def compare_conditions(self, other):
+            """
+            Compare self conditions to others'.
+            Return True if equal, False if not.
+
+            :param other:
+            :return:
+            """
+
+            if len(self.conditions) != len(other.conditions):
+                return False
+
+            if len(self.conditions) != 1:
+                raise NotImplementedError("Not implemented for more than 1 condition")
+            condition_self = self.conditions[0]
+            condition_other = other.conditions[0]
+
+            if condition_self["Field"] != "path-pattern":
+                raise NotImplementedError("Not implemented for other than path-pattern")
+            breakpoint()
+            if "PathPatternConfig" in condition_self:
+                self_values = condition_self["PathPatternConfig"]["Values"]
+            else:
+                self_values = condition_self["Values"]
+
+            if "PathPatternConfig" in condition_self:
+                other_values = condition_other["PathPatternConfig"]["Values"]
+            else:
+                other_values = condition_other["Values"]
+            breakpoint()

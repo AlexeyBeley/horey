@@ -856,6 +856,8 @@ class MAauction(Provider):
             urls.append(url)
 
         for i, url in enumerate(urls):
+            breakpoint()
+            # https://www.maauctions.com/auctions/25188-july-8-2026-commercial-timed-auction
             logger.info(f"Fetching event {i}/{len(urls)}")
             for auction_event in self.yield_auction_events_from_internal_url(url, known_auction_events_by_url):
                 yield auction_event

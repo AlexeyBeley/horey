@@ -3,7 +3,7 @@ Testing selenium api
 """
 
 import pytest
-from horey.auction_api.aucton_api import AuctionAPI
+from horey.auction_api.auction_api import AuctionAPI
 from horey.auction_api.kayesauction import Kayesauction
 
 auction_api = AuctionAPI()
