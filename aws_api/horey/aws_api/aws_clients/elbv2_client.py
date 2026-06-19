@@ -644,8 +644,7 @@ class ELBV2Client(Boto3Client):
         if not found_rule:
             return False
 
-        if found_rule.priority != rule.priority:
-            breakpoint()
+        if str(found_rule.priority) != str(rule.priority):
             raise NotImplementedError(f"ElbV2 rule priority change is not implemented [{found_rule.priority} -> {rule.priority}]")
 
         if not rule.compare_conditions(found_rule):
