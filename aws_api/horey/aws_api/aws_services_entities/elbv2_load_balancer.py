@@ -591,7 +591,6 @@ class LoadBalancer(AwsObject):
 
                     return self_tgs[0]["TargetGroupArn"] == other_tgs[0]["TargetGroupArn"]
                 case "fixed-response":
-                    breakpoint()
                     return self_action["FixedResponseConfig"] == other_action["FixedResponseConfig"]
                 case _:
                     raise NotImplementedError(f"Unknown type: {self_action['Type']}")
