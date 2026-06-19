@@ -559,7 +559,39 @@ class LoadBalancer(AwsObject):
             :param other:
             :return:
             """
-            breakpoint()
+
+            if len(self.actions) != len(other.actions):
+                return False
+
+            if len(self.actions) != 1:
+                raise NotImplementedError("Not implemented for more than 1 action")
+
+            self_action = self.actions[0]
+            other_action = other.actions[0]
+            if self_action["Type"] != other_action["Type"]:
+                return False
+
+            if self_action["Type"] != "forward":
+                breakpoint()
+                raise NotImplementedError(f"Unknown type: {self_action['Type']}")
+
+            if "TargetGroups" not in self_action["ForwardConfig"]:
+                raise NotImplementedError("Not implemented for TargetGroups: self")
+
+            if "TargetGroups" not in other_action["ForwardConfig"]:
+                raise NotImplementedError("Not implemented for TargetGroups: other")
+
+            self_tgs = self_action["ForwardConfig"]["TargetGroups"]
+            other_tgs = other_action["ForwardConfig"]["TargetGroups"]
+
+            if len(self_tgs) != len(other_tgs):
+                return False
+
+            if len(self_tgs) != 1:
+                raise NotImplementedError("Not implemented for more than 1 target group")
+
+            return self_tgs[0]["TargetGroupArn"] == other_tgs[0]["TargetGroupArn"]
+
 
         def get_target_group(self):
             """
