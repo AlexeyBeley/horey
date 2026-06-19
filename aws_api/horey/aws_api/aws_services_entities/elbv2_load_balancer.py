@@ -551,6 +551,16 @@ class LoadBalancer(AwsObject):
 
             return self_values[0] == other_values[0]
 
+        def compare_action(self, other):
+            """
+            Compare self actions to others'.
+            Return True if equal, False if not.
+
+            :param other:
+            :return:
+            """
+            breakpoint()
+
         def get_target_group(self):
             """
             Get target group arn from actions.

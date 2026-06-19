@@ -618,12 +618,6 @@ class ELBV2Client(Boto3Client):
         region_rules = region_rules or self.get_region_rules(
             rule.region, full_information=False, listener_arn=rule.listener_arn
         )
-        if not rule.actions or len(rule.actions) != 1:
-            raise NotImplementedError(rule.actions)
-        if "ForwardConfig" not in rule.actions[0]:
-            breakpoint()
-        if len(rule.actions[0]["ForwardConfig"]["TargetGroups"]) != 1:
-            raise NotImplementedError(rule.actions)
 
         found_rule = None
         for region_rule in region_rules:
@@ -652,8 +646,8 @@ class ELBV2Client(Boto3Client):
         if not rule.compare_conditions(found_rule):
             raise NotImplementedError("ElbV2 rule condition change is not implemented")
 
-        if rule.get_target_group() != found_rule.get_target_group():
-            raise NotImplementedError("ElbV2 rule target group change is not implemented")
+        if not rule.compare_action(found_rule):
+            raise NotImplementedError("ElbV2 rule action change is not implemented")
 
 
         found_rule.listener_arn = rule.listener_arn
