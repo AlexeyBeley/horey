@@ -590,7 +590,7 @@ class LoadBalancer(AwsObject):
                         raise NotImplementedError("Not implemented for more than 1 target group")
 
                     return self_tgs[0]["TargetGroupArn"] == other_tgs[0]["TargetGroupArn"]
-                case "static-response":
+                case "fixed-response":
                     breakpoint()
                     return self_action["FixedResponseConfig"] == other_action["FixedResponseConfig"]
                 case _:
