@@ -620,6 +620,8 @@ class ELBV2Client(Boto3Client):
         )
         if not rule.actions or len(rule.actions) != 1:
             raise NotImplementedError(rule.actions)
+        if "ForwardConfig" not in rule.actions[0]:
+            breakpoint()
         if len(rule.actions[0]["ForwardConfig"]["TargetGroups"]) != 1:
             raise NotImplementedError(rule.actions)
 
