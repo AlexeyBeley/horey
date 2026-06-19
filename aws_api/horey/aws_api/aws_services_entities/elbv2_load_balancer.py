@@ -571,26 +571,29 @@ class LoadBalancer(AwsObject):
             if self_action["Type"] != other_action["Type"]:
                 return False
 
-            if self_action["Type"] != "forward":
-                breakpoint()
-                raise NotImplementedError(f"Unknown type: {self_action['Type']}")
+            match self_action["Type"]:
+                case "forward":
 
-            if "TargetGroups" not in self_action["ForwardConfig"]:
-                raise NotImplementedError("Not implemented for TargetGroups: self")
+                    if "TargetGroups" not in self_action["ForwardConfig"]:
+                        raise NotImplementedError("Not implemented for TargetGroups: self")
 
-            if "TargetGroups" not in other_action["ForwardConfig"]:
-                raise NotImplementedError("Not implemented for TargetGroups: other")
+                    if "TargetGroups" not in other_action["ForwardConfig"]:
+                        raise NotImplementedError("Not implemented for TargetGroups: other")
 
-            self_tgs = self_action["ForwardConfig"]["TargetGroups"]
-            other_tgs = other_action["ForwardConfig"]["TargetGroups"]
+                    self_tgs = self_action["ForwardConfig"]["TargetGroups"]
+                    other_tgs = other_action["ForwardConfig"]["TargetGroups"]
 
-            if len(self_tgs) != len(other_tgs):
-                return False
+                    if len(self_tgs) != len(other_tgs):
+                        return False
 
-            if len(self_tgs) != 1:
-                raise NotImplementedError("Not implemented for more than 1 target group")
+                    if len(self_tgs) != 1:
+                        raise NotImplementedError("Not implemented for more than 1 target group")
 
-            return self_tgs[0]["TargetGroupArn"] == other_tgs[0]["TargetGroupArn"]
+                    return self_tgs[0]["TargetGroupArn"] == other_tgs[0]["TargetGroupArn"]
+                case "static-response":
+                    breakpoint()
+                case _:
+                    raise NotImplementedError(f"Unknown type: {self_action['Type']}")
 
 
         def get_target_group(self):
