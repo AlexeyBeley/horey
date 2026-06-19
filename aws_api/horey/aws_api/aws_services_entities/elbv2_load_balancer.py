@@ -550,3 +550,18 @@ class LoadBalancer(AwsObject):
                 raise NotImplementedError("Not implemented for more than 1 value")
 
             return self_values[0] == other_values[0]
+
+        def get_target_group(self):
+            """
+            Get target group arn from actions.
+
+            :return:
+            """
+
+            if len(self.actions) != 1:
+                raise NotImplementedError("Not implemented for more than 1 action")
+
+            if len(self.actions[0]["ForwardConfig"]["TargetGroups"][0]) != 1:
+                raise NotImplementedError("Not implemented for more than 1 target group")
+
+            return self.actions[0]["ForwardConfig"]["TargetGroups"][0]["TargetGroupArn"]

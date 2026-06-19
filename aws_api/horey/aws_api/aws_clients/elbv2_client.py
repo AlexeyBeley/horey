@@ -643,15 +643,19 @@ class ELBV2Client(Boto3Client):
 
         if not found_rule:
             return False
-        breakpoint()
 
+        if found_rule.priority != rule.priority:
+            raise NotImplementedError("ElbV2 rule priority change is not implemented")
+        if not rule.compare_conditions(found_rule):
+            raise NotImplementedError("ElbV2 rule condition change is not implemented")
 
-        current_tg_arn = region_rule.actions[0]["ForwardConfig"]["TargetGroups"][0]["TargetGroupArn"]
+        if not rule.get_target_group() != found_rule.get_target_group():
+            raise NotImplementedError("ElbV2 rule target group change is not implemented")
+
 
         found_rule.listener_arn = rule.listener_arn
         return rule.update_from_attrs(found_rule)
 
-        return False
 
     def provision_load_balancer_rule(self, rule: LoadBalancer.Rule):
         """
