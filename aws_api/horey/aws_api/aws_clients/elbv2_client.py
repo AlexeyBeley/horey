@@ -651,6 +651,7 @@ class ELBV2Client(Boto3Client):
             raise NotImplementedError("ElbV2 rule condition change is not implemented")
 
         if not rule.get_target_group() != found_rule.get_target_group():
+            breakpoint()
             raise NotImplementedError("ElbV2 rule target group change is not implemented")
 
 
