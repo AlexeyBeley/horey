@@ -876,12 +876,14 @@ class ECSAPI:
         :return:
         """
 
-        try:
-            slug = self.configuration.service_name
-        except self.configuration.UndefinedValueError:
-            slug = self.configuration.slug
 
         if repository_name is None:
+
+            try:
+                slug = self.configuration.service_name
+            except self.configuration.UndefinedValueError:
+                slug = self.configuration.slug
+
             try:
                 assert self.configuration.ecr_repository_name
             except self.configuration.UndefinedValueError:
