@@ -1524,12 +1524,28 @@ class SystemFunctionCommon:
         logger.info(f"Downloading file from {url}")
         response = requests.get(url, stream=True)
         response.raise_for_status()
-        
+
         logger.info(f"Writing the file to {local_file_path}")
-        with open(local_file_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
+        chunk_size = 8192 # 8KB
+        counter = 0
+        try:
+            with open(local_file_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=chunk_size):
+                    if chunk:
+                        f.write(chunk)
+                        counter += 1
+        except Exception:
+            if counter == 0:
+                raise
+            logger.info(f"Failed downloading file after downloaded {chunk_size *counter /1024} KB")
+            chunk_size = 1048576 #1MB
+            counter = 0
+            with open(local_file_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=chunk_size):
+                    if chunk:
+                        f.write(chunk)
+                        counter += 1
+
 
     def download_file_from_web_remote(self, url, remote_file_path: Path):
         """

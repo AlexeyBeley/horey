@@ -90,3 +90,19 @@ def test_generate_auction_event_reports():
 def test_update_auction_event_lots_ng():
     auction_api.update_auction_event_lots_ng(369)
 
+
+@pytest.mark.unit
+def test_remote_get_auction_event_lots():
+    auction_provider_name = "maauctions"
+    auction_event_url = "https://www.maauctions.com/auctions/25088-june-18-20th-2026-unreserved-equipment-trucks-trailers-light-vehicles-and-rv-live-3-day-auction-alberta-and-manitoba?filter=(auction_ring_id:1789)"
+    auction_api.remote_get_auction_event_lots(auction_provider_name, auction_event_url)
+
+
+@pytest.mark.unit
+def test_execute_provider_function():
+    auction_provider_name = "maauctions"
+    function_name = "get_page_count"
+    args = ["https://www.maauctions.com/auctions/25088-june-18-20th-2026-unreserved-equipment-trucks-trailers-light-vehicles-and-rv-live-3-day-auction-alberta-and-manitoba?filter=(auction_ring_id:1789)?page=1&pageSize=125"]
+    auction_api.execute_provider_function(auction_provider_name,function_name, *args)
+
+

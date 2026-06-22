@@ -5,7 +5,7 @@ from pathlib import Path
 import zipfile
 
 import requests
-from horey.free_stuff_api.free_stuff_api_configuration_policy import FreeStuffAPIConfigurationPolicy
+from horey.auction_api.auction_api_configuration_policy import FreeStuffAPIConfigurationPolicy
 
 from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
@@ -16,7 +16,7 @@ from horey.infrastructure_api.db_api import DBAPI
 from horey.infrastructure_api.db_api_configuration_policy import DBAPIConfigurationPolicy
 from horey.infrastructure_api.environment_api import EnvironmentAPIConfigurationPolicy, EnvironmentAPI
 from horey.selenium_api.selenium_api import SeleniumAPI
-from horey.free_stuff_api.platform import Platform
+from horey.auction_api.platform import Platform
 
 logger = get_logger()
 
@@ -133,7 +133,7 @@ class FreeStuffAPI:
             # configuration.architecture = "arm64"
             self._aws_lambda_api = AWSLambdaAPI(configuration, self.environment_api)
             self._aws_lambda_api.build_api.horey_git_api.configuration.git_directory_path = self.configuration.horey_directory_path.parent
-            self._aws_lambda_api.build_api.prepare_docker_image_build_directory = lambda x, y: self._aws_lambda_api.build_api.prepare_docker_image_horey_package_build_directory(x, "free_stuff_api", y)
+            self._aws_lambda_api.build_api.prepare_docker_image_build_directory = lambda x, y: self._aws_lambda_api.build_api.prepare_docker_image_horey_package_build_directory(x, "auction_api", y)
             self._aws_lambda_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_docker_image_build_directory_callback
 
         return self._aws_lambda_api
@@ -183,9 +183,9 @@ class FreeStuffAPI:
         shutil.copytree(chromedriver_directory, docker_build_directory/"chromedriver")
 
 
-        shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "build" / "lambda_handler.py",
+        shutil.copy(self.configuration.horey_directory_path / "auction_api" / "build" / "lambda_handler.py",
                     docker_build_directory)
-        shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "build" / "Dockerfile" , docker_build_directory)
+        shutil.copy(self.configuration.horey_directory_path / "auction_api" / "build" / "Dockerfile" , docker_build_directory)
         self.configuration.generate_configuration_file_ng(docker_build_directory/ "frs_api_configuration.json")
 
         return docker_build_directory

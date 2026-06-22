@@ -798,6 +798,50 @@ class AuctionAPI:
             logger.info(f"Deleted {auction_event.name=}")
         logger.info(f"Deleted total {len(provider.auction_events)} auction events")
 
+    def remote_get_auction_event_lots(self, auction_provider_name, auction_event_url):
+        """
+        Get lots from remote provider.
+
+        :param auction_provider_name:
+        :param auction_event_url:
+        :return:
+        """
+
+        for provider in self.init_providers_from_db():
+            if provider.name == auction_provider_name:
+                break
+        else:
+            raise ValueError(f"Unknown provider: {auction_provider_name}")
+
+        auction_event = AuctionEvent()
+        auction_event.url = auction_event_url
+        auction_event.provider_id = provider.id
+        breakpoint()
+        lots = provider.load_auction_event_lots_remote(auction_event)
+
+        for lot in lots:
+            lot.auction_event_id = auction_event.id
+        return [lot.generate_db_tuple() for lot in lots]
+
+    def execute_provider_function(self, auction_provider_name, function_name, *lst_args, **kwargs):
+        """
+        Execute provider function.
+
+        :param function_name:
+        :param auction_provider_name:
+        :return:
+        """
+
+        for provider in self.init_providers_from_db():
+            if provider.name == auction_provider_name:
+                break
+        else:
+            raise ValueError(f"Unknown provider: {auction_provider_name}")
+
+        func = getattr(provider, function_name)
+        result = func(*lst_args, **kwargs)
+        return result
+
 
 class AuctionEventReport:
     def __init__(self):

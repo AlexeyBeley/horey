@@ -6,8 +6,8 @@ Entry point for the receiver lambda.
 import json
 from pathlib import Path
 
-from horey.free_stuff_api.free_stuff_api import FreeStuffAPI
-from horey.free_stuff_api.free_stuff_api_configuration_policy import FreeStuffAPIConfigurationPolicy
+from horey.auction_api.auction_api import FreeStuffAPI
+from horey.auction_api.auction_api_configuration_policy import FreeStuffAPIConfigurationPolicy
 
 from horey.h_logger import get_logger
 logger = get_logger()

@@ -49,6 +49,10 @@ def update_info():
 
     return jsonify(response=response)
 
+@app.route('/remote_execute')
+def remote_get_auction_event_lots():
+    return Server.self.remote_execute()
+
 
 class Server:
     self = None
@@ -188,11 +192,26 @@ class Server:
         return str_contents.replace("STRING_REPLACEMENT_REPORTS_NAVIGATION_BUTTONS", reports_navigation).replace(
             "STRING_REPLACEMENT_PROVIDERS_NAVIGATION_BUTTONS", providers_navigation)
 
-    def handle_remote_request_get_auction_event(self):
+    def remote_execute(self):
         """
         Load auction event info from remote source.
         :return:
         """
+        params = request.get_json()
+        auction_event_url = params.get('auction_event_url')
+        auction_provider_name = params.get('auction_provider_name')
+        function_name = params.get('function')
+        dict_args = params.get('args')
+        db_tuples = {"error": "undefined error"}
+        match function_name:
+            case "remote_get_auction_event_lots":
+                db_tuples = self.auction_api.remote_get_auction_event_lots(auction_provider_name, auction_event_url.strip('"'))
+            case "provider_function":
+                db_tuples = self.auction_api.execute_provider_function(auction_provider_name, function_name, dict_args)
+            case _:
+                raise ValueError(f"Unknown function: {function_name}")
+
+        return jsonify(db_tuples)
 
 # 5. Run the application
 if __name__ == '__main__':
