@@ -16,7 +16,12 @@ class Provider:
                      " jun": 6,
                      "jun": 6,
                      "july":7,
-                     "jul ": 7, " august ": 8, " aug ": 8, " sep": 9, " september": 9,
+                     "jul ": 7,
+                     "jul": 7,
+                     " august ": 8,
+                     " aug ": 8,
+                     " sep": 9,
+                     " september": 9,
                      "october": 10, "november": 11,
                      " nov ": 11, "december": 12,
                      "apr": 4}

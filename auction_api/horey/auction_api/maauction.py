@@ -925,7 +925,7 @@ class MAauction(Provider):
 
         yield auction_event
 
-    def load_auction_event_lots_remote(self, remoter: HTTPRemoter, auction_event: AuctionEvent):
+    def load_auction_event_lots_remote(self, remoter, auction_event: AuctionEvent):
         """
         Init from the web.
 

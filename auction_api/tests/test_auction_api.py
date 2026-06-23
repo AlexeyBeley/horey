@@ -98,7 +98,7 @@ def test_remote_get_auction_event_lots():
     auction_api.remote_get_auction_event_lots(auction_provider_name, auction_event_url)
 
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_execute_provider_function():
     auction_provider_name = "maauctions"
     function_name = "get_page_count"

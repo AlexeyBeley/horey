@@ -302,6 +302,7 @@ class Kayesauction(Provider):
             parts = line_date.strip().split(" ", 2)
             hour_minute, meridiem = parts[0], parts[1]
             hour, minute = self.extract_time_meridiem(hour_minute, meridiem)
+
         day = int(day.strip())
         year = int(year.strip())
         return datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute)
