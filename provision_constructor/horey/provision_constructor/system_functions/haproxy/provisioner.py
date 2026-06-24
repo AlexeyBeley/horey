@@ -3,10 +3,6 @@ Provision ntp service.
 
 """
 
-import os.path
-import platform
-import json
-
 from horey.common_utils.remoter import Remoter
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
