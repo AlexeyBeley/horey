@@ -154,7 +154,6 @@ class AWSLambdaAPI:
             self.init_lambda_name_slug()
             config.slug = self.configuration.lambda_name_slug
             ecs_api = ECSAPI(configuration=config, environment_api=self.environment_api)
-            breakpoint()
             ecs_api.set_ecr_repository_name(repository_name=f"repo_lambda_{self.environment_api.configuration.environment_name}_{config.slug}")
             self._ecs_api = ecs_api
         return self._ecs_api
