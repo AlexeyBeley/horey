@@ -26,17 +26,23 @@ class Provisioner(SystemFunctionCommon):
 
         if self.action == "add_log_rotation":
             config_file_name = self.kwargs.get("config_file_name")
-            rotation_paths = self.kwargs.get("rotation_paths")
-            return self.add_log_rotation_remote(config_file_name, rotation_paths)
+            rotation_path = Path(self.kwargs.get("rotation_path"))
+            return self.add_log_rotation_remote(config_file_name, rotation_path)
         raise NotImplementedError(self.action)
 
-    def add_log_rotation_remote(self, config_file_name, rotation_paths):
+    def add_log_rotation_remote(self, config_file_name, rotation_path):
         """
         Add log rotation config.
 
         :return:
         """
         breakpoint()
+        ret = self.remoter.execute(f"sudo stat -c '%U:%G' {rotation_path.parent.resolve()}")
+        user, group = ret[0][-1].split(":")
+        su_line = None
+        if user != "root" or group != "root":
+            su_line = f"su {user} {group}"
+
 
         src = Path(__file__).parent / "templates" / "template_logrotate.conf"
         shutil.copyfile(
@@ -46,10 +52,22 @@ class Provisioner(SystemFunctionCommon):
         ReplacementEngine().perform_recursive_replacements(
             self.deployment_dir,
             {
-             "STRING_REPLACEMENT_ROTATION_PATHS": "\n".join(rotation_paths)}
+             "STRING_REPLACEMENT_ROTATION_PATHS": rotation_path}
         )
 
-        # todo: place the file
+        if su_line:
+            with open(self.deployment_dir/config_file_name, "r", encoding="utf-8") as fh:
+                lines = fh.readlines()
+
+            for i, line in enumerate(lines):
+                if line.strip() == "}":
+                    lines.insert(i, su_line + "\n")
+                    break
+            else:
+                raise ValueError("Was not able to find closing bracket")
+
+            with open(self.deployment_dir / config_file_name, "w", encoding="utf-8") as fh:
+                fh.writelines(lines)
 
 
 

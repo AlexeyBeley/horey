@@ -56,7 +56,7 @@ class Provisioner(SystemFunctionCommon):
 
         self.remoter = remoter
 
-        # needed to handle the Fg SSH hello message
+        # todo: needed to handle the Fg SSH hello message
         remoter.execute("pwd")
 
         match self.action:

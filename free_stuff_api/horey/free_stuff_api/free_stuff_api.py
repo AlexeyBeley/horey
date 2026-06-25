@@ -236,7 +236,8 @@ class FreeStuffAPI:
 
         :return:
         """
-        sleep_time = 30
+
+        sleep_time = 90
         while True:
             try:
                 self.main_single_cycle_run()
