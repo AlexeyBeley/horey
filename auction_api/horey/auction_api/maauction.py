@@ -883,7 +883,8 @@ class MAauction(Provider):
 
             return urls
         except Exception as inst_err:
-            logger.info(f"Unexpected error: {inst_err}")
+            logger.info("Error start here:")
+            logger.exception(inst_err)
             breakpoint()
         return []
 
@@ -920,6 +921,7 @@ class MAauction(Provider):
                 auction_event.provinces = known_auction_events_by_url[auction_event.url].provinces
             else:
                 breakpoint()
+                # auction_event.provinces  = "ontario"
         self.init_auction_event_times(auction_event)
 
         yield auction_event

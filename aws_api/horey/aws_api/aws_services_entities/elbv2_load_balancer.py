@@ -531,9 +531,21 @@ class LoadBalancer(AwsObject):
             condition_self = self.conditions[0]
             condition_other = other.conditions[0]
 
-            if condition_self["Field"] != "path-pattern":
-                breakpoint()
+            if condition_self["Field"] == "path-pattern":
+                return self.compare_conditions_path_pattern(condition_self, condition_other)
+            elif condition_self["Field"] == "host-header":
+                return self.compare_conditions_host_header(condition_self, condition_other)
+            else:
                 raise NotImplementedError(f"Not implemented for other than path-pattern: {condition_self=}")
+        @staticmethod
+        def compare_conditions_path_pattern(condition_self, condition_other):
+            """
+            Compare self conditions path pattern to others'.
+
+            :param condition_self:
+            :param condition_other:
+            :return:
+            """
 
             if "PathPatternConfig" in condition_self:
                 self_values = condition_self["PathPatternConfig"]["Values"]
@@ -551,6 +563,32 @@ class LoadBalancer(AwsObject):
                 raise NotImplementedError("Not implemented for more than 1 value")
 
             return self_values[0] == other_values[0]
+
+        @staticmethod
+        def compare_conditions_host_header(condition_self, condition_other):
+            """
+            Compare self conditions host header to others'.
+            :param condition_other:
+            :param condition_self:
+            :return:
+            """
+            if "HostHeaderConfig" in condition_self:
+                self_values = condition_self["HostHeaderConfig"]["Values"]
+            else:
+                self_values = condition_self["Values"]
+            if len(self_values) != 1:
+                raise NotImplementedError("Not implemented for more than 1 value")
+
+            if "HostHeaderConfig" in condition_self:
+                other_values = condition_other["HostHeaderConfig"]["Values"]
+            else:
+                other_values = condition_other["Values"]
+
+            if len(other_values) != 1:
+                raise NotImplementedError("Not implemented for more than 1 value")
+
+            return self_values[0] == other_values[0]
+
 
         def compare_action(self, other):
             """
