@@ -532,6 +532,7 @@ class LoadBalancer(AwsObject):
             condition_other = other.conditions[0]
 
             if condition_self["Field"] != "path-pattern":
+                breakpoint()
                 raise NotImplementedError(f"Not implemented for other than path-pattern: {condition_self=}")
 
             if "PathPatternConfig" in condition_self:
