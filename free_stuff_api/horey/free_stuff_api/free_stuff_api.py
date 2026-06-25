@@ -1,6 +1,7 @@
 import datetime
 import shutil
 import sqlite3
+import time
 from pathlib import Path
 import zipfile
 
@@ -231,7 +232,21 @@ class FreeStuffAPI:
 
         :return:
         """
+        sleep_time = 30
+        while True:
+            try:
+                self.main_single_cycle_run()
+            except Exception as inst:
+                logger.exception(inst)
+            logger.info(f"Going to sleep for {sleep_time} seconds")
+            time.sleep(sleep_time)
 
+    def main_single_cycle_run(self):
+        """
+        Main single cycle run.
+
+        :return:
+        """
         for platform in self.platforms:
             try:
                 free_items = platform.get_new_free_items()
