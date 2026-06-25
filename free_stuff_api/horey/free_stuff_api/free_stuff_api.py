@@ -5,7 +5,7 @@ from pathlib import Path
 import zipfile
 
 import requests
-from horey.auction_api.auction_api_configuration_policy import FreeStuffAPIConfigurationPolicy
+from horey.free_stuff_api.free_stuff_api_configuration_policy import FreeStuffAPIConfigurationPolicy
 
 from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
@@ -16,7 +16,7 @@ from horey.infrastructure_api.db_api import DBAPI
 from horey.infrastructure_api.db_api_configuration_policy import DBAPIConfigurationPolicy
 from horey.infrastructure_api.environment_api import EnvironmentAPIConfigurationPolicy, EnvironmentAPI
 from horey.selenium_api.selenium_api import SeleniumAPI
-from horey.auction_api.platform import Platform
+from horey.free_stuff_api.platform import Platform
 
 logger = get_logger()
 
@@ -234,7 +234,7 @@ class FreeStuffAPI:
 
         for platform in self.platforms:
             try:
-                free_items = platform.api.get_free_items()
+                free_items = platform.get_new_free_items()
             except Exception as inst:
                 logger.exception(inst)
                 file_path = platform.api.selenium_api.get_screenshot()

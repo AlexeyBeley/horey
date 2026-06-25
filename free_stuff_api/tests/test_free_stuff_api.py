@@ -4,10 +4,10 @@ Testing selenium api
 from pathlib import Path
 
 import pytest
-from horey.auction_api.auction_api import FreeStuffAPIConfigurationPolicy, FreeStuffAPI
+from horey.free_stuff_api.free_stuff_api import FreeStuffAPIConfigurationPolicy, FreeStuffAPI
 
 from horey.common_utils.free_item import FreeItem
-from horey.auction_api.platform import Platform
+from horey.free_stuff_api.platform import Platform
 
 config = FreeStuffAPIConfigurationPolicy()
 config.configuration_file_full_path = Path(__file__).parent.parent.parent.parent / "ignore" / "test_frs_api_configuration.py"

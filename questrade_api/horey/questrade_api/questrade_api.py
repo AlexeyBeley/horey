@@ -862,20 +862,22 @@ class QuestradeAPI:
             # todo: Check low and high instead vwap
             #symbol.price_change = self.calculate_vwap_change(symbol.candles)
             symbol.price_change = self.calculate_low_change(symbol.candles)
+            symbol.slope = self.calculate_price_slope(symbol.candles, lambda x: x.low)
+
 
             symbol.absolute_low = min([candle.low for candle in symbol.candles])
             symbol.absolute_high = max([candle.high for candle in symbol.candles])
-            if symbol.price_change == 0:
-                continue
-            if symbol.price_change < 0:
+            if symbol.price_change <= 0:
                 continue
             if len(symbol.candles) < 10:
                 continue
             filtered_symbols.append(symbol)
 
         str_ret = ""
-        for i, symbol in enumerate(sorted(filtered_symbols, key=lambda x: abs(x.price_change))):
-            str_ret += f"[{i+1}] {symbol.symbol}, abs_low={symbol.absolute_low}, price_change={symbol.price_change}, deals={len(symbol.candles)}\n"
+        # todo: old
+        #for i, symbol in enumerate(sorted(filtered_symbols, key=lambda x: abs(x.price_change))):
+        for i, symbol in enumerate(sorted(filtered_symbols, key=lambda x: abs(x.slope), reverse=True)):
+            str_ret += f"[{i+1}] {symbol.symbol}, abs_low={symbol.absolute_low}, slope={symbol.slope}, deals={len(symbol.candles)}\n"
 
         with open(self.configuration.data_directory/ "purchase_plan.txt", "w") as file:
             file.write(str_ret)
@@ -922,10 +924,22 @@ class QuestradeAPI:
         :return:
         """
 
-        x_data = [(candle.float_end + candle.float_start)/2 for candle in candles]
+        slope = QuestradeAPI.calculate_price_slope(candles, callback_price)
+        return 1 if (slope > 0) else -1
+
+    @staticmethod
+    def calculate_price_slope(candles, callback_price):
+        """
+        Create a line on the vwap change and calculate incline.
+        :param callback_price:
+        :param candles:
+        :return:
+        """
+
+        x_data = [(candle.float_end + candle.float_start) / 2 for candle in candles]
         y_data = [callback_price(candle) for candle in candles]
         slope, intercept, r_value, p_value, std_err = stats.linregress(x_data, y_data)
-        return 1 if (slope > 0) else -1
+        return slope
 
     @staticmethod
     def connected(func):
@@ -999,8 +1013,7 @@ class QuestradeAPI:
 
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
         for position in positions:
-            # todo: fix
-            if position.symbol in ["FEMY.36519387", "CDLX.20434764", "VREOF.55447153"]:
+            if position.symbol in []:
                 continue
 
 
@@ -1018,7 +1031,17 @@ class QuestradeAPI:
                 if sell_calculated_round < sell_calculated:
                     sell_calculated_round += Decimal("0.01")
 
-                lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculated_round}, revenue={int(sell_calculated/( Decimal(str(position.average_entry_price))/100))}%")
+                symbol = self.db_get_symbol(symbol_symbol =position.symbol)
+                if symbol is not None:
+                    symbol.candles = self.db_get_today_candles(symbol)
+                    if symbol.candles:
+                        today_max = max([candle.high for candle in symbol.candles])
+                    else:
+                        today_max = "no_trades_yet"
+                else:
+                    today_max = "todo"
+
+                lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculated_round}, today_max={today_max} revenue={int(sell_calculated/( Decimal(str(position.average_entry_price))/100))}%")
         if lines:
             lines = (["#################################","#################################"] + lines +
                      ["#################################", "#################################"])

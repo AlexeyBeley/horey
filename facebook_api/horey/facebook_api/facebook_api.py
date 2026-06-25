@@ -201,12 +201,11 @@ class FacebookAPI:
             if clean_line.replace("ca", "").replace("$", "").isdigit():
                 continue
             name = line
-        if not name:
-            breakpoint()
         name = name or "Unknown name"
 
         description = "\n".join(lines)
         return FreeItem(name, url, image_url=image_url, description=description)
+
 
     def close_popup(self):
         """
