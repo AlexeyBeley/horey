@@ -37,6 +37,10 @@ class FreeStuffAPI:
             self.init_platforms()
         return self._platforms
 
+    @platforms.setter
+    def platforms(self, value):
+        self._platforms = value
+
     def init_platforms(self):
         """
         Init platforms from DB
@@ -236,6 +240,7 @@ class FreeStuffAPI:
         while True:
             try:
                 self.main_single_cycle_run()
+                self.selenium_api.disconnect()
             except Exception as inst:
                 logger.exception(inst)
             logger.info(f"Going to sleep for {sleep_time} seconds")

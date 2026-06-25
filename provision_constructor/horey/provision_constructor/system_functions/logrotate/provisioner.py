@@ -6,8 +6,10 @@ from horey.provision_constructor.system_functions.system_function_common import 
 )
 from horey.common_utils.remoter import Remoter
 from horey.replacement_engine.replacement_engine import ReplacementEngine
+from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 
+@SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
     def __init__(self, deployment_dir, force, upgrade, **kwargs):
         super().__init__(deployment_dir, force, upgrade, **kwargs)
