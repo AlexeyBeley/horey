@@ -58,7 +58,7 @@ class Provisioner(SystemFunctionCommon):
 
         user = users[0]
         group = groups[0]
-        rotation_path = "\n".join(rotation_paths) + "\n"
+        rotation_path = "\n".join([str(path) for path in rotation_paths]) + "\n"
 
         composed_file_path = self.compose_config_file(rotation_path, user, group, overrides, postrotate)
         return SystemFunctionFactory.REGISTERED_FUNCTIONS["copy_generic"](self.deployment_dir, self.force, self.upgrade, src=composed_file_path, dst=Path("/etc/logrotate.d")/config_file_name, chmod="640", chown="root:root", sudo=True).provision_remote(
