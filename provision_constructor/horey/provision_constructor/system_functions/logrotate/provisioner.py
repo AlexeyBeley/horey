@@ -1,5 +1,7 @@
 import shutil
+import uuid
 from pathlib import Path
+from tempfile import template
 
 from horey.provision_constructor.system_functions.system_function_common import (
     SystemFunctionCommon,
@@ -36,27 +38,43 @@ class Provisioner(SystemFunctionCommon):
 
         :return:
         """
-        breakpoint()
-        ret = self.remoter.execute(f"sudo stat -c '%U:%G' {rotation_path.parent.resolve()}")
+        ret = self.remoter.execute(f"sudo stat -c '%U:%G' {rotation_path.parent}")
         user, group = ret[0][-1].split(":")
+
+        composed_file_path = self.compose_config_file(config_file_name, rotation_path, user, group)
+        breakpoint()
+
+    def compose_config_file(self, config_file_name, rotation_path, user, group):
+        """
+        Compose logrotate config.
+
+        :param rotation_path:
+        :param config_file_name:
+        :param user:
+        :param group:
+        :return:
+        """
+
         su_line = None
         if user != "root" or group != "root":
             su_line = f"su {user} {group}"
 
-
         src = Path(__file__).parent / "templates" / "template_logrotate.conf"
+        dst_dir = self.deployment_dir / f"logrotate_provisioner_{uuid.uuid4()}"
+        dst_dir.mkdir(exist_ok=False)
+        template_dst_file = dst_dir / src.name
         shutil.copyfile(
             src,
-            self.deployment_dir/config_file_name,
+            template_dst_file
         )
         ReplacementEngine().perform_recursive_replacements(
-            self.deployment_dir,
+            dst_dir,
             {
-             "STRING_REPLACEMENT_ROTATION_PATHS": rotation_path}
+                "STRING_REPLACEMENT_ROTATION_PATHS": rotation_path}
         )
-
+        dst_file = dst_dir / "logrotate.conf"
         if su_line:
-            with open(self.deployment_dir/config_file_name, "r", encoding="utf-8") as fh:
+            with open(dst_file, "r", encoding="utf-8") as fh:
                 lines = fh.readlines()
 
             for i, line in enumerate(lines):
@@ -66,8 +84,7 @@ class Provisioner(SystemFunctionCommon):
             else:
                 raise ValueError("Was not able to find closing bracket")
 
-            with open(self.deployment_dir / config_file_name, "w", encoding="utf-8") as fh:
+            with open(dst_file, "w", encoding="utf-8") as fh:
                 fh.writelines(lines)
-
-
+        return dst_file
 
