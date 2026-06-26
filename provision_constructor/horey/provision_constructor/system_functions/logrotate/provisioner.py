@@ -55,7 +55,7 @@ class Provisioner(SystemFunctionCommon):
         if len(users) > 1 or len(groups) > 1:
             raise NotImplementedError("Multiple users/groups detected for provided paths")
 
-        rotation_path = "\n".join([str(path) for path in rotation_paths]) + "\n"
+        rotation_path = "\n".join([str(path) for path in rotation_paths])
 
         composed_file_path = self.compose_config_file(rotation_path, configs)
         return SystemFunctionFactory.REGISTERED_FUNCTIONS["copy_generic"](self.deployment_dir, self.force, self.upgrade, src=composed_file_path, dst=Path("/etc/logrotate.d")/config_file_name, chmod="640", chown="root:root", sudo=True).provision_remote(
@@ -72,7 +72,7 @@ class Provisioner(SystemFunctionCommon):
         """
 
         dst_file = self.deployment_dir / f"logrotate_provisioner_{uuid.uuid4()}.conf"
-        string_ret = rotation_paths + "\n{"
+        string_ret = rotation_paths + "\n{\n"
         string_ret += "    " + "\n    ".join(configs) + "}"
         with open(dst_file, "w", encoding="utf-8") as fh:
             fh.write(string_ret)
