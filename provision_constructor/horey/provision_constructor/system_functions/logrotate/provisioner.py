@@ -28,18 +28,33 @@ class Provisioner(SystemFunctionCommon):
 
         if self.action == "add_log_rotation":
             config_file_name = self.kwargs.get("config_file_name")
-            rotation_path = Path(self.kwargs.get("rotation_path"))
-            return self.add_log_rotation_remote(config_file_name, rotation_path)
+            rotation_paths = Path(self.kwargs.get("rotation_paths"))
+            return self.add_log_rotation_remote(config_file_name, rotation_paths)
         raise NotImplementedError(self.action)
 
-    def add_log_rotation_remote(self, config_file_name, rotation_path):
+    def add_log_rotation_remote(self, config_file_name, rotation_paths):
         """
         Add log rotation config.
 
         :return:
         """
-        ret = self.remoter.execute(f"sudo stat -c '%U:%G' {rotation_path.parent}")
-        user, group = ret[0][-1].split(":")
+        users = []
+        groups = []
+        for rotation_path in rotation_paths:
+            ret = self.remoter.execute(f"sudo stat -c '%U:%G' {rotation_path.parent}")
+            user, group = ret[0][-1].split(":")
+            users.append(user)
+            groups.append(group)
+
+        users = list(set(users))
+        groups = list(set(groups))
+
+        if len(users) > 1 or len(groups) > 1:
+            raise NotImplementedError("Multiple users/groups not supported yet")
+
+        user = users[0]
+        group = groups[0]
+        rotation_path = "\n".join(rotation_paths) + "\n"
 
         composed_file_path = self.compose_config_file(config_file_name, rotation_path, user, group)
         return SystemFunctionFactory.REGISTERED_FUNCTIONS["copy_generic"](self.deployment_dir, self.force, self.upgrade, src=composed_file_path, dst=Path("/etc/logrotate.d")/config_file_name, chmod="640", chown="root:root", sudo=True).provision_remote(
