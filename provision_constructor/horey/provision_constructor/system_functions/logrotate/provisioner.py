@@ -3,6 +3,8 @@ import uuid
 from pathlib import Path
 from tempfile import template
 
+from typing_extensions import override
+
 from horey.provision_constructor.system_functions.system_function_common import (
     SystemFunctionCommon,
 )
@@ -29,10 +31,12 @@ class Provisioner(SystemFunctionCommon):
         if self.action == "add_log_rotation":
             config_file_name = self.kwargs.get("config_file_name")
             rotation_paths = Path(self.kwargs.get("rotation_paths"))
-            return self.add_log_rotation_remote(config_file_name, rotation_paths)
+            overrides = self.kwargs.get("overrides", [])
+            postrotate = self.kwargs.get("postrotate")
+            return self.add_log_rotation_remote(config_file_name, rotation_paths, overrides, postrotate)
         raise NotImplementedError(self.action)
 
-    def add_log_rotation_remote(self, config_file_name, rotation_paths):
+    def add_log_rotation_remote(self, config_file_name, rotation_paths, overrides, postrotate):
         """
         Add log rotation config.
 
@@ -56,16 +60,15 @@ class Provisioner(SystemFunctionCommon):
         group = groups[0]
         rotation_path = "\n".join(rotation_paths) + "\n"
 
-        composed_file_path = self.compose_config_file(config_file_name, rotation_path, user, group)
+        composed_file_path = self.compose_config_file(rotation_path, user, group, overrides, postrotate)
         return SystemFunctionFactory.REGISTERED_FUNCTIONS["copy_generic"](self.deployment_dir, self.force, self.upgrade, src=composed_file_path, dst=Path("/etc/logrotate.d")/config_file_name, chmod="640", chown="root:root", sudo=True).provision_remote(
             self.remoter)
 
-    def compose_config_file(self, config_file_name, rotation_path, user, group):
+    def compose_config_file(self, rotation_paths, user, group, overrides, postrotate):
         """
         Compose logrotate config.
 
-        :param rotation_path:
-        :param config_file_name:
+        :param rotation_paths:
         :param user:
         :param group:
         :return:
@@ -86,7 +89,7 @@ class Provisioner(SystemFunctionCommon):
         ReplacementEngine().perform_recursive_replacements(
             dst_dir,
             {
-                "STRING_REPLACEMENT_ROTATION_PATHS": str(rotation_path)}
+                "STRING_REPLACEMENT_ROTATION_PATHS": rotation_paths}
         )
         dst_file = dst_dir / "logrotate.conf"
         if su_line:
@@ -102,5 +105,6 @@ class Provisioner(SystemFunctionCommon):
 
             with open(dst_file, "w", encoding="utf-8") as fh:
                 fh.writelines(lines)
+        breakpoint()
         return dst_file
 
