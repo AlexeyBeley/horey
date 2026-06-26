@@ -270,7 +270,6 @@ class GrafanaAPI:
 
         for _ in range(int(timeout/sleep_time)):
             try:
-                breakpoint()
                 self.put(f"/dashboard.grafana.app/v1beta1/namespaces/default/dashboards/{dict_dashboard['metadata']['name']}", dict_dashboard)
                 logger.info(f"Updated Dashboard '{dict_dashboard['spec']['title']}'")
                 return True
