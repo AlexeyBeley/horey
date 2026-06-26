@@ -61,7 +61,6 @@ class Dashboard(GrafanaObject):
         """
 
         panels = self.generate_panels_with_positions(self.spec["panels"])
-        breakpoint()
         ret = {
             "metadata": copy.deepcopy(self.metadata),
             "spec": copy.deepcopy(self.spec),
@@ -74,6 +73,9 @@ class Dashboard(GrafanaObject):
 
         if not ret["metadata"].get("uid"):
             ret["metadata"]["uid"] = slug
+
+        del ret["metadata"]["labels"]
+
         return ret
 
     def generate_panels_with_positions(self, lst_panels_dicts):
