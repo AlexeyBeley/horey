@@ -76,7 +76,6 @@ class Provisioner(SystemFunctionCommon):
         string_ret += "    " + "\n    ".join(configs) + "\n}"
         with open(dst_file, "w", encoding="utf-8") as fh:
             fh.write(string_ret)
-        breakpoint()
         return dst_file
 
     def add_lines_before_close_curly_bracket(self, file_path, new_lines):
