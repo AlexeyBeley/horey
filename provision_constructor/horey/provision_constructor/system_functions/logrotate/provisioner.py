@@ -43,6 +43,8 @@ class Provisioner(SystemFunctionCommon):
 
         composed_file_path = self.compose_config_file(config_file_name, rotation_path, user, group)
         breakpoint()
+        SystemFunctionFactory.REGISTERED_FUNCTIONS["copy_generic"](src=composed_file_path, dst=Path("/etc/logrotate.d")/config_file_name, chmod="640", chown="root:root", sudo=True).provision_remote(
+            self.remoter)
 
     def compose_config_file(self, config_file_name, rotation_path, user, group):
         """
@@ -57,7 +59,7 @@ class Provisioner(SystemFunctionCommon):
 
         su_line = None
         if user != "root" or group != "root":
-            su_line = f"su {user} {group}"
+            su_line = f"    su {user} {group}"
 
         src = Path(__file__).parent / "templates" / "template_logrotate.conf"
         dst_dir = self.deployment_dir / f"logrotate_provisioner_{uuid.uuid4()}"

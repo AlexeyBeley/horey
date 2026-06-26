@@ -263,6 +263,7 @@ class FreeStuffAPI:
                 raise
 
             for free_item in free_items:
+                breakpoint()
                 if self.add_free_item_to_db(platform, free_item):
                     self.notify_about_new_item(free_item)
 
