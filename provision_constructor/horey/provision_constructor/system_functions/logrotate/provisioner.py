@@ -70,7 +70,7 @@ class Provisioner(SystemFunctionCommon):
         ReplacementEngine().perform_recursive_replacements(
             dst_dir,
             {
-                "STRING_REPLACEMENT_ROTATION_PATHS": rotation_path}
+                "STRING_REPLACEMENT_ROTATION_PATHS": str(rotation_path)}
         )
         dst_file = dst_dir / "logrotate.conf"
         if su_line:
