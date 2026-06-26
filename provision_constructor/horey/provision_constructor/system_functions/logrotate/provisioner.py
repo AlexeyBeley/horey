@@ -42,8 +42,7 @@ class Provisioner(SystemFunctionCommon):
         user, group = ret[0][-1].split(":")
 
         composed_file_path = self.compose_config_file(config_file_name, rotation_path, user, group)
-        breakpoint()
-        SystemFunctionFactory.REGISTERED_FUNCTIONS["copy_generic"](src=composed_file_path, dst=Path("/etc/logrotate.d")/config_file_name, chmod="640", chown="root:root", sudo=True).provision_remote(
+        return SystemFunctionFactory.REGISTERED_FUNCTIONS["copy_generic"](self.deployment_dir, self.force, self.upgrade, src=composed_file_path, dst=Path("/etc/logrotate.d")/config_file_name, chmod="640", chown="root:root", sudo=True).provision_remote(
             self.remoter)
 
     def compose_config_file(self, config_file_name, rotation_path, user, group):
