@@ -31,12 +31,11 @@ class Provisioner(SystemFunctionCommon):
         if self.action == "add_log_rotation":
             config_file_name = self.kwargs.get("config_file_name")
             rotation_paths = self.kwargs.get("rotation_paths")
-            overrides = self.kwargs.get("overrides", [])
-            postrotate = self.kwargs.get("postrotate")
-            return self.add_log_rotation_remote(config_file_name, rotation_paths, overrides, postrotate)
+            configs = self.kwargs.get("configs")
+            return self.add_log_rotation_remote(config_file_name, rotation_paths, configs)
         raise NotImplementedError(self.action)
 
-    def add_log_rotation_remote(self, config_file_name, rotation_paths, overrides, postrotate):
+    def add_log_rotation_remote(self, config_file_name, rotation_paths, configs):
         """
         Add log rotation config.
 
@@ -54,17 +53,15 @@ class Provisioner(SystemFunctionCommon):
         groups = list(set(groups))
 
         if len(users) > 1 or len(groups) > 1:
-            raise NotImplementedError("Multiple users/groups not supported yet")
+            raise NotImplementedError("Multiple users/groups detected for provided paths")
 
-        user = users[0]
-        group = groups[0]
         rotation_path = "\n".join([str(path) for path in rotation_paths]) + "\n"
 
-        composed_file_path = self.compose_config_file(rotation_path, user, group, overrides, postrotate)
+        composed_file_path = self.compose_config_file(rotation_path, configs)
         return SystemFunctionFactory.REGISTERED_FUNCTIONS["copy_generic"](self.deployment_dir, self.force, self.upgrade, src=composed_file_path, dst=Path("/etc/logrotate.d")/config_file_name, chmod="640", chown="root:root", sudo=True).provision_remote(
             self.remoter)
 
-    def compose_config_file(self, rotation_paths, user, group, overrides, postrotate):
+    def compose_config_file(self, rotation_paths, configs):
         """
         Compose logrotate config.
 
@@ -74,37 +71,33 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-        su_line = None
-        if user != "root" or group != "root":
-            su_line = f"    su {user} {group}"
-
-        src = Path(__file__).parent / "templates" / "template_logrotate.conf"
-        dst_dir = self.deployment_dir / f"logrotate_provisioner_{uuid.uuid4()}"
-        dst_dir.mkdir(exist_ok=False)
-        template_dst_file = dst_dir / src.name
-        shutil.copyfile(
-            src,
-            template_dst_file
-        )
-        ReplacementEngine().perform_recursive_replacements(
-            dst_dir,
-            {
-                "STRING_REPLACEMENT_ROTATION_PATHS": rotation_paths}
-        )
-        dst_file = dst_dir / "logrotate.conf"
-        if su_line:
-            with open(dst_file, "r", encoding="utf-8") as fh:
-                lines = fh.readlines()
-
-            for i, line in enumerate(lines):
-                if line.strip() == "}":
-                    lines.insert(i, su_line + "\n")
-                    break
-            else:
-                raise ValueError("Was not able to find closing bracket")
-
-            with open(dst_file, "w", encoding="utf-8") as fh:
-                fh.writelines(lines)
+        dst_file = self.deployment_dir / f"logrotate_provisioner_{uuid.uuid4()}.conf"
+        string_ret = rotation_paths + "\n{"
+        string_ret += "\n".join(configs) + "}"
+        with open(dst_file, "w", encoding="utf-8") as fh:
+            fh.write(string_ret)
         breakpoint()
         return dst_file
 
+    def add_lines_before_close_curly_bracket(self, file_path, new_lines):
+        """
+        Add line before close curly bracket.
+
+        :param file_path:
+        :param new_lines:
+        :return:
+        """
+
+        with open(file_path, "r", encoding="utf-8") as fh:
+            lines = fh.readlines()
+
+        for i, line in enumerate(lines):
+            if line.strip() == "}":
+                for new_line in new_lines:
+                    lines.insert(i, new_line + "\n")
+                break
+        else:
+            raise ValueError("Was not able to find closing bracket")
+
+        with open(file_path, "w", encoding="utf-8") as fh:
+            fh.writelines(lines)
