@@ -73,7 +73,7 @@ class Provisioner(SystemFunctionCommon):
 
         dst_file = self.deployment_dir / f"logrotate_provisioner_{uuid.uuid4()}.conf"
         string_ret = rotation_paths + "\n{\n"
-        string_ret += "    " + "\n    ".join(configs) + "}"
+        string_ret += "    " + "\n    ".join(configs) + "\n}"
         with open(dst_file, "w", encoding="utf-8") as fh:
             fh.write(string_ret)
         breakpoint()
