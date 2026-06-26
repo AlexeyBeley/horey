@@ -30,7 +30,7 @@ class Provisioner(SystemFunctionCommon):
 
         if self.action == "add_log_rotation":
             config_file_name = self.kwargs.get("config_file_name")
-            rotation_paths = Path(self.kwargs.get("rotation_paths"))
+            rotation_paths = self.kwargs.get("rotation_paths")
             overrides = self.kwargs.get("overrides", [])
             postrotate = self.kwargs.get("postrotate")
             return self.add_log_rotation_remote(config_file_name, rotation_paths, overrides, postrotate)
