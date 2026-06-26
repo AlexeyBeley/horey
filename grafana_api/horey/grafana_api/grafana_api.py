@@ -230,7 +230,7 @@ class GrafanaAPI:
             if current_dashboard.spec["title"] == desired.spec["title"]:
                 desired.metadata["name"] = current_dashboard.metadata["name"]
                 desired.metadata["uid"] = current_dashboard.metadata["uid"]
-                return self.update_dashboard_raw(desired.generate_create_request())
+                return self.update_dashboard_raw(desired.generate_update_request())
 
         return self.create_dashboard_raw(desired.generate_create_request())
 
