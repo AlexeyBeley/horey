@@ -16,5 +16,4 @@ class Platform:
 
         current_free_items = self.api.get_free_items()
         known_descriptions = [free_item.description for free_item in self.free_items]
-        breakpoint()
         return [current_free_item for current_free_item in current_free_items if current_free_item.description not in known_descriptions]

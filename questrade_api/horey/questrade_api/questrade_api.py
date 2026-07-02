@@ -1011,9 +1011,14 @@ class QuestradeAPI:
         #ret = self.db_get_symbol(63320693)
         #breakpoint()
 
+
+        # todo:
+        skip_symbols = ["JBDI"]
+
+
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
         for position in positions:
-            if position.symbol in []:
+            if position.symbol in skip_symbols:
                 continue
 
 

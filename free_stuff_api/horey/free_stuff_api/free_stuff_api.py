@@ -60,10 +60,12 @@ class FreeStuffAPI:
                 for platform_api in platform_apis:
                     if platform_api.NAME == platform_name:
                         platform = Platform(platform_id, platform_name, api=platform_api)
-                        self.init_platform_free_items(platform)
 
                         self._platforms.append(platform)
                         break
+
+        for platform in self._platforms:
+            self.init_platform_free_items(platform)
 
     def init_platform_free_items(self, platform: Platform):
         """
@@ -262,10 +264,16 @@ class FreeStuffAPI:
                 self.send_telegram_screenshot(file_path)
                 raise
 
+            found = False
             for free_item in free_items:
-                breakpoint()
                 if self.add_free_item_to_db(platform, free_item):
+                    found = True
                     self.notify_about_new_item(free_item)
+            if found:
+                before = len(platform.free_items)
+                self.init_platform_free_items(platform)
+                after = len(platform.free_items)
+                logger.info(f"Free items count change: {before} -> {after}")
 
         return True
 
