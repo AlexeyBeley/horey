@@ -227,7 +227,7 @@ class GrafanaAPI:
 
         self.init_dashboards()
         for current_dashboard in self.dashboards:
-            logger.info(f"Comparing dashboard titles '{current_dashboard.spec["title"]}' vs '{desired.spec["title"]}'")
+            logger.info(f"Comparing dashboard titles '{current_dashboard.spec['title']}' vs '{desired.spec['title']}'")
             if current_dashboard.spec["title"] == desired.spec["title"]:
                 desired.metadata["name"] = current_dashboard.metadata["name"]
                 desired.metadata["uid"] = current_dashboard.metadata["uid"]
