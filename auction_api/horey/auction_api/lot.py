@@ -136,7 +136,8 @@ class Lot:
         str_src = str_src.lower()
 
         ret = []
-        known_locations = {"winnipeg": "manitoba",
+        known_locations = {"saint eustache, mb": "manitoba",
+                           "winnipeg": "manitoba",
                            "brunswick": "new brunswick",
                            "fredericton": "new brunswick",
                            "calgary": "alberta",

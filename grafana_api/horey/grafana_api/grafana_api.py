@@ -232,7 +232,7 @@ class GrafanaAPI:
                 desired.metadata["name"] = current_dashboard.metadata["name"]
                 desired.metadata["uid"] = current_dashboard.metadata["uid"]
                 return self.update_dashboard_raw(desired.generate_update_request())
-
+        logger.info(f"Going to create new dashboard: title={desired.spec['title']:}")
         return self.create_dashboard_raw(desired.generate_create_request())
 
     def provision_dashboard_folder(self, desired_dashboard) -> str:
