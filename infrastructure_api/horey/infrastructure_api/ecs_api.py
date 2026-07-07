@@ -1764,7 +1764,6 @@ class ECSAPI:
 
         :return:
         """
-        breakpoint()
         build_numer = self.get_next_build_number()
         image = self.build_api.run_build_and_upload_image_routine(branch_name, build_numer)
         for image_reference in image.tags:
@@ -1772,6 +1771,7 @@ class ECSAPI:
                 break
         else:
             raise ValueError(f"Was not able to find image with repo {self.configuration.ecr_repository_name}")
+        breakpoint()
         task_definition = self.generate_ecs_task_definition(image_reference)
         
         # task_definition.set_environment_variables()
