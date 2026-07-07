@@ -465,6 +465,11 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @ecr_repository_name.setter
     def ecr_repository_name(self, value):
+
+        if self._ecr_repository_name and self._ecr_repository_name != value:
+            raise ValueError(f"Repository name already set to {self._ecr_repository_name},"
+                             f"trying to set new value: {value}")
+
         self._ecr_repository_name = value
 
     @property

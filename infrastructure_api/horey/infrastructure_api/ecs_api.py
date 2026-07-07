@@ -879,25 +879,15 @@ class ECSAPI:
         :return:
         """
 
-
         if repository_name is None:
-
             try:
                 slug = self.configuration.service_name
             except self.configuration.UndefinedValueError:
                 slug = self.configuration.slug
 
-            try:
-                assert self.configuration.ecr_repository_name
-            except self.configuration.UndefinedValueError:
-                self.set_ecr_repository_name(
-                    f"repo_{self.configuration.cluster_name}_{slug}")
-        else:
-            try:
-                if self.configuration.ecr_repository_name:
-                    raise ValueError("Pass repo name via 'repository_name' OR via 'configuration.ecr_repository_name'")
-            except self.configuration.UndefinedValueError:
-                self.configuration.ecr_repository_name = repository_name
+            repository_name = f"repo_{self.configuration.cluster_name}_{slug}"
+
+        self.configuration.ecr_repository_name = repository_name
 
     def provision_service_ecr_repository(self, repository_name=None, repository_policy=None):
         """
