@@ -1767,14 +1767,13 @@ class ECSAPI:
                 break
         else:
             raise ValueError(f"Was not able to find image with repo {self.configuration.ecr_repository_name}")
-        breakpoint()
         task_definition = self.generate_ecs_task_definition(image_reference)
         
         # task_definition.set_environment_variables()
         task_role = self.iam_api.get_role(name=self.configuration.ecs_task_role_name)
         execution_role = self.iam_api.get_role(name=self.configuration.ecs_task_execution_role_name)
         task_definition.set_roles(task_role=task_role.arn, execution_role=execution_role.arn)
-
+        breakpoint()
 
         self.provision_ecs_task_definition_ng(task_definition)
         self.provision_ecs_service(task_definition)
