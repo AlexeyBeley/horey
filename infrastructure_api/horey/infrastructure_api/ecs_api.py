@@ -757,29 +757,25 @@ class ECSAPI:
 
         :return:
         """
-        try:
-            slug = self.configuration.service_name
-        except self.configuration.UndefinedValueError:
-            slug = self.configuration.slug
 
-        try:
-            if self.configuration.ecs_task_role_name and role_name:
-                raise ValueError("Pass repo name via 'role_name' OR via 'configuration.ecs_task_execution_role_name'")
-        except self.configuration.UndefinedValueError:
-            if role_name:
-                self.configuration.ecs_task_role_name = role_name
-            else:
-                if self.environment_api.configuration.environment_level in self.configuration.cluster_name:
-                    # pylint: disable = raise-missing-from
-                    raise NotImplementedError(self.configuration.cluster_name)
+        if not role_name:
+            if self.environment_api.configuration.environment_level in self.configuration.cluster_name:
+                # pylint: disable = raise-missing-from
+                raise NotImplementedError(self.configuration.cluster_name)
 
-                if self.environment_api.configuration.environment_level in slug:
-                    # pylint: disable = raise-missing-from
-                    raise NotImplementedError(self.configuration.cluster_name)
+            try:
+                slug = self.configuration.service_name
+            except self.configuration.UndefinedValueError:
+                slug = self.configuration.slug
 
-                cluster_name_clean = self.get_cluster_name_slug()
+            if self.environment_api.configuration.environment_level in slug:
+                # pylint: disable = raise-missing-from
+                raise NotImplementedError(self.configuration.cluster_name)
 
-                self.configuration.ecs_task_role_name = f"role_{self.environment_api.configuration.environment_level}-{cluster_name_clean}-{slug}-tsk"
+            cluster_name_clean = self.get_cluster_name_slug()
+
+            role_name = f"role_{self.environment_api.configuration.environment_level}-{cluster_name_clean}-{slug}-tsk"
+        self.configuration.ecs_task_role_name = role_name
 
     def provision_task_role(self, role_name=None, inline_policies=None):
         """

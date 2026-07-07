@@ -318,16 +318,21 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @ecs_task_execution_role_name.setter
     def ecs_task_execution_role_name(self, value):
+        if self._ecs_task_execution_role_name and self._ecs_task_execution_role_name != value:
+            raise ValueError(f"Task execution role name already set to {self._ecs_task_execution_role_name},"
+                             f"trying to set new value: {value}")
         self._ecs_task_execution_role_name = value
 
     @property
     def ecs_task_role_name(self):
-        if self._ecs_task_role_name is None:
-            raise self.UndefinedValueError("ecs_task_role_name")
+        self.check_defined()
         return self._ecs_task_role_name
 
     @ecs_task_role_name.setter
     def ecs_task_role_name(self, value):
+        if self._ecs_task_role_name and self._ecs_task_role_name != value:
+            raise ValueError(f"Task role name already set to {self._ecs_task_role_name},"
+                             f"trying to set new value: {value}")
         self._ecs_task_role_name = value
 
     @property
@@ -465,7 +470,6 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @ecr_repository_name.setter
     def ecr_repository_name(self, value):
-
         if self._ecr_repository_name and self._ecr_repository_name != value:
             raise ValueError(f"Repository name already set to {self._ecr_repository_name},"
                              f"trying to set new value: {value}")
