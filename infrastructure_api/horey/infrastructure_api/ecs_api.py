@@ -1474,6 +1474,21 @@ class ECSAPI:
             name = self.get_ecs_service_log_group_name(cluster_name, slug)
 
         self.cloudwatch_api.configuration.log_group_name = name
+
+    def set_family(self, name=None, slug=None):
+        """
+        Generate and set log group name
+
+        :param slug:
+        :param name:
+        :return:
+        """
+
+        if not name:
+            slug = slug or self.configuration.slug
+            name = f"td_{self.environment_api.configuration.environment_name}_{slug}"
+
+        self.configuration.family = name
         
     def provision_log_group(self):
         """

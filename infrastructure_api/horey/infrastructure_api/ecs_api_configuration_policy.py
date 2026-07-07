@@ -398,12 +398,15 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def family(self):
-        if self._family is None:
-            return f"td_{self.slug}"
+        self.check_defined()
         return self._family
 
     @family.setter
     def family(self, value):
+        if self._family and self._family != value:
+            raise ValueError(f"Task definition family already set to {self._family},"
+                             f"trying to set new value: {value}")
+
         self._family = value
 
     @property
