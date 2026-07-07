@@ -1790,8 +1790,7 @@ class ECSAPI:
         task_definition.set_roles(task_role=task_role.arn, execution_role=execution_role.arn)
 
         self.provision_ecs_task_definition_ng(task_definition)
-        self.provision_ecs_service(task_definition)
-        return task_definition
+        return self.provision_ecs_service(task_definition)
         
     def provision_service(self, branch_name, public_dns_prefix=None, private_dns_prefix=None):
         """
