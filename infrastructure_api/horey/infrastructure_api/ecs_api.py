@@ -1089,7 +1089,7 @@ class ECSAPI:
             raise ValueError(value)
         self._cloudwatch_api = value
 
-    def provision_monitoring(self, alerts_api):
+    def provision_service_monitoring(self, alerts_api):
         """
         Provision alert system and alerts.
 
