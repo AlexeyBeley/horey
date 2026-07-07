@@ -3,15 +3,12 @@ Test aws eks client
 
 """
 
-import os
-
 import pytest
 from horey.aws_api.aws_clients.eks_client import EKSClient
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.eks_cluster import EKSCluster
 from horey.aws_api.aws_services_entities.eks_fargate_profile import EKSFargateProfile
-from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
@@ -94,3 +91,12 @@ def test_provision_fargate_profiles():
     eks_fargate_profile.pod_execution_role_arn = ""
     client.provision_fargate_profile(eks_fargate_profile)
     assert eks_fargate_profile.arn is not None
+
+@pytest.mark.wip
+def test_yield_access_entries():
+    client = EKSClient()
+    clusters = client.get_region_clusters(Region.get_region("us-west-2"), full_information=True)
+    for cluster in clusters:
+        for access_entry in client.yield_access_entries(region= cluster.region, filters_req={"clusterName": cluster.name}):
+            logger.info(access_entry)
+

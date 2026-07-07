@@ -877,7 +877,7 @@ class QuestradeAPI:
         # todo: old
         #for i, symbol in enumerate(sorted(filtered_symbols, key=lambda x: abs(x.price_change))):
         for i, symbol in enumerate(sorted(filtered_symbols, key=lambda x: abs(x.slope), reverse=True)):
-            str_ret += f"[{i+1}] {symbol.symbol}, abs_low={symbol.absolute_low}, slope={symbol.slope}, deals={len(symbol.candles)}\n"
+            str_ret += f"[{i+1}] {symbol.symbol}, abs_low={symbol.absolute_low}, price_change={symbol.price_change}, deals={len(symbol.candles)}\n"
 
         with open(self.configuration.data_directory/ "purchase_plan.txt", "w") as file:
             file.write(str_ret)
@@ -1013,7 +1013,7 @@ class QuestradeAPI:
 
 
         # todo:
-        skip_symbols = ["JBDI"]
+        skip_symbols = ["SVC"]
 
 
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}

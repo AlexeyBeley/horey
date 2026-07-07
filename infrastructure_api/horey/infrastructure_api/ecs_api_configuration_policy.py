@@ -211,6 +211,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def slug(self):
         if self._slug is None:
+            raise NotImplementedError("Remove cluster. Set slug manually meanwhile")
             cluster_slug = self.cluster_name.replace('cluster_', '').replace('cluster-', '')
             if self.provision_service:
                 return f"{cluster_slug}-{self.service_name.replace('service_', '')}"

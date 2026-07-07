@@ -562,8 +562,8 @@ class MAauction(Provider):
                 try:
                     day = int(day)
                 except ValueError:
-                    breakpoint()
                     day = 1
+                    breakpoint()
                 break
         else:
             raise_exception = True

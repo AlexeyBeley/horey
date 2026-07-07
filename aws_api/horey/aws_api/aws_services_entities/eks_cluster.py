@@ -23,11 +23,7 @@ class EKSCluster(AwsObject):
             self._init_object_from_cache(dict_src)
             return
 
-        init_options = {
-            "name": self.init_default_attr
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -61,7 +57,14 @@ class EKSCluster(AwsObject):
             "status": self.init_default_attr,
             "certificateAuthority": self.init_default_attr,
             "platformVersion": self.init_default_attr,
-            "tags": self.init_default_attr
+            "tags": self.init_default_attr,
+            "accessConfig": self.init_default_attr,
+            "upgradePolicy": self.init_default_attr,
+            "zonalShiftConfig": self.init_default_attr,
+            "computeConfig": self.init_default_attr,
+            "storageConfig": self.init_default_attr,
+            "deletionProtection": self.init_default_attr,
+            "controlPlaneScalingConfig": self.init_default_attr,
         }
         self.init_attrs(dict_src, init_options)
 

@@ -35,20 +35,6 @@ configuration_values_file_full_path = os.path.join(
 )
 logger = get_logger()
 
-accounts_file_full_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "..",
-        "..",
-        "ignore",
-        "accounts",
-        "managed_accounts.py",
-    )
-)
-
-accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
-AWSAccount.set_aws_account(accounts["dev"])
 
 # pylint: disable= missing-function-docstring
 
