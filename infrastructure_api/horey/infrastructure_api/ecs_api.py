@@ -683,10 +683,12 @@ class ECSAPI:
                 pass
 
         if self.loadbalancer_api:
-            security_groups.append(self.configuration.lb_facing_security_group_name)
-            target_groups = [self.loadbalancer_api.get_targetgroup()]
+            # security_groups.append(self.configuration.lb_facing_security_group_name)
+            # target_groups = [self.loadbalancer_api.get_targetgroup()]
+            raise DeprecationWarning("Old")
         elif self.loadbalancer_dns_api_pairs:
-            target_groups = [loadbalancer_api.get_targetgroup() for loadbalancer_api in self.loadbalancer_dns_api_pairs]
+            # target_groups = [loadbalancer_api.get_targetgroup() for loadbalancer_api in self.loadbalancer_dns_api_pairs]
+            raise DeprecationWarning("Old")
         else:
             target_groups = target_groups or []
 
@@ -703,6 +705,7 @@ class ECSAPI:
         } for target_group in target_groups
         ]
 
+        # AWS service discovery
         if self.configuration.service_registry_arn:
             service_registry_dicts = [{
                 "registryArn": self.configuration.service_registry_arn,
@@ -1428,7 +1431,7 @@ class ECSAPI:
                                     self.environment_api.get_tags_with_name(ecs_task_definition.family)]
 
         ecs_task_definition.container_definitions = [{
-            "name": slug,
+            "name": slug or self.configuration.slug,
             "essential": True,
             "logConfiguration": {
                 "logDriver": "awslogs",
@@ -1754,6 +1757,7 @@ class ECSAPI:
 
         :return:
         """
+
         return self.ec2_api.provision_security_group(name=self.configuration.service_security_group_name)
 
     def provision_task_security_group(self):
@@ -1765,12 +1769,53 @@ class ECSAPI:
 
         return self.ec2_api.provision_security_group(name=self.configuration.task_security_group_name)
 
-    def provision_service(self, branch_name, public_dns_prefix, private_dns_prefix):
+    def provision_standalone_service(self, branch_name):
         """
 
         :return:
         """
-        build_number = self.jenkins_master_ecs_api.get_next_build_number()
+        breakpoint()
+        build_numer = self.get_next_build_number()
+        image = self.build_api.run_build_and_upload_image_routine(branch_name, build_numer)
+        for image_reference in image.tags:
+            if self.configuration.ecr_repository_name in image_reference:
+                break
+        else:
+            raise ValueError(f"Was not able to find image with repo {self.configuration.ecr_repository_name}")
+        task_definition = self.generate_ecs_task_definition(image_reference)
+        
+        # task_definition.set_environment_variables()
+        task_role = self.iam_api.get_role(name=self.configuration.ecs_task_role_name)
+        execution_role = self.iam_api.get_role(name=self.configuration.ecs_task_execution_role_name)
+        task_definition.set_roles(task_role=task_role.arn, execution_role=execution_role.arn)
+
+
+        self.provision_ecs_task_definition_ng(task_definition)
+        self.provision_ecs_service(task_definition)
+        return task_definition
+        
+    def provision_service(self, branch_name, public_dns_prefix=None, private_dns_prefix=None):
+        """
+
+        :return:
+        """
+        breakpoint()
+        self.validate_input()
+        ecr_image_tag = self.get_build_tag()
+        ecs_task_definition = self.provision_ecs_task_definition(ecr_image_tag)
+
+        if self.configuration.provision_cron:
+            return ecs_task_definition
+
+        if not self.configuration.provision_service:
+            raise ValueError("Unknown status")
+
+        return self.provision_ecs_service(ecs_task_definition)
+
+
+
+        build_number = self.get_next_build_number()
+        breakpoint()
         image = self.jenkins_master_ecs_api.build_api.run_build_and_upload_image_routine(branch_name, build_number)
         for image_registry_reference in image.tags:
             if self.jenkins_master_ecs_api.configuration.ecr_repository_name in image_registry_reference:
