@@ -16,6 +16,10 @@ class ElasticacheUserGroup(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.status = None
+        self.engine = None
+        self.user_ids = None
+        self.user_ids_to_add = None
+        self.user_ids_to_remove = None
 
         self.request_key_to_attribute_mapping = {"ARN": "arn", "UserGroupId": "id"}
 
@@ -89,16 +93,10 @@ class ElasticacheUserGroup(AwsObject):
         if not self.tags:
             raise RuntimeError("Tags required when creating access entry")
 
-        request = {"UserId": self.id,
-                   "UserName": self.user_name,
+        request = {"UserGroupId": self.id,
                    "Engine": self.engine,
-                   "AccessString": self.access_string,
-                   "Tags": self.tags}
-
-        self.extend_request_with_optional_parameters(request, ["Passwords",
-                                                               "NoPasswordRequired",
-                                                               "AuthenticationMode",
-                                                               ])
+                   "Tags": self.tags,
+                   "UserIds": self.user_ids}
 
         return request
 
@@ -110,10 +108,10 @@ class ElasticacheUserGroup(AwsObject):
         :return:
         """
 
-        return self.generate_request_aws_object_modify(desired_state, ["clusterName", "principalArn", "tags"],
-                                                       optional=["kubernetesGroups",
-                                                                 "clientRequestToken",
-                                                                 "username",
-                                                                 "type",
+        return self.generate_request_aws_object_modify(desired_state, ["UserGroupId"],
+                                                       optional=["UserIdsToAdd",
+                                                                 "UserIdsToRemove",
+                                                                 "Engine"
                                                                  ],
+                                                       request_key_to_attribute_mapping=self.request_key_to_attribute_mapping,
                                                            )

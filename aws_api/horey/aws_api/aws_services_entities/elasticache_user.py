@@ -115,11 +115,13 @@ class ElasticacheUser(AwsObject):
         :return:
         """
 
-        return self.generate_request_aws_object_modify(desired_state, ["clusterName", "principalArn", "tags"],
-                                                       optional=["kubernetesGroups",
-                                                                 "clientRequestToken",
-                                                                 "username",
-                                                                 "type",
+        return self.generate_request_aws_object_modify(desired_state, ["UserId"],
+                                                       optional=["AccessString",
+                                                                 "AppendAccessString",
+                                                                 "Passwords",
+                                                                 "NoPasswordRequired",
+                                                                 "AuthenticationMode",
+                                                                 "Engine"
                                                                  ],
                                                            )
 

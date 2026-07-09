@@ -163,7 +163,7 @@ def test_dispose_user():
     assert not client.update_user_information(user)
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_update_user_group_information():
     client = ElasticacheClient()
     region = Region.get_region("us-west-2")
@@ -183,6 +183,26 @@ def test_provision_user_group():
         {"Key": "lvl", "Value": "tst"},
         {"Key": "name", "Value": user_group.id},
     ]
+    for user in client.yield_users(region=region):
+        if user.user_name == "default":
+            user_group.user_ids = [user.id]
+            break
+    else:
+        raise RuntimeError("Was not able to find 'default' user")
+
+
     client.provision_user_group(user_group)
     assert user_group.arn is not None
     assert client.update_user_group_information(user_group)
+
+
+@pytest.mark.wip
+def test_dispose_user_group():
+    client = ElasticacheClient()
+    region = Region.get_region("us-west-2")
+    user_group = ElasticacheUserGroup({})
+    user_group.region = region
+    user_group.id = "test"
+    assert client.dispose_user_group(user_group)
+    assert not client.update_user_group_information(user_group)
+

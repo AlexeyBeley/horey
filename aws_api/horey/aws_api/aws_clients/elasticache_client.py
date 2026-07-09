@@ -830,7 +830,7 @@ class ElasticacheClient(Boto3Client):
             time.sleep(1)
             if not self.update_user_information(desired_user):
                 return True
-            if not desired_user.get_status() == desired_user.Status.DELETING:
+            if desired_user.get_status() != desired_user.Status.DELETING:
                 raise ValueError(desired_user.get_status())
         raise TimeoutError("User deletion is taking too long")
 
@@ -861,7 +861,7 @@ class ElasticacheClient(Boto3Client):
         current_user_group = ElasticacheUserGroup({"id": desired_user_group.id})
         current_user_group.region = desired_user_group.region
         if not self.update_user_group_information(current_user_group):
-            response = self.provision_user_raw(desired_user_group.region,
+            response = self.provision_user_group_raw(desired_user_group.region,
                                                desired_user_group.generate_create_request()
                                                )
             desired_user_group.update_from_raw_response(response)
@@ -894,14 +894,14 @@ class ElasticacheClient(Boto3Client):
         :return:
         """
 
-        logger.info(f"Creating user: {request}")
+        logger.info(f"Creating user group: {request}")
         for response in self.execute(
                 self.get_session_client(region=region).create_user_group,
                 None,
                 raw_data=True,
                 filters_req=request,
         ):
-            self.clear_cache(ElasticacheUser)
+            self.clear_cache(ElasticacheUserGroup)
             return response
         raise RuntimeError("Did not receive reply from server")
 
@@ -914,13 +914,42 @@ class ElasticacheClient(Boto3Client):
         :return:
         """
 
-        logger.info(f"Modifying user: {request}")
+        logger.info(f"Modifying user group: {request}")
         for response in self.execute(
                 self.get_session_client(region=region).modify_user_group,
                 "UserGroup",
                 filters_req=request,
         ):
-            self.clear_cache(ElasticacheUser)
+            self.clear_cache(ElasticacheUserGroup)
             return response
 
         raise RuntimeError("Did not receive reply from server")
+
+    def dispose_user_group(self, desired_user_group: ElasticacheUserGroup):
+        """
+        Dispose user group
+
+        :param desired_user_group:
+        :return:
+        """
+
+        logger.info(f"Disposing user group: {desired_user_group.id}")
+        if not self.update_user_group_information(desired_user_group):
+            return True
+        for response in self.execute(
+                self.get_session_client(region=desired_user_group.region).delete_user_group,
+                None, raw_data=True,
+                filters_req={"UserGroupId": desired_user_group.id},
+        ):
+            self.clear_cache(ElasticacheUserGroup)
+            desired_user_group.update_from_raw_response(response)
+            break
+
+        for _ in range(60):
+            time.sleep(1)
+            if not self.update_user_group_information(desired_user_group):
+                return True
+            if desired_user_group.get_status() != desired_user_group.Status.DELETING:
+                raise ValueError(desired_user_group.get_status())
+        raise TimeoutError("User group deletion is taking too long")
+
