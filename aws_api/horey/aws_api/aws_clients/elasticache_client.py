@@ -1,6 +1,7 @@
 """
 AWS clietn to handle service API requests.
 """
+import time
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.elasticache_serverless_cache import ElasticacheServerlessCache
@@ -18,6 +19,9 @@ from horey.aws_api.aws_services_entities.elasticache_cache_security_group import
 from horey.aws_api.aws_services_entities.elasticache_replication_group import (
     ElasticacheReplicationGroup,
 )
+
+from horey.aws_api.aws_services_entities.elasticache_user_group import ElasticacheUserGroup
+from horey.aws_api.aws_services_entities.elasticache_user import ElasticacheUser
 
 from horey.h_logger import get_logger
 
@@ -660,3 +664,263 @@ class ElasticacheClient(Boto3Client):
             self.clear_cache(ElasticacheServerlessCache)
             return response
         return None
+
+    def yield_user_groups(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield clusters
+
+        :return:
+        """
+
+        yield from self.regional_service_entities_generator(self.yield_user_groups_raw,
+                                                            ElasticacheUserGroup,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_user_groups_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        yield from self.execute(
+            self.get_session_client(region=region).describe_user_groups, "UserGroups",
+            filters_req=filters_req, exception_ignore_callback=lambda err: "UserGroupNotFoundFault" in repr(err)
+        )
+
+
+    def yield_users(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield clusters
+
+        :return:
+        """
+
+        yield from self.regional_service_entities_generator(self.yield_users_raw,
+                                                            ElasticacheUser,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_users_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        yield from self.execute(
+            self.get_session_client(region=region).describe_users, "Users",
+            filters_req=filters_req, exception_ignore_callback=lambda err: "UserNotFoundFault" in repr(err)
+        )
+
+
+    def update_user_information(self, user: ElasticacheUser):
+        """
+        Update current status.
+
+        :param user:
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.get_session_client(region=user.region).describe_users, "Users",
+                filters_req={"UserId": user.id}, exception_ignore_callback=lambda err: "UserNotFoundFault" in repr(err)
+        ):
+            user.update_from_raw_response(dict_src)
+            return True
+        return False
+
+    def provision_user(self, desired_user: ElasticacheUser):
+        """
+        Provision user.
+
+        :param desired_user:
+        :return:
+        """
+
+        current_user = ElasticacheUser({"id": desired_user.id})
+        current_user.region = desired_user.region
+        if not self.update_user_information(current_user):
+            response = self.provision_user_raw(desired_user.region,
+                                    desired_user.generate_create_request()
+                                    )
+            desired_user.update_from_raw_response(response)
+        else:
+            request = current_user.generate_modify_request(desired_user)
+            if request:
+                response = self.modify_user_raw(desired_user.region,
+                                          request
+                                          )
+                desired_user.update_from_raw_response(response)
+
+        self.wait_for_status(
+            desired_user,
+            self.update_user_information,
+            [desired_user.Status.ACTIVE],
+            [desired_user.Status.MODIFYING],
+            [desired_user.Status.DELETING],
+        )
+
+        return True
+
+    def provision_user_raw(self, region, request):
+        """
+        Provision raw.
+
+        :param region:
+        :param request:
+        :return:
+        """
+
+        logger.info(f"Creating user: {request}")
+        for response in self.execute(
+                self.get_session_client(region=region).create_user,
+                None,
+                raw_data=True,
+                filters_req=request,
+        ):
+            self.clear_cache(ElasticacheUser)
+            return response
+        raise RuntimeError("Did not receive reply from server")
+
+    def modify_user_raw(self, region, request) -> dict:
+        """
+        Modify raw.
+
+        :param region:
+        :param request:
+        :return:
+        """
+
+        logger.info(f"Modifying user: {request}")
+        for response in self.execute(
+                self.get_session_client(region=region).modify_user,
+                "User",
+                filters_req=request,
+        ):
+            self.clear_cache(ElasticacheUser)
+            return response
+
+        raise RuntimeError("Did not receive reply from server")
+
+    def dispose_user(self, desired_user: ElasticacheUser):
+        """
+        Dispose user.
+
+        :param desired_user:
+        :return:
+        """
+
+        logger.info(f"Disposing user: {desired_user.id}")
+        if not self.update_user_information(desired_user):
+            return True
+        for response in self.execute(
+                self.get_session_client(region=desired_user.region).delete_user,
+                None, raw_data=True,
+                filters_req={"UserId": desired_user.id},
+        ):
+            self.clear_cache(ElasticacheUser)
+            desired_user.update_from_raw_response(response)
+            break
+
+        for _ in range(60):
+            time.sleep(1)
+            if not self.update_user_information(desired_user):
+                return True
+            if not desired_user.get_status() == desired_user.Status.DELETING:
+                raise ValueError(desired_user.get_status())
+        raise TimeoutError("User deletion is taking too long")
+
+    def update_user_group_information(self, user_group: ElasticacheUserGroup):
+        """
+        Update current status.
+
+        :param user_group:
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.get_session_client(region=user_group.region).describe_user_groups, "UserGroups",
+                filters_req={"UserGroupId": user_group.id}, exception_ignore_callback=lambda err: "UserGroupNotFoundFault" in repr(err)
+        ):
+            return user_group.update_from_raw_response(dict_src)
+        return False
+
+
+    def provision_user_group(self, desired_user_group: ElasticacheUserGroup):
+        """
+        Provision user.
+
+        :param desired_user_group:
+        :return:
+        """
+
+        current_user_group = ElasticacheUserGroup({"id": desired_user_group.id})
+        current_user_group.region = desired_user_group.region
+        if not self.update_user_group_information(current_user_group):
+            response = self.provision_user_raw(desired_user_group.region,
+                                               desired_user_group.generate_create_request()
+                                               )
+            desired_user_group.update_from_raw_response(response)
+        else:
+            request = current_user_group.generate_modify_request(desired_user_group)
+            if request:
+                response = self.modify_user_group_raw(desired_user_group.region,
+                                                request
+                                                )
+                desired_user_group.update_from_raw_response(response)
+
+        self.wait_for_status(
+            desired_user_group,
+            self.update_user_group_information,
+            [desired_user_group.Status.ACTIVE],
+            [desired_user_group.Status.MODIFYING,
+             desired_user_group.Status.CREATING],
+            [desired_user_group.Status.DELETING],
+        )
+
+        return True
+
+
+    def provision_user_group_raw(self, region, request):
+        """
+        Provision raw.
+
+        :param region:
+        :param request:
+        :return:
+        """
+
+        logger.info(f"Creating user: {request}")
+        for response in self.execute(
+                self.get_session_client(region=region).create_user_group,
+                None,
+                raw_data=True,
+                filters_req=request,
+        ):
+            self.clear_cache(ElasticacheUser)
+            return response
+        raise RuntimeError("Did not receive reply from server")
+
+    def modify_user_group_raw(self, region, request) -> dict:
+        """
+        Modify raw.
+
+        :param region:
+        :param request:
+        :return:
+        """
+
+        logger.info(f"Modifying user: {request}")
+        for response in self.execute(
+                self.get_session_client(region=region).modify_user_group,
+                "UserGroup",
+                filters_req=request,
+        ):
+            self.clear_cache(ElasticacheUser)
+            return response
+
+        raise RuntimeError("Did not receive reply from server")

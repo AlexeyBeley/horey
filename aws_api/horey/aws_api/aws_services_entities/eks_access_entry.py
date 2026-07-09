@@ -17,6 +17,11 @@ class EKSAccessEntry(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.cluster_name = None
+        self.principal_arn = None
+        self.kubernetes_groups = None
+        self.client_request_token = None
+        self.username = None
+        self.type = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -44,10 +49,16 @@ class EKSAccessEntry(AwsObject):
         """
 
         init_options = {
-            "fargateProfileName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "accessEntryArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "clusterName": self.init_default_attr,
+            "kubernetesGroups": self.init_default_attr,
+            "createdAt": self.init_default_attr,
+            "principalArn": self.init_default_attr,
+            "modifiedAt": self.init_default_attr,
+            "tags": self.init_default_attr,
+            "username": self.init_default_attr,
+            "type": self.init_default_attr,
         }
-        breakpoint()
         self.init_attrs(dict_src, init_options)
 
     @property
@@ -66,3 +77,41 @@ class EKSAccessEntry(AwsObject):
             raise ValueError(value)
 
         self._region = value
+
+
+    def generate_create_request(self):
+        """
+        Generate raw dict request.
+
+        @return:
+        """
+
+        if not self.tags:
+            raise RuntimeError("Tags required when creating access entry")
+
+        request = {"clusterName": self.cluster_name,
+                   "tags": self.tags,
+                   "principalArn": self.principal_arn}
+
+        self.extend_request_with_optional_parameters(request, ["kubernetesGroups",
+                                                               "clientRequestToken",
+                                                               "username",
+                                                               "type"])
+
+        return request
+
+    def generate_modify_request(self, desired_state):
+        """
+        Standard.
+
+        :param desired_state:
+        :return:
+        """
+
+        return self.generate_request_aws_object_modify(desired_state, ["clusterName", "principalArn", "tags"],
+                                                       optional=["kubernetesGroups",
+                                                                 "clientRequestToken",
+                                                                 "username",
+                                                                 "type",
+                                                                 ],
+                                                           )
