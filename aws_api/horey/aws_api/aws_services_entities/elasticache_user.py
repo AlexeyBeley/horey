@@ -23,6 +23,9 @@ class ElasticacheUser(AwsObject):
         self.passwords = None
         self.no_password_required = None
         self.authentication_mode = None
+        self.append_access_string = None
+
+
 
         self.request_key_to_attribute_mapping = {"ARN": "arn", "UserId": "id"}
 
