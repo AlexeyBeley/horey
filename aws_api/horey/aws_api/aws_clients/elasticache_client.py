@@ -2,6 +2,7 @@
 AWS clietn to handle service API requests.
 """
 import time
+from email.contentmanager import raw_data_manager
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.elasticache_serverless_cache import ElasticacheServerlessCache
@@ -798,7 +799,8 @@ class ElasticacheClient(Boto3Client):
         logger.info(f"Modifying user: {request}")
         for response in self.execute(
                 self.get_session_client(region=region).modify_user,
-                "User",
+                None,
+                raw_data=True,
                 filters_req=request,
         ):
             self.clear_cache(ElasticacheUser)

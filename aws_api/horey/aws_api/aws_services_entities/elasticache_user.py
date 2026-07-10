@@ -25,8 +25,6 @@ class ElasticacheUser(AwsObject):
         self.authentication_mode = None
         self.append_access_string = None
 
-
-
         self.request_key_to_attribute_mapping = {"ARN": "arn", "UserId": "id"}
 
         if from_cache:
