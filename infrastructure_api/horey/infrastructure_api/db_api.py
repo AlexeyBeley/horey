@@ -487,6 +487,7 @@ class DBAPI:
         user_group = ElasticacheUserGroup({})
         user_group.region = cache.region
         user_group.user_group_name = user_group_name
+        user_group.id= user_group_name
 
         if not self.environment_api.aws_api.elasticache_client.update_user_group_information(user_group):
             user_group.tags = self.environment_api.configuration.tags
