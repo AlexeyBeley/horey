@@ -499,9 +499,10 @@ class DBAPI:
             default_user = self.get_elasticache_user(cache.region, "default")
             user_group.user_ids = [default_user.id]
 
-            breakpoint()
             if cache.engine == "redis":
                 user_group.engine = cache.engine
+            else:
+                raise ValueError("Unsupported engine")
 
             self.environment_api.aws_api.elasticache_client.provision_user_group(user_group)
 
@@ -518,9 +519,12 @@ class DBAPI:
             "Key": "name",
             "Value": user_name
         })
-        breakpoint()
+
         if cache.engine == "redis":
             user_group.engine = cache.engine
+        else:
+            raise ValueError("Unsupported engine")
+
         self.environment_api.aws_api.elasticache_client.provision_user(user)
 
         return user
