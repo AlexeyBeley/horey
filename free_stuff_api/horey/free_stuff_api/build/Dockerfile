@@ -1,4 +1,4 @@
-FROM public.ecr.aws/lambda/python:3.12
+FROM ubuntu:24.04
 ARG HOREY_FOLDER_NAME=horey
 
 RUN dnf install -y git make wget which findutils

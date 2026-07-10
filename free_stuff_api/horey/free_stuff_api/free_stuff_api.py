@@ -29,7 +29,7 @@ class FreeStuffAPI:
         self._platforms = None
         self._db_api = None
         self._environment_api = None
-        self._aws_lambda_api = None
+        self._eks_api = None
 
     @property
     def platforms(self):
@@ -131,19 +131,33 @@ class FreeStuffAPI:
         :return:
         """
 
-        if self._aws_lambda_api is None:
+        if self._eks_api is None:
             configuration = AWSLambdaAPIConfigurationPolicy()
             # todo: rename
             configuration.lambda_name = "test_selenium"
             configuration.lambda_timeout = 600
             configuration.lambda_memory_size = 2048
             # configuration.architecture = "arm64"
-            self._aws_lambda_api = AWSLambdaAPI(configuration, self.environment_api)
-            self._aws_lambda_api.build_api.horey_git_api.configuration.git_directory_path = self.configuration.horey_directory_path.parent
-            self._aws_lambda_api.build_api.prepare_docker_image_build_directory = lambda x, y: self._aws_lambda_api.build_api.prepare_docker_image_horey_package_build_directory(x, "auction_api", y)
-            self._aws_lambda_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_docker_image_build_directory_callback
+            self._eks_api = AWSLambdaAPI(configuration, self.environment_api)
+            self._eks_api.build_api.horey_git_api.configuration.git_directory_path = self.configuration.horey_directory_path.parent
+            self._eks_api.build_api.prepare_docker_image_build_directory = lambda x, y: self._eks_api.build_api.prepare_docker_image_horey_package_build_directory(x, "auction_api", y)
+            self._eks_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_docker_image_build_directory_callback
 
-        return self._aws_lambda_api
+        return self._eks_api
+    
+    @property
+    def eks_api(self):
+        """
+        DB API
+        :return:
+        """
+
+        if self._eks_api is None:
+            configuration = EKSAPIConfigurationPolicy()
+            self._eks_api = EKSAPI(configuration, self.environment_api)
+
+        return self._eks_api
+
 
     def prepare_docker_image_build_directory_callback(self, docker_build_directory):
         """
@@ -514,3 +528,13 @@ class FreeStuffAPI:
             cursor = conn.cursor()
             cursor.execute(delete_sql, [platform.id])
             conn.commit()
+    
+    def provision_eks_infra(self):
+        """
+        Provision infra.
+
+        :return:
+        """
+
+        #self.db_api.provision_dynamo_table(self.configuration.dynamo_table_name)
+        return self.eks_api.provision_service()
