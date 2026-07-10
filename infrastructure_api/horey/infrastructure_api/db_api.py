@@ -499,8 +499,6 @@ class DBAPI:
             default_user = self.get_elasticache_user(cache.region, "default")
             user_group.user_ids = [default_user.id]
 
-            self.environment_api.aws_api.elasticache_client.provision_user_group(user_group)
-
             breakpoint()
             if cache.engine == "redis":
                 user_group.engine = cache.engine
