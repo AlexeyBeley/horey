@@ -123,7 +123,8 @@ class ElasticacheUser(AwsObject):
                                                                  "AuthenticationMode",
                                                                  "Engine"
                                                                  ],
-                                                           )
+                                                       request_key_to_attribute_mapping=self.request_key_to_attribute_mapping,
+                                                       )
 
 
 
