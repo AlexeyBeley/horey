@@ -521,7 +521,7 @@ class DBAPI:
         })
 
         if cache.engine == "redis":
-            user_group.engine = cache.engine
+            user.engine = cache.engine
         else:
             raise ValueError("Unsupported engine")
 
