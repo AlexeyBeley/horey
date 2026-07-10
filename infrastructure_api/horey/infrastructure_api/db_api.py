@@ -553,7 +553,7 @@ class DBAPI:
         cache.name = name
         cache.region = self.environment_api.region
 
-        if not self.environment_api.aws_api.elasticache_client.update_serverless_cache_info(cache):
+        if not self.environment_api.aws_api.elasticache_client.update_serverless_cache_information(cache):
             raise RuntimeError(f"Was not able to find cache '{name}'")
 
         return cache
