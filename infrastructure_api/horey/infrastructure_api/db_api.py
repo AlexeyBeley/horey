@@ -2,7 +2,11 @@
 Standard Load balancing maintainer.
 
 """
+from typing import List
+
 from horey.aws_api.aws_services_entities.elasticache_serverless_cache import ElasticacheServerlessCache
+from horey.aws_api.aws_services_entities.elasticache_user_group import ElasticacheUserGroup
+from horey.aws_api.aws_services_entities.elasticache_user import ElasticacheUser
 from horey.aws_api.aws_services_entities.glue_database import GlueDatabase
 from horey.aws_api.aws_services_entities.glue_table import GlueTable
 from horey.h_logger import get_logger
@@ -472,3 +476,68 @@ class DBAPI:
         self.environment_api.aws_api.elasticache_client.dispose_serverless_cache(cache)
 
         return cache
+
+    def provision_elasticache_user(self, cache: ElasticacheServerlessCache, user_group_name: str, user_name:str, passwords: List[str]):
+        """
+        Provision elasticache user
+
+        :return:
+        """
+
+        user_group = ElasticacheUserGroup()
+        user_group.region = cache.region
+        user_group.user_group_name = user_group_name
+
+        if not self.environment_api.aws_api.elasticache_client.update_user_group_info(user_group):
+            user_group.tags = self.environment_api.configuration.tags
+            user_group.tags.append({
+                "Key": "name",
+                "Value": user_group_name
+            })
+
+            default_user = self.get_elasticache_user(cache.region, "default")
+            user_group.user_ids = [default_user.id]
+
+            self.environment_api.aws_api.elasticache_client.provision_user_group(user_group)
+
+            breakpoint()
+            if cache.engine == "redis":
+                user_group.engine = cache.engine
+
+            self.environment_api.aws_api.elasticache_client.provision_user_group(user_group)
+
+
+        user = ElasticacheUser()
+        user.region = cache.region
+        user.user_group_id = user_group.id
+        user.user_name = user_name
+        user.id = user_name
+        user.passwords = passwords
+        user.access_string = "on ~* +@all"
+        user.tags = self.environment_api.configuration.tags
+        user.tags.append({
+            "Key": "name",
+            "Value": user_name
+        })
+
+        self.environment_api.aws_api.elasticache_client.provision_user(user)
+
+        return user
+
+    def get_elasticache_user(self, region, user_name):
+        """
+        Get elasticache user
+
+        :param region:
+        :param user_name:
+        :return:
+        """
+
+        for user in self.environment_api.aws_api.elasticache_client.yield_users(region=region):
+            if user.user_name == "default":
+                break
+        else:
+            raise RuntimeError(f"Was not able to find '{user_name}' user")
+
+        return user
+
