@@ -676,7 +676,7 @@ class Boto3Client:
             return True
 
         aws_api_account = self.aws_account if self.aws_account is not None else AWSAccount.get_aws_account()
-        str_account = aws_api_account or self.account_id
+        str_account = aws_api_account.name if aws_api_account else self.account_id
         cache_dir = os.path.join(self.main_cache_dir_path, str_account)
         if not os.path.exists(cache_dir):
             return False
