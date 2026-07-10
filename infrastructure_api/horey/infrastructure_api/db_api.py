@@ -520,7 +520,9 @@ class DBAPI:
             "Key": "name",
             "Value": user_name
         })
-
+        breakpoint()
+        if cache.engine == "redis":
+            user_group.engine = cache.engine
         self.environment_api.aws_api.elasticache_client.provision_user(user)
 
         return user
