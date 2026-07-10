@@ -484,7 +484,7 @@ class DBAPI:
         :return:
         """
 
-        user_group = ElasticacheUserGroup()
+        user_group = ElasticacheUserGroup({})
         user_group.region = cache.region
         user_group.user_group_name = user_group_name
 
@@ -507,7 +507,7 @@ class DBAPI:
             self.environment_api.aws_api.elasticache_client.provision_user_group(user_group)
 
 
-        user = ElasticacheUser()
+        user = ElasticacheUser({})
         user.region = cache.region
         user.user_group_id = user_group.id
         user.user_name = user_name
@@ -541,3 +541,19 @@ class DBAPI:
 
         return user
 
+    def get_elasticache_cache(self, name=None):
+        """
+        Get elasticache cache
+        :param name:
+        :return:
+        """
+
+        name = name or self.configuration.serverless_elasticache_name
+        cache = ElasticacheServerlessCache({})
+        cache.name = name
+        cache.region = self.environment_api.region
+
+        if not self.environment_api.aws_api.elasticache_client.update_serverless_cache_info(cache):
+            raise RuntimeError(f"Was not able to find cache '{name}'")
+
+        return cache
