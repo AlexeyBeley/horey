@@ -3,9 +3,6 @@ Standard EC2 maintainer.
 
 """
 from typing import Union
-from zoneinfo import available_timezones
-
-from keyring.backends.libsecret import available
 
 from horey.aws_api.aws_services_entities.key_pair import KeyPair
 from horey.h_logger import get_logger

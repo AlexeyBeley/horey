@@ -538,3 +538,6 @@ class FreeStuffAPI:
 
         #self.db_api.provision_dynamo_table(self.configuration.dynamo_table_name)
         return self.eks_api.provision_service()
+
+    def update_component(self):
+        breakpoint()
