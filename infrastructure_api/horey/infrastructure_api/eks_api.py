@@ -2,13 +2,6 @@
 Standard ECS maintainer.
 
 """
-import json
-import os
-import pathlib
-import shutil
-import uuid
-from datetime import datetime
-from pathlib import Path
 
 from horey.h_logger import get_logger
 
@@ -19,13 +12,14 @@ from horey.infrastructure_api.cloudwatch_api_configuration_policy import Cloudwa
 from horey.infrastructure_api.eks_api_configuration_policy import EKSAPIConfigurationPolicy
 from horey.infrastructure_api.environment_api import EnvironmentAPI
 from horey.infrastructure_api.build_api import BuildAPI, BuildAPIConfigurationPolicy
+from horey.infrastructure_api.ecs_api import ECSAPI, ECSAPIConfigurationPolicy
 
 logger = get_logger()
 
 
-class KSAPI:
+class EKSAPI:
     """
-    Manage ECS.
+    Manage EKS.
 
     """
 
@@ -33,17 +27,7 @@ class KSAPI:
         self.configuration = configuration
         self.environment_api = environment_api
         self._build_api = None
-
-    @property
-    def ecr_repo_uri(self):
-        """
-        Generate repo URI.
-
-        :return:
-        """
-
-        return f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.configuration.ecr_repository_region}.amazonaws.com/{self.configuration.ecr_repository_name}"
-
+        self._ecs_api = None
 
     @property
     def build_api(self):
@@ -55,7 +39,7 @@ class KSAPI:
 
         if self._build_api is None:
             config = BuildAPIConfigurationPolicy()
-            config.docker_repository_uri = self.ecr_repo_uri
+            config.docker_repository_uri = self.ecs_api.ecr_repo_uri
             build_api = BuildAPI(configuration=config, environment_api=self.environment_api)
             build_api.git_api = build_api.horey_git_api
             self._build_api = build_api
@@ -67,13 +51,41 @@ class KSAPI:
             raise ValueError("Must be BuildAPI")
         self._build_api = value
 
-    def provision_service(self):
+    @property
+    def ecs_api(self):
+        """
+        Standard
+
+        :return:
+        """
+
+        if self._ecs_api is None:
+            config = ECSAPIConfigurationPolicy()
+            _ecs_api = ECSAPI(configuration=config, environment_api=self.environment_api)
+            self._ecs_api = _ecs_api
+        return self._ecs_api
+
+    @build_api.setter
+    def build_api(self, value):
+        if not isinstance(value,BuildAPI):
+            raise ValueError("Must be BuildAPI")
+        self._build_api = value
+
+    def provision_service(self, branch_name):
         """
         Provision service.
 
         :return:
         """
 
-        self.build_api = BuildAPI(self.configuration.build_api_configuration_policy)
+        build_numer = self.ecs_api.get_next_build_number()
+        image = self.build_api.run_build_and_upload_image_routine(branch_name, build_numer)
+        for image_reference in image.tags:
+            if self.configuration.ecr_repository_name in image_reference:
+                break
+        else:
+            raise ValueError(f"Was not able to find image with repo {self.configuration.ecr_repository_name}")
+        task_definition = self.generate_ecs_task_definition(image_reference)
+
 
 

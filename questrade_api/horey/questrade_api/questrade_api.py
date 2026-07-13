@@ -1013,7 +1013,7 @@ class QuestradeAPI:
 
 
         # todo:
-        skip_symbols = ["SVC"]
+        skip_symbols = ["DJTU.60246692"]
 
 
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}

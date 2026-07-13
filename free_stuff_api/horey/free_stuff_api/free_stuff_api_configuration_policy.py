@@ -2,7 +2,6 @@
 FB configuration policy
 """
 from pathlib import Path
-
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
 #pylint: disable= missing-function-docstring

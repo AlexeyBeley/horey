@@ -1770,8 +1770,9 @@ class ECSAPI:
 
         return self.ec2_api.provision_security_group(name=self.configuration.task_security_group_name)
 
-    def provision_standalone_service(self, branch_name):
+    def provision_standalone_service(self, branch_name, env_vars=None):
         """
+        Provision service without load balancer.
 
         :return:
         """
@@ -1788,6 +1789,7 @@ class ECSAPI:
         task_role = self.iam_api.get_role(name=self.configuration.ecs_task_role_name)
         execution_role = self.iam_api.get_role(name=self.configuration.ecs_task_execution_role_name)
         task_definition.set_roles(task_role=task_role.arn, execution_role=execution_role.arn)
+        task_definition.set_environment_variables(env_vars)
 
         self.provision_ecs_task_definition_ng(task_definition)
         return self.provision_ecs_service(task_definition)

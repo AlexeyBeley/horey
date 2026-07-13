@@ -23,7 +23,7 @@ wip: FORCE build_ng
 	python -m pytest -m wip ${CURRENT_DIR}/ -v -s
 
 test:
-	echo ${HOREY_DIR_PATH}/free_stuff_api
+	echo ${VENV_DIR}
 
 prepare_build_test:
 	mkdir -p ${HOREY_DIR_PATH}/build_test

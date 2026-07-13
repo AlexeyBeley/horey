@@ -1,4 +1,5 @@
 import datetime
+import json
 import shutil
 import sqlite3
 import time
@@ -13,6 +14,7 @@ from horey.h_logger import get_logger
 from horey.common_utils.free_item import FreeItem
 from horey.facebook_api.facebook_api import FacebookAPI
 from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPIConfigurationPolicy, AWSLambdaAPI
+from horey.infrastructure_api.eks_api import EKSAPIConfigurationPolicy, EKSAPI
 from horey.infrastructure_api.db_api import DBAPI
 from horey.infrastructure_api.db_api_configuration_policy import DBAPIConfigurationPolicy
 from horey.infrastructure_api.environment_api import EnvironmentAPIConfigurationPolicy, EnvironmentAPI
@@ -30,6 +32,7 @@ class FreeStuffAPI:
         self._db_api = None
         self._environment_api = None
         self._eks_api = None
+        self._aws_lambda_api = None
 
     @property
     def platforms(self):
@@ -131,19 +134,19 @@ class FreeStuffAPI:
         :return:
         """
 
-        if self._eks_api is None:
+        if self._aws_lambda_api is None:
             configuration = AWSLambdaAPIConfigurationPolicy()
             # todo: rename
             configuration.lambda_name = "test_selenium"
             configuration.lambda_timeout = 600
             configuration.lambda_memory_size = 2048
             # configuration.architecture = "arm64"
-            self._eks_api = AWSLambdaAPI(configuration, self.environment_api)
-            self._eks_api.build_api.horey_git_api.configuration.git_directory_path = self.configuration.horey_directory_path.parent
-            self._eks_api.build_api.prepare_docker_image_build_directory = lambda x, y: self._eks_api.build_api.prepare_docker_image_horey_package_build_directory(x, "auction_api", y)
-            self._eks_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_docker_image_build_directory_callback
+            self._aws_lambda_api = AWSLambdaAPI(configuration, self.environment_api)
+            self._aws_lambda_api.build_api.horey_git_api.configuration.git_directory_path = self.configuration.horey_directory_path.parent
+            self._aws_lambda_api.build_api.prepare_docker_image_build_directory = lambda x, y: self._eks_api.build_api.prepare_docker_image_horey_package_build_directory(x, "auction_api", y)
+            self._aws_lambda_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_docker_image_build_directory_callback
 
-        return self._eks_api
+        return self._aws_lambda_api
     
     @property
     def eks_api(self):
@@ -155,9 +158,64 @@ class FreeStuffAPI:
         if self._eks_api is None:
             configuration = EKSAPIConfigurationPolicy()
             self._eks_api = EKSAPI(configuration, self.environment_api)
+            self._eks_api.ecs_api.set_ecr_repository_name("test_frs")
+            self._eks_api.ecs_api.configuration.ecr_repository_region = self.configuration.region
 
         return self._eks_api
 
+    def prepare_docker_image_build_directory_callback_eks(self, docker_build_directory):
+        """
+        Prepare the dir.
+
+        :param docker_build_directory:
+        :return:
+        """
+
+        response = requests.get(
+            "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json")
+        dict_data = response.json()
+        # Determine platform based on architecture
+        if self.aws_lambda_api.configuration.architecture == "x86_64":
+            platform = "linux64"
+            docker_platform = "linux/amd64"
+        else:
+            platform = "linux-arm64"
+            docker_platform = "linux/arm64"
+
+        # Store docker platform for build process
+        self.aws_lambda_api.build_api.configuration.docker_build_arguments = {
+            "platform": docker_platform
+        }
+        downloads_dir = self.environment_api.configuration.data_directory_path / dict_data["channels"]["Stable"][
+            "version"] / platform
+        # /opt/hfrs/146.0.7680.31/linux64
+        downloads_dir.mkdir(exist_ok=True, parents=True)
+        chrome_directory = downloads_dir / "chrome"
+        if not chrome_directory.exists():
+            for chrome_dict in dict_data["channels"]["Stable"]["downloads"]["chrome"]:
+                if chrome_dict["platform"] == platform:
+                    download_chrome_url = chrome_dict["url"]
+                    self.download_file(download_chrome_url, chrome_directory)
+                    break
+
+        chromedriver_directory = downloads_dir / "chromedriver"
+        if not chromedriver_directory.exists():
+            for chrome_dict in dict_data["channels"]["Stable"]["downloads"]["chromedriver"]:
+                if chrome_dict["platform"] == platform:
+                    download_chromedriver_url = chrome_dict["url"]
+                    self.download_file(download_chromedriver_url, chromedriver_directory)
+                    break
+
+        shutil.copytree(chrome_directory, docker_build_directory / "chrome")
+        shutil.copytree(chromedriver_directory, docker_build_directory / "chromedriver")
+
+        shutil.copy(self.configuration.horey_directory_path / "auction_api" / "build" / "lambda_handler.py",
+                    docker_build_directory)
+        shutil.copy(self.configuration.horey_directory_path / "auction_api" / "build" / "Dockerfile",
+                    docker_build_directory)
+        self.configuration.generate_configuration_file_ng(docker_build_directory / "frs_api_configuration.json")
+
+        return docker_build_directory
 
     def prepare_docker_image_build_directory_callback(self, docker_build_directory):
         """
@@ -537,7 +595,33 @@ class FreeStuffAPI:
         """
 
         #self.db_api.provision_dynamo_table(self.configuration.dynamo_table_name)
-        return self.eks_api.provision_service()
+        dict_policy = {"Version": "2008-10-17",
+                       "Statement": [
+                           {
+                               "Sid": "Deployer",
+                               "Effect": "Allow",
+                               "Principal": "*",
+                               "Action": [
+                                   "ecr:CompleteLayerUpload",
+                                   "ecr:GetAuthorizationToken",
+                                   "ecr:UploadLayerPart",
+                                   "ecr:InitiateLayerUpload",
+                                   "ecr:BatchCheckLayerAvailability",
+                                   "ecr:PutImage",
+                                   "ecr:BatchGetImage",
+                                   "ecr:GetDownloadUrlForLayer",
+                                   "ecr:GetRepositoryPolicy"
+                               ]
+                           }
+                       ]}
+        policy = json.dumps(dict_policy)
+        return self.eks_api.ecs_api.provision_ecr_repository(repository_policy=policy)
 
     def update_component(self):
-        breakpoint()
+        """
+        Update the service
+
+        :return:
+        """
+
+        self.eks_api.provision_service(None)
