@@ -934,7 +934,11 @@ class ECSAPI:
         repo.region = Region.get_region(self.configuration.ecr_repository_region)
         repo.name = repository_name or self.configuration.ecr_repository_name
         # todo: generate policy to permit only access from relevant services: AWS Lambda / ECS / EKS etc
-        repo.policy_text = repository_policy or self.configuration.ecr_repository_policy_text
+        try:
+            repo.policy_text = repository_policy or self.configuration.ecr_repository_policy_text
+        except self.configuration.UndefinedValueError:
+            repo.policy_text = self.iam_api.generate_ecr_repository_policy()
+
         repo.tags = self.environment_api.get_tags_with_name(repo.name)
 
         repo.tags.append({

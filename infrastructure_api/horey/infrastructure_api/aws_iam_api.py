@@ -133,7 +133,9 @@ class AWSIAMAPI:
                            }
                        ]}
 
+        added = False
         if aws_lambda:
+            added = True
             dict_policy["Statement"].append({"Sid": "LambdaECRImageRetrievalPolicy",
                                              "Effect": "Allow",
                                              "Principal": {"Service": "lambda.amazonaws.com"},
@@ -145,20 +147,41 @@ class AWSIAMAPI:
                                                      f"arn:aws:lambda:{self.environment_api.configuration.region}:{self.environment_api.aws_api.ecs_client.account_id}:function:{self.configuration.lambda_name}"}}
                                              })
         if ecs_task_execution_role:
+            added = True
             dict_policy["Statement"].append(
-                        {
-                            "Sid": "AllowECSTaskExecutionRolePull",
-                            "Effect": "Allow",
-                            "Principal": {
-                                "AWS": ecs_task_execution_role.arn
-                            },
-                            "Action": [
-                                "ecr:GetDownloadUrlForLayer",
-                                "ecr:BatchGetImage",
-                                "ecr:BatchCheckLayerAvailability"
-                            ]
-                        }
-                )
+                {
+                    "Sid": "AllowECSTaskExecutionRolePull",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "AWS": ecs_task_execution_role.arn
+                    },
+                    "Action": [
+                        "ecr:GetDownloadUrlForLayer",
+                        "ecr:BatchGetImage",
+                        "ecr:BatchCheckLayerAvailability"
+                    ]
+                }
+            )
+
+        if not added:
+            dict_policy["Statement"].append(
+                {
+                    "Sid": "AllowAccount",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "AWS": f"arn:aws:iam::{self.environment_api.aws_api.iam_client.account_id}:root"
+                    },
+                    "Action": [
+                        "ecr:GetDownloadUrlForLayer",
+                        "ecr:BatchGetImage",
+                        "ecr:BatchCheckLayerAvailability",
+                        "ecr:PutImage",
+                        "ecr:InitiateLayerUpload",
+                        "ecr:UploadLayerPart",
+                        "ecr:CompleteLayerUpload"
+                    ]
+                }
+            )
 
         return json.dumps(dict_policy)
 
