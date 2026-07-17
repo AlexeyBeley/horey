@@ -57,6 +57,7 @@ class FreeStuffAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def region(self):
+        self.check_defined()
         return self._region
 
     @region.setter

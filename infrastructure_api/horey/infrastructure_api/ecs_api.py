@@ -736,14 +736,17 @@ class ECSAPI:
                                                           service_registry_dicts=service_registry_dicts
                                                           )
 
-    def get_cluster_name_slug(self):
+    def get_cluster_name_slug(self, remove_environment_level=False):
         """
-        Get clean from "cluster" string.
+        Get clean slug string.
+
         :return:
         """
 
         cluster_name_clean = self.configuration.cluster_name
-        replace_strings = ["cluster", "--", "_-", "__", "-_"]
+        replace_strings =  ["cluster", "--", "_-", "__", "-_"]
+        if remove_environment_level:
+            replace_strings = [self.environment_api.configuration.environment_level] + replace_strings
 
         while any([substr in cluster_name_clean for substr in replace_strings]):
             for substr in replace_strings:
@@ -759,10 +762,6 @@ class ECSAPI:
         """
 
         if not role_name:
-            if self.environment_api.configuration.environment_level in self.configuration.cluster_name:
-                # pylint: disable = raise-missing-from
-                raise NotImplementedError(self.configuration.cluster_name)
-
             try:
                 slug = self.configuration.service_name
             except self.configuration.UndefinedValueError:
@@ -770,9 +769,9 @@ class ECSAPI:
 
             if self.environment_api.configuration.environment_level in slug:
                 # pylint: disable = raise-missing-from
-                raise NotImplementedError(self.configuration.cluster_name)
+                raise NotImplementedError(f"To delete excessive information - clean the env level from slug: {slug} ")
 
-            cluster_name_clean = self.get_cluster_name_slug()
+            cluster_name_clean = self.get_cluster_name_slug(remove_environment_level=True)
 
             role_name = f"role_{self.environment_api.configuration.environment_level}-{cluster_name_clean}-{slug}-tsk"
         self.configuration.ecs_task_role_name = role_name

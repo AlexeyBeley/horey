@@ -22,11 +22,11 @@ RUN chmod -R 777 /opt/chrome
 
 RUN dnf install -y vi
 
-COPY frs_api_configuration.json ${LAMBDA_TASK_ROOT}
+COPY frs_api_configuration.json /app
 
-COPY ${HOREY_FOLDER_NAME} ${LAMBDA_TASK_ROOT}/horey
-RUN python ${LAMBDA_TASK_ROOT}/horey/pip_api/horey/pip_api/pip_api_make.py --install horey.free_stuff_api --pip_api_configuration ${LAMBDA_TASK_ROOT}/horey/pip_api_docker_configuration.py
+COPY ${HOREY_FOLDER_NAME} /app/horey
+RUN python /app/horey/pip_api/horey/pip_api/pip_api_make.py --install horey.free_stuff_api --pip_api_configuration /app/horey/pip_api_docker_configuration.py
 
-COPY lambda_handler.py ${LAMBDA_TASK_ROOT}/lambda_handler.py
+COPY lambda_handler.py /app/lambda_handler.py
 
 CMD [ "lambda_handler.handler" ]

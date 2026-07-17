@@ -160,6 +160,7 @@ class FreeStuffAPI:
             self._eks_api = EKSAPI(configuration, self.environment_api)
             self._eks_api.ecs_api.set_ecr_repository_name("test_frs")
             self._eks_api.ecs_api.configuration.ecr_repository_region = self.configuration.region
+            self._eks_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_docker_image_build_directory_callback_eks
 
         return self._eks_api
 
@@ -214,6 +215,7 @@ class FreeStuffAPI:
         shutil.copy(self.configuration.horey_directory_path / "auction_api" / "build" / "Dockerfile",
                     docker_build_directory)
         self.configuration.generate_configuration_file_ng(docker_build_directory / "frs_api_configuration.json")
+        breakpoint()
 
         return docker_build_directory
 
