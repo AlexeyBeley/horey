@@ -828,7 +828,7 @@ class ECSAPI:
                 if self.environment_api.configuration.environment_level in slug:
                     # pylint: disable = raise-missing-from
                     raise NotImplementedError(self.configuration.cluster_name)
-                cluster_name_clean = self.get_cluster_name_slug()
+                cluster_name_clean = self.get_cluster_name_slug(remove_environment_level=True)
                 self.configuration.ecs_task_execution_role_name = f"role_{self.environment_api.configuration.environment_level}-{cluster_name_clean}-{slug}-exc"
 
     def provision_task_execution_role(self, role_name=None):
