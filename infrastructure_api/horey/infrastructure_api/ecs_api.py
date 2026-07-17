@@ -821,10 +821,6 @@ class ECSAPI:
                 except self.configuration.UndefinedValueError:
                     slug = self.configuration.slug
 
-                if self.environment_api.configuration.environment_level in self.configuration.cluster_name:
-                    # pylint: disable = raise-missing-from
-                    raise NotImplementedError(self.configuration.cluster_name)
-
                 if self.environment_api.configuration.environment_level in slug:
                     # pylint: disable = raise-missing-from
                     raise NotImplementedError(self.configuration.cluster_name)
