@@ -96,11 +96,6 @@ def test_add_platform(free_stuff_mac_raw):
 def test_delete_platform_items(free_stuff_mac_raw):
     assert free_stuff_mac_raw.delete_platform_items(free_stuff_mac_raw.platforms[0])
 
-
-@pytest.mark.unit
-def test_main_free_stuff_mac_raw(free_stuff_mac_raw):
-    assert free_stuff_mac_raw.main()
-
 @pytest.mark.unit
 def test_main_free_stuff_linux_amd_docker(linux_amd_docker):
     assert linux_amd_docker.main()
@@ -115,5 +110,9 @@ def test_provision_eks_infra(eks_free_stuff_api):
     assert eks_free_stuff_api.provision_eks_infra()
 
 @pytest.mark.wip
+def test_main_free_stuff_mac_raw(free_stuff_mac_raw):
+    assert free_stuff_mac_raw.main()
+
+@pytest.mark.unit
 def test_update_component(eks_free_stuff_api):
     assert eks_free_stuff_api.update_component()

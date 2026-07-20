@@ -80,6 +80,7 @@ class EKSAPI:
 
         build_numer = self.ecs_api.get_next_build_number()
         image = self.build_api.run_build_and_upload_image_routine(branch_name, build_numer)
+
         for image_reference in image.tags:
             if self.configuration.ecr_repository_name in image_reference:
                 break

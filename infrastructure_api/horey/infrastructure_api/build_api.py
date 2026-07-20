@@ -96,6 +96,7 @@ class BuildAPI:
 
         build_directory = self.run_prepare_image_build_directory_routine(branch_name, build_number)
         tags = tags or []
+        breakpoint(self.docker_build_directory / "Dockerfile")
         image = self.build_docker_image(build_directory, tags, nocache=nocache, dockerfile=dockerfile)
         return image
 

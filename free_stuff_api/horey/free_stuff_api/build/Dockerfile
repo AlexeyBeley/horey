@@ -27,6 +27,6 @@ COPY frs_api_configuration.json /app
 COPY ${HOREY_FOLDER_NAME} /app/horey
 RUN python /app/horey/pip_api/horey/pip_api/pip_api_make.py --install horey.free_stuff_api --pip_api_configuration /app/horey/pip_api_docker_configuration.py
 
-COPY lambda_handler.py /app/lambda_handler.py
+COPY /app/horey/free_stuff_api/horey/free_stuff_api/free_stuff_api_actor.py /app/free_stuff_api_actor.py
 
-CMD [ "lambda_handler.handler" ]
+CMD ["python", "free_stuff_api_actor.py", "--action", "run_server", "--free_stuff_api_config_file_path", "free_stuff_api_config.json"]
