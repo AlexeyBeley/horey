@@ -1798,7 +1798,7 @@ class ECSAPI:
 
         :return:
         """
-        breakpoint()
+
         self.validate_input()
         ecr_image_tag = self.get_build_tag()
         ecs_task_definition = self.provision_ecs_task_definition(ecr_image_tag)
@@ -1855,7 +1855,7 @@ class ECSAPI:
         :param task:
         :return:
         """
-        breakpoint()
+
         task_id = task.arn.split("/")[-1]
         log_group = self.cloudwatch_api.get_cloudwatch_log_group(self.cloudwatch_api.configuration.log_group_name)
         for stream in self.cloudwatch_api.yield_streams(log_group=log_group):
