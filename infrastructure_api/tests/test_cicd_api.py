@@ -1,5 +1,5 @@
 """
-Init and cache AWS objects.
+test cicd
 
 """
 import shutil
@@ -15,11 +15,13 @@ from test_utils import init_from_secrets_api
 from horey.common_utils.common_utils import CommonUtils
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 from horey.aws_api.aws_api import AWSAPI
+from horey.aws_api.base_entities.region import Region
 from horey.h_logger import get_logger
 from horey.infrastructure_api.infrastructure_api import InfrastructureAPI
 from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
 from horey.infrastructure_api.cicd_api import CICDAPI, CICDAPIConfigurationPolicy
 from horey.infrastructure_api.ec2_api import EC2API, EC2APIConfigurationPolicy
+from horey.github_api.github_api import GithubAPI, GithubAPIConfigurationPolicy
 
 mock_values_file_path = Path(__file__).parent.parent.parent.parent / "ignore" / "test_cicd_mocks.py"
 mock_values = CommonUtils.load_module(mock_values_file_path)
@@ -53,7 +55,32 @@ class Configuration(ConfigurationPolicy):
         self._ec2_vrrp_master = None
         self._ec2_vrrp_backup = None
         self._github_api_configuration_file_secret_name = None
+        self._github_hagent_runner_name = None
         self._github_hagent_repo_name = None
+        self._github_hagent_docker_files_secret_names = None
+
+    @property
+    def github_hagent_docker_files_secret_names(self):
+        return self._github_hagent_docker_files_secret_names
+
+    @github_hagent_docker_files_secret_names.setter
+    def github_hagent_docker_files_secret_names(self, value):
+        self._github_hagent_docker_files_secret_names = value
+
+    @property
+    def github_hagent_runner_name(self):
+        return self._github_hagent_runner_name
+
+    @github_hagent_runner_name.setter
+    def github_hagent_runner_name(self, value):
+        self._github_hagent_runner_name = value
+
+    @property
+    def github_hagent_repo_name(self):
+        return self._github_hagent_repo_name
+    @github_hagent_repo_name.setter
+    def github_hagent_repo_name(self, value):
+        self._github_hagent_repo_name = value
         self._github_hagent_runner_name = None
 
     @property
@@ -61,7 +88,7 @@ class Configuration(ConfigurationPolicy):
         return self._github_api_configuration_file_secret_name
 
     @github_api_configuration_file_secret_name.setter
-    def github_api_configuration_file_secret_name(self, value: Path):
+    def github_api_configuration_file_secret_name(self, value):
         self._github_api_configuration_file_secret_name = value
 
     @property
@@ -179,6 +206,10 @@ def setup_test_config():
 def fixture_env_api_integration():
     env_configuration = init_from_secrets_api(EnvironmentAPIConfigurationPolicy,
                                               Configuration.TEST_CONFIG.environment_api_configuration_file_secret_name)
+    if isinstance(env_configuration.private_subnets, str):
+        env_configuration.private_subnets = env_configuration.private_subnets.split(",")
+    if isinstance(env_configuration.public_subnets, str):
+        env_configuration.public_subnets = env_configuration.public_subnets.split(",")
     env_configuration.data_directory_path = Path("/tmp/test_data")
     infrastructure_api = InfrastructureAPI()
     environment_api = infrastructure_api.get_environment_api(env_configuration, aws_api=aws_api)
@@ -203,7 +234,14 @@ def fixture_env_api_mgmt_integration():
 def fixture_cicd_api_integration(env_api_integration):
     cicd_api_configuration = CICDAPIConfigurationPolicy()
     cicd_api = CICDAPI(cicd_api_configuration, env_api_integration)
+
+    cicd_api.jenkins_master_ecs_api.build_api.git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
+    cicd_api.jenkins_hagent_ecs_api.build_api.git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
     yield cicd_api
+    try:
+        shutil.rmtree(cicd_api.hagent_build_api.docker_build_directory)
+    except FileNotFoundError:
+        pass
 
 
 @pytest.fixture(name="ec2_api_mgmt_integration")
@@ -211,6 +249,16 @@ def fixture_ec2_api_mgmt_integration(env_api_mgmt_integration):
     api_configuration = EC2APIConfigurationPolicy()
     api = EC2API(api_configuration, env_api_mgmt_integration)
     yield api
+
+
+@pytest.fixture(name="github_api")
+def fixture_github_api():
+    if Configuration.TEST_CONFIG.github_api_configuration_file_secret_name is None:
+        raise ValueError("github_api_configuration_file_secret_name is not set")
+    github_config = init_from_secrets_api(GithubAPIConfigurationPolicy,
+                                              Configuration.TEST_CONFIG.github_api_configuration_file_secret_name)
+    github_api = GithubAPI(github_config)
+    yield github_api
 
 
 @pytest.mark.unit
@@ -746,6 +794,66 @@ def test_run_remote_deployer_deploy_windows_target_raw(cicd_api_integration, ec2
 
 
 @pytest.mark.unit
+def test_provision_jenkins_master_infrastructure(cicd_api_integration, ec2_api_mgmt_integration):
+    assert cicd_api_integration.provision_jenkins_master_infrastructure(public_dns_prefix="jenkins-public",
+                                                                        private_dns_prefix="jenkins")
+
+@pytest.mark.wip
+def test_update_jenkins_master(cicd_api_integration):
+    cicd_api_integration.hagent_build_api.horey_git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
+    assert cicd_api_integration.update_jenkins_master(public_dns_prefix="jenkins-public",
+                                                                        private_dns_prefix="jenkins")
+
+
+@pytest.mark.unit
+def test_provision_jenkins_hagent_infrastructure(cicd_api_integration, ec2_api_mgmt_integration):
+    assert cicd_api_integration.provision_jenkins_hagent_infrastructure()
+
+
+@pytest.mark.unit
+def test_update_jenkins_hagent(cicd_api_integration, ec2_api_mgmt_integration):
+    #cicd_api_integration.ecs_api.get_next_build_number = lambda : 1
+    assert cicd_api_integration.update_jenkins_hagent()
+
+
+@pytest.mark.unit
+def test_trigger_hagent_job(cicd_api_integration):
+    cicd_api_integration.hagent_build_api.horey_git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
+    assert cicd_api_integration.trigger_hagent_job()
+
+
+
+@pytest.mark.unit
+def test_provision_github_hagent(cicd_api_integration, ec2_api_mgmt_integration, github_api):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+    assert cicd_api_integration.provision_github_hagent(github_api,
+                                                        bastions=ec2_instances,
+                                                        repository_name=Configuration.TEST_CONFIG.github_hagent_repo_name
+                                                        )
+
+@pytest.mark.unit
+def test_provision_github_hagent_dockerized(cicd_api_integration, ec2_api_mgmt_integration, github_api):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+
+    cicd_api_integration.hagent_build_api.docker_build_directory.mkdir(exist_ok=True)
+    file_paths = []
+    for secret_name in Configuration.TEST_CONFIG.github_hagent_docker_files_secret_names.split(","):
+        cicd_api_integration.environment_api.aws_api.get_secret_file(secret_name,
+                                                                              cicd_api_integration.hagent_build_api.docker_build_directory,
+                                                                              region=Region.get_region(mock_values.region))
+        file_paths.append( cicd_api_integration.hagent_build_api.docker_build_directory/secret_name)
+
+    assert cicd_api_integration.provision_github_hagent_dockerized(github_api,
+                                                        bastions=ec2_instances,
+                                                        repository_name=Configuration.TEST_CONFIG.github_hagent_repo_name,
+                                                        horey_repo_path = Path(__file__).parent.parent.parent,
+                                                        extra_file_paths=file_paths
+
+                                                        )
+
+@pytest.mark.unit
 def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, ec2_api_mgmt_integration):
     ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
                      Configuration.TEST_CONFIG.bastion_chain.split(",")]
@@ -771,9 +879,8 @@ def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, e
 
     target_master.append_remote_step("Test", entrypoint_1)
 
-    # backup
     def entrypoint_2():
-        cicd_api_integration.run_remote_provision_constructor(target_master,
+        cicd_api_integration.run_remote_provision_constructor(target_backup,
                                                               "vrrp",
                                                               action="install",
                                                               virtual_ip_address=virtual_ip_address,
@@ -782,8 +889,59 @@ def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, e
                                                               )
 
     target_master.append_remote_step("Test", entrypoint_2)
-
+    assert cicd_api_integration.run_remote_deployer_deploy_targets([target_backup], asynchronous=False)
     assert cicd_api_integration.run_remote_deployer_deploy_targets([target_master, target_backup], asynchronous=False)
+
+
+@pytest.mark.todo
+def test_run_remote_deployer_deploy_targets_vrrp_install(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+
+    target_master = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.ec2_vrrp_master,
+                                                                     bastions=ec2_instances
+                                                                     )[0]
+
+    target_backup = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.ec2_vrrp_backup,
+                                                                     bastions=ec2_instances
+                                                                     )[0]
+    virtual_ip_address1 = ".".join(target_backup.deployment_target_address.split(".")[:3]) + ".253"
+    virtual_ip_address2 = ".".join(target_backup.deployment_target_address.split(".")[:3]) + ".252"
+
+    # master
+    def entrypoint():
+        cicd_api_integration.run_remote_provision_constructor(target_master,
+                                                              "vrrp",
+                                                              action="install",
+                                                              architechture="active_active",
+                                                              address_map={
+                                                                  virtual_ip_address1: target_master.deployment_target_address,
+                                                                  virtual_ip_address2: target_backup.deployment_target_address},
+                                                              )
+
+    target_master.append_remote_step("Test", entrypoint)
+    assert cicd_api_integration.run_remote_deployer_deploy_targets([target_master], asynchronous=False)
+
+
+
+@pytest.mark.unit
+def test_run_remote_deployer_deploy_targets_nat_install(cicd_api_integration, ec2_api_mgmt_integration):
+    ec2_instances = [ec2_api_mgmt_integration.get_instance(name=ec2_name) for ec2_name in
+                     Configuration.TEST_CONFIG.bastion_chain.split(",")]
+
+    target_master = cicd_api_integration.generate_deployment_targets(Configuration.TEST_CONFIG.ec2_vrrp_master,
+                                                                     bastions=ec2_instances
+                                                                     )[0]
+
+    def entrypoint():
+        cicd_api_integration.run_remote_provision_constructor(target_master,
+                                                              "nat",
+                                                              action="install",
+                                                              src_network=target_master.deployment_target_address
+                                                              )
+
+    target_master.append_remote_step("Test", entrypoint)
+    assert cicd_api_integration.run_remote_deployer_deploy_targets([target_master], asynchronous=False)
 
 
 @pytest.mark.unit

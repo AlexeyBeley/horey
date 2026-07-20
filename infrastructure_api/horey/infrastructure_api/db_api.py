@@ -2,6 +2,11 @@
 Standard Load balancing maintainer.
 
 """
+from typing import List
+
+from horey.aws_api.aws_services_entities.elasticache_serverless_cache import ElasticacheServerlessCache
+from horey.aws_api.aws_services_entities.elasticache_user_group import ElasticacheUserGroup
+from horey.aws_api.aws_services_entities.elasticache_user import ElasticacheUser
 from horey.aws_api.aws_services_entities.glue_database import GlueDatabase
 from horey.aws_api.aws_services_entities.glue_table import GlueTable
 from horey.h_logger import get_logger
@@ -26,6 +31,7 @@ class DBAPI:
         self.environment_api = environment_api
         self._max_version_raw = None
         self.dns_api = None
+        self.configuration.slug = f"{self.environment_api.configuration.environment_level_abbr}-{self.environment_api.configuration.environment_name}"
 
     def provision(self):
         """
@@ -424,3 +430,132 @@ class DBAPI:
                 str_ret += f"{path}{k}: added in d2\n"
 
         return str_ret
+
+    def provision_elasticache_serverless(self, name=None, cache:ElasticacheServerlessCache=None, security_groups=None):
+        """
+        Provision elasticache
+        !!! Make sure you have: All permissions from role: ElastiCacheServiceRolePolicy
+
+        :return:
+        """
+
+        if not cache:
+            name = name or self.configuration.serverless_elasticache_name
+            cache = ElasticacheServerlessCache({"name":name})
+
+            cache.region = self.environment_api.region
+
+            cache.description = f"Serverless cache in {self.environment_api.configuration.environment_name}"
+            cache.subnet_ids = [subnet.id for subnet in self.environment_api.private_subnets]
+
+            cache.engine = "redis"
+            cache.tags = self.environment_api.configuration.tags
+            cache.tags.append({
+            "Key": "name",
+            "Value": name
+            })
+            if security_groups:
+                cache.security_group_ids = [sec_group.id for sec_group in security_groups]
+
+        self.environment_api.aws_api.elasticache_client.provision_serverless_cache(cache)
+
+        return cache
+
+    def dispose_elasticache_serverless(self, name=None):
+        """
+        Provision elasticache
+
+        :return:
+        """
+
+        name = name or self.configuration.serverless_elasticache_name
+        cache = ElasticacheServerlessCache({"name": name})
+
+        cache.region = self.environment_api.region
+
+        self.environment_api.aws_api.elasticache_client.dispose_serverless_cache(cache)
+
+        return cache
+
+    def provision_elasticache_user(self, cache: ElasticacheServerlessCache, user_group_name: str, user_name:str, passwords: List[str]):
+        """
+        Provision elasticache user
+
+        :return:
+        """
+
+        user_group = ElasticacheUserGroup({})
+        user_group.region = cache.region
+        user_group.user_group_name = user_group_name
+        user_group.id= user_group_name
+
+        if not self.environment_api.aws_api.elasticache_client.update_user_group_information(user_group):
+            user_group.tags = self.environment_api.configuration.tags
+            user_group.tags.append({
+                "Key": "name",
+                "Value": user_group_name
+            })
+
+            default_user = self.get_elasticache_user(cache.region, "default")
+            user_group.user_ids = [default_user.id]
+
+            if cache.engine == "redis":
+                user_group.engine = cache.engine
+            else:
+                raise ValueError("Unsupported engine")
+
+            self.environment_api.aws_api.elasticache_client.provision_user_group(user_group)
+
+
+        user = ElasticacheUser({})
+        user.region = cache.region
+        user.user_group_id = user_group.id
+        user.user_name = user_name
+        user.id = user_name
+        user.passwords = passwords
+        user.access_string = "on ~* +@all"
+        user.tags = self.environment_api.configuration.tags
+        user.tags.append({
+            "Key": "name",
+            "Value": user_name
+        })
+
+        if cache.engine == "redis":
+            user.engine = cache.engine
+        else:
+            raise ValueError("Unsupported engine")
+
+        self.environment_api.aws_api.elasticache_client.provision_user(user)
+
+        return user
+
+    def get_elasticache_user(self, region, user_name):
+        """
+        Get elasticache user
+
+        :param region:
+        :param user_name:
+        :return:
+        """
+
+        for user in self.environment_api.aws_api.elasticache_client.yield_users(region=region):
+            if user.user_name == "default":
+                break
+        else:
+            raise RuntimeError(f"Was not able to find '{user_name}' user")
+
+        return user
+
+    def get_elasticache_cache(self, name=None):
+        """
+        Get elasticache cache
+        :param name:
+        :return:
+        """
+
+        name = name or self.configuration.serverless_elasticache_name
+        for cache in self.environment_api.aws_api.elasticache_client.yield_serverless_caches(region=self.environment_api.region):
+            if cache.name == name:
+                return cache
+
+        raise ValueError(f"Was not able to find cache '{name}'")

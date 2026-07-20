@@ -5,6 +5,7 @@ Standard Horey Actor: Script entrypoint to a python package.
 
 import argparse
 import json
+import sys
 
 from horey.jenkins_api.jenkins_api import JenkinsAPI
 from horey.jenkins_api.jenkins_api_configuration_policy import (
@@ -26,13 +27,16 @@ def run_job_parser():
     parser.add_argument(
         "--build_info_file", required=True, type=str, help="build_info_file"
     )
+    parser.add_argument(
+        "--jenkins_api_config_file", required=True, type=str, help="jenkins_api_config_file"
+    )
 
     return parser
 
 
-def run_job(arguments, configs_dict) -> None:
+def run_job(arguments) -> None:
     configuration = JenkinsAPIConfigurationPolicy()
-    configuration.init_from_dictionary(configs_dict)
+    configuration.configuration_file_full_path = arguments.jenkins_api_config_file
     configuration.init_from_file()
 
     manager = JenkinsAPI(configuration)
@@ -43,6 +47,39 @@ def run_job(arguments, configs_dict) -> None:
 
 
 action_manager.register_action("run_job", run_job_parser, run_job)
+# endregion
+
+
+# region run_job_from_env_vars
+def run_job_from_env_vars_parser():
+    description = "Run single job from env vars"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument(
+        "--job_name", required=True, type=str, help="build_info_file"
+    )
+    parser.add_argument(
+        "--jenkins_api_config_file", required=True, type=str, help="jenkins_api_config_file"
+    )
+
+    return parser
+
+
+def run_job_from_env_vars(arguments, job_params) -> None:
+    configuration = JenkinsAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = arguments.jenkins_api_config_file
+    configuration.init_from_file()
+
+    jenkins_api = JenkinsAPI(configuration)
+
+    job = JenkinsJob(arguments.job_name, job_params)
+
+    errors_report = jenkins_api.execute_jobs([job])
+    if errors_report:
+        print(errors_report)
+        sys.exit(1)
+
+
+action_manager.register_action("run_job_from_env_vars", run_job_from_env_vars_parser, run_job_from_env_vars)
 # endregion
 
 

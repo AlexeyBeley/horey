@@ -1,0 +1,875 @@
+import datetime
+import time
+
+from horey.async_orchestrator.async_orchestrator import AsyncOrchestrator
+from horey.auction_api.maauction import MAauction
+from horey.auction_api.mcsherryauction import Mcsherryauction
+from horey.auction_api.auction_event import AuctionEvent
+from horey.auction_api.pennerauction import Pennerauction
+from horey.auction_api.mcdougallauction import Mcdougallauction
+from horey.auction_api.kayesauction import Kayesauction
+from horey.auction_api.neighbourhoodauctions import Neighbourhoodauctions
+
+from horey.auction_api.lot import Lot
+import sqlite3
+from horey.h_logger import get_logger
+
+logger = get_logger()
+
+
+class AuctionAPI:
+    def __init__(self, proxy=None):
+        self.db_file_path = "/opt/horey/auctions.db"
+
+        self.providers = [Neighbourhoodauctions(), Mcsherryauction(), MAauction(proxy=proxy), Pennerauction(), Mcdougallauction(), Kayesauction()]
+        self.auction_events = None
+        self.lots = None
+        self.async_orchestrator = AsyncOrchestrator()
+        self._db_connection = None
+        self._db_cursor = None
+    @property
+    def db_connection(self):
+        if self._db_connection is None:
+            self._db_connection = sqlite3.connect(self.db_file_path, check_same_thread=False)
+        return self._db_connection
+
+    @property
+    def db_cursor(self):
+        if self._db_cursor is None:
+            self._db_cursor = self.db_connection.cursor()
+            self._db_cursor.execute("PRAGMA foreign_keys = ON;")
+        return self._db_cursor
+
+    def init_providers_from_db(self):
+        """
+        Init all providers
+
+        :return:
+        """
+
+        map_providers = {}
+        self.db_cursor.execute(f"SELECT * FROM providers")
+        records = self.db_cursor.fetchall()
+        for auc_id, name in records:
+            for provider in self.providers:
+                if provider.name == name:
+                    provider.id = auc_id
+                    map_providers[provider.id] = provider
+
+        return self.providers
+
+    def write_providers_to_db(self):
+        """
+        Write into DB.
+
+        :return:
+        """
+
+        for provider in self.providers:
+            self.db_cursor.execute(
+                    "INSERT OR IGNORE INTO providers (name) VALUES (?)",
+                    (provider.name,)
+                )
+
+    def provision_db_providers_table(self):
+        """
+        Create table
+
+        :return:
+        """
+
+        self.db_cursor.execute('''
+                CREATE TABLE IF NOT EXISTS providers (
+                    id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE
+                )
+            ''')
+        self.db_connection.commit()  # Commit changes to the database
+        logger.info(f"Database '{self.db_file_path}' created successfully with 'providers' table.")
+
+    def add_provider(self, provider):
+        """
+        Create table
+
+        :return:
+        """
+        insert_sql = """
+                    INSERT INTO providers 
+                    (name)
+                    VALUES (?)
+                    """
+
+
+        self.db_cursor.execute(insert_sql, [provider.name])
+        self.db_connection.commit()
+        logger.info(f"Database '{self.db_file_path}' added {provider.name} to 'providers' table.")
+
+
+    def write_auction_events_to_db(self):
+        """
+        Write into DB.
+
+        :return:
+        """
+
+        raise DeprecationWarning("Old")
+
+    def provision_db_auction_events_table(self):
+        """
+        DB auction_events_table
+        :return:
+        """
+        self.db_cursor.execute('''
+                CREATE TABLE IF NOT EXISTS auction_events (
+                    id INTEGER PRIMARY KEY ,
+                    provider_id INTEGER REFERENCES providers(id) NOT NULL,
+                    name TEXT NOT NULL UNIQUE,
+                    description TEXT NOT NULL,
+                    url TEXT NOT NULL UNIQUE,
+                    start_time TEXT,
+                    end_time TEXT,
+                    address TEXT NOT NULL,
+                    provinces TEXT NOT NULL
+                )
+            ''')
+        self.db_connection.commit()  # Commit changes to the database
+        logger.info(f"Database '{self.db_file_path}' created successfully with 'auction_events' table.")
+
+    def write_lots_to_db(self):
+        """
+        Write into DB.
+
+        :return:
+        """
+
+        raise DeprecationWarning()
+
+    def provision_db_lots_table(self):
+        """
+        DB lots_table
+
+        :return:
+        """
+
+
+        self.db_cursor.execute('''
+                CREATE TABLE IF NOT EXISTS lots(
+                    id INTEGER PRIMARY KEY,
+                    auction_event_id INTEGER REFERENCES auction_events(id) NOT NULL,
+                    name TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    interested BOOL,
+                    starting_bid REAL NOT NULL,
+                    current_max REAL,
+                    my_max REAL,
+                    admin_fee STRING,
+                    raw_text STRING,
+                    url TEXT NOT NULL UNIQUE,
+                    image_url TEXT,
+                    address TEXT,
+                    province TEXT
+                )
+            ''')
+        self.db_connection.commit()  # Commit changes to the database
+        logger.info(f"Database '{self.db_file_path}' created successfully with 'lots' table.")
+
+    def init_auction_events_from_db(self):
+        """
+        Init auction events and their lots
+
+        :return:
+        """
+
+        self.auction_events = []
+        self.db_cursor.execute(f"SELECT * FROM auction_events")
+        known_auction_event_lines = self.db_cursor.fetchall()
+        for line in known_auction_event_lines:
+            event = AuctionEvent()
+            event.init_from_db_line(line)
+
+            if not event.id:
+                raise NotImplementedError("DB ID was not init properly")
+            self.auction_events.append(event)
+
+        lots = self.init_lots_from_db()
+
+        map_events = {auction_event.id: auction_event for auction_event in self.auction_events}
+
+        for lot in lots:
+            map_events[lot.auction_event_id].lots.append(lot)
+
+        return self.auction_events
+
+    def init_lots_from_db(self):
+        """
+        Init lots from DB
+        :return:
+        """
+
+        self.lots = []
+        self.db_cursor.execute(f"SELECT * FROM lots")
+        lots_lines = self.db_cursor.fetchall()
+        for line in lots_lines:
+            lot = Lot()
+            lot.init_from_db_line(line)
+            self.lots.append(lot)
+        return self.lots
+
+    def provision_tables(self):
+        """
+        Provision empty tables.
+
+        :return:
+        """
+
+        self.provision_db_providers_table()
+        self.provision_db_auction_events_table()
+        self.provision_db_lots_table()
+
+    def upsert_db_auction_event(self, auction_event: AuctionEvent):
+        """
+        Update or insert auction event.
+
+        :param auction_event:
+        :return:
+        """
+
+        if auction_event.id is not None:
+            if auction_event.end_time is not None:
+                format_string = "%Y-%m-%d %H:%M:%S.%f"
+                return self.update_auction_event(auction_event.id, end_time=auction_event.end_time.strftime(format_string))
+            return True
+
+        sql_insert = """
+            INSERT INTO auction_events 
+            (provider_id, name, description, url, start_time, end_time, address, provinces, last_update_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """
+
+        self.db_cursor.execute("PRAGMA foreign_keys = ON;")
+
+        base_tuple = auction_event.generate_db_tuple()
+        data_tuple = (auction_event.provider_id,) + base_tuple
+        try:
+            self.db_cursor.execute(sql_insert, data_tuple)
+            self.db_connection.commit()
+        except Exception as inst_err:
+            logger.exception(f"Error Inserting {repr(inst_err)}")
+            if "UNIQUE constraint" in repr(inst_err):
+                logger.error(f"Data is not unique: {data_tuple}")
+                select_sql = "select * from auction_events where name=? or url=?"
+                ret = self.db_cursor.execute(select_sql, (auction_event.name, auction_event.url,))
+                lines = ret.fetchall()
+                self.delete_auction_event_with_lots(lines[0][0])
+                self.db_cursor.execute(sql_insert, data_tuple)
+                self.db_connection.commit()
+            else:
+                logger.error(f"Unknown error with data: {data_tuple}")
+
+                #delete_sql = "DELETE from auction_events where url = ?"
+                #ret = cursor.execute(delete_sql, (lot.url,))
+                #logger.exception(f"Deleted: {ret.fetchall()}")
+                #cursor.execute(insert_sql, data_tuple)
+
+                # url = 'https://www.jardineauctioneers.com/auctions/24895-45th-annual-fredericton-sports-investment-auction?filter=(auction_ring_id:1200)'
+                # self.update_auction_event(23, url=url)
+                raise
+
+        return True
+
+    def update_auction_event(self, auction_event_id, end_time=None, start_time = None, last_update_time=None, url=None):
+        """
+        self.update_auction_event(139, start_time="2026-01-29 10:00:00.000000")
+        '{"horey_cached_type": "datetime", "value": "2025-10-28 15:00:00.000000"}'
+
+        :param start_time:
+        :param url:
+        :param auction_event_id:
+        :param end_time:
+        :param last_update_time:
+        :return:
+        """
+
+        logger.info(f"Updating auction event: {auction_event_id}")
+
+        if start_time:
+            sql_update_start_time = """
+            UPDATE auction_events
+            SET start_time = ?
+            WHERE id = ?
+            """
+            new_time = '{"horey_cached_type": "datetime", "value": "' + start_time + '"}'
+            self.db_cursor.execute(sql_update_start_time, (new_time, auction_event_id))
+            self.db_connection.commit()
+
+        if end_time:
+            sql_update_end_time = """
+            UPDATE auction_events
+            SET end_time = ?
+            WHERE id = ?
+            """
+            new_time = '{"horey_cached_type": "datetime", "value": "' + end_time + '"}'
+            self.db_cursor.execute(sql_update_end_time, (new_time, auction_event_id))
+            self.db_connection.commit()
+
+        if last_update_time:
+            sql_update_last_update_time = """
+            UPDATE auction_events
+             SET last_update_time = ?
+             WHERE id = ?
+             """
+
+            new_time = '{"horey_cached_type": "datetime", "value": "' + last_update_time + '"}'
+            self.db_cursor.execute(sql_update_last_update_time, (new_time, auction_event_id))
+            self.db_connection.commit()
+
+        if url:
+            sql_update_url = """
+            UPDATE auction_events
+             SET url = ?
+             WHERE id = ?
+            """
+
+            self.db_cursor.execute(sql_update_url, (url, auction_event_id))
+            self.db_connection.commit()
+
+    def update_db_auction_event(self, auction_event: AuctionEvent):
+        """
+        Write to DB the new info.
+
+        :param auction_event:
+        :return:
+        """
+
+        for lot in auction_event.lots:
+            self.upsert_db_lot(lot)
+
+    def upsert_db_lot(self, lot: Lot):
+        """
+        Update or insert lot.
+        :param lot:
+        :return:
+        """
+        logger.info(f"Upserting Lot to DB: {lot.name}")
+        insert_sql = """
+                    INSERT INTO lots 
+                    (auction_event_id, name, description, interested, starting_bid, current_max, my_max, admin_fee, raw_text, url, image_url, address, province)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """
+
+        update_sql = """
+            UPDATE lots
+            SET 
+                auction_event_id = ?,
+                name = ?,
+                description = ?,
+                interested = ?,
+                starting_bid = ?,
+                current_max = ?,
+                my_max = ?,
+                admin_fee = ?,
+                raw_text = ?,
+                url = ?,
+                image_url = ?,
+                address = ?,
+                province = ?
+            WHERE
+                id = ?"""
+
+        data_tuple = lot.generate_db_tuple()
+
+        try:
+            if lot.id is not None:
+                self.db_cursor.execute(update_sql, data_tuple + (lot.id,))
+            else:
+                try:
+                    self.db_cursor.execute(insert_sql, data_tuple)
+                except Exception as inst_error:
+                    logger.exception(f"Error: {repr(inst_error)} inserting: {data_tuple}")
+                    if "IntegrityError" in repr(inst_error):
+                        delete_sql = "DELETE from lots where url = ?"
+                        ret = self.db_cursor.execute(delete_sql, (lot.url,))
+                        self.db_connection.commit()
+                        logger.exception(f"Deleted: {ret.fetchall()}")
+                        self.db_cursor.execute(insert_sql, data_tuple)
+
+                    else:
+                        breakpoint()
+                        raise
+
+            self.db_connection.commit()
+        except sqlite3.OperationalError as e:
+            if "unable to open database file" in str(e):
+                logger.error(f"Database file access error: {self.db_file_path}")
+                breakpoint()
+                raise
+            else:
+                raise
+        except Exception as inst_error:
+            logger.exception(f"Error: {repr(inst_error)} inserting: {data_tuple}")
+            raise
+
+    def generate_auction_event_reports(self):
+        """
+        Magic
+
+        :return:
+        """
+
+        reports = []
+        events = self.init_auction_events_from_db()
+        providers_by_id = {provider.id: provider for provider in self.init_providers_from_db()}
+        by_date = {}
+
+        for event in events:
+            # self.update_auction_event(143, start_time="2026-01-29 10:00:00.000000")
+            logger.info(f"Checking event: {event.id}")
+
+            try:
+                event.finished
+
+            except Exception:
+                breakpoint()
+                # self.update_auction_event(event.id, end_time="2026-04-25 10:00:00.000000")
+
+            if event.finished:
+                continue
+
+            if event.end_time:
+                by_date[event.end_time] = event
+            else:
+                by_date[event.start_time] = event
+
+        for auction_event_date in sorted(by_date):
+            report = AuctionEventReport()
+            report.auction_event = by_date[auction_event_date]
+            report.provider = providers_by_id[report.auction_event.provider_id]
+            reports.append(report)
+
+        known_provider_ids = {report.provider.id for report in reports}
+        for provider in self.providers:
+            if provider.id not in known_provider_ids:
+                report = AuctionEventReport()
+                report.provider = provider
+                reports.append(report)
+
+        return reports
+
+    def update_info_provider_auction_events(self, provider_id, asynchronous=False):
+        """
+        Update info for all provider's auction events.
+
+        :param provider_id:
+        :param asynchronous:
+        :return:
+        """
+        if asynchronous:
+            task_name = f"update_info_provider_auction_events_asynchronous->{provider_id}"
+            try:
+                task = self.async_orchestrator.start_task_from_function(
+                    self.update_info_provider_auction_events_asynchronous, provider_id, task_name=task_name)
+            except self.async_orchestrator.ExistingTaskID:
+                if self.async_orchestrator.tasks[task_name].finished:
+                    del self.async_orchestrator.tasks[task_name]
+                    task = self.async_orchestrator.start_task_from_function(
+                        self.update_info_provider_auction_events_asynchronous, provider_id, task_name=task_name)
+                    logger.info(f"Started {task_name}")
+                else:
+                    logger.info(f"Updating already in progress: provider_id {provider_id}")
+                    task = self.async_orchestrator.tasks[task_name]
+            return task
+
+        self.update_info_provider_auction_events_asynchronous(provider_id)
+
+    def init_provider_from_db(self, provider_id=None, provider_name=None):
+        provider_id = int(provider_id) if provider_id is not None else None
+        self.init_providers_from_db()
+        for provider in self.providers:
+            if provider_id is not None and provider.id == provider_id:
+                break
+            if provider_name is not None and provider.name == provider_name:
+                break
+        else:
+            raise ValueError(f"Was not able to find provider {provider_id=}")
+
+        self.init_auction_events_from_db()
+        provider.auction_events = [self.init_auction_event_from_db(auction_event.id) for auction_event in
+                                   self.auction_events if auction_event.provider_id == provider.id]
+        return provider
+
+    def update_info_provider_auction_events_asynchronous(self, provider_id):
+        """
+        Update asynchronous in backend
+
+        :param provider_id:
+        :return:
+        """
+        provider = self.init_provider_from_db(provider_id=provider_id)
+
+        known_auction_events_by_url= {auction_event.url: auction_event  for auction_event in provider.auction_events}
+
+        for auction_event in provider.yield_auction_events(known_auction_events_by_url):
+            auction_event.provider_id = provider.id
+
+            try:
+                auction_event.id = known_auction_events_by_url[auction_event.url].id
+            except KeyError:
+                pass
+
+            self.upsert_db_auction_event(auction_event)
+
+        return None
+
+    def update_info_auction_event(self, auction_event_id, asynchronous=False):
+        if asynchronous:
+            seconds_wait = 60
+            task_name = f"update_info_auction_event->{auction_event_id}"
+            try:
+                task = self.async_orchestrator.start_task_from_function(self.update_info_auction_event_async,
+                                                                        auction_event_id, task_name=task_name)
+
+                logger.info(f"Started update_info_auction_event->{auction_event_id}")
+            except self.async_orchestrator.ExistingTaskID:
+                if self.async_orchestrator.tasks[task_name].finished:
+                    del self.async_orchestrator.tasks[task_name]
+                    task = self.async_orchestrator.start_task_from_function(self.update_info_auction_event_async,
+                                                                            auction_event_id, task_name=task_name)
+                    logger.info(f"Started update_info_auction_event->{auction_event_id}")
+                else:
+                    logger.info(f"Updating already in progress: auction_event {auction_event_id}")
+                    task = self.async_orchestrator.tasks[task_name]
+
+            logger.info(f"Starting waiting loop in update_info_auction_event->{auction_event_id}")
+            for i in range(seconds_wait):
+                if not task.finished:
+                    logger.info(f"Update not yet finished, going to sleep {i}/{seconds_wait}")
+                    time.sleep(1)
+                    continue
+
+                logger.info(f"Update finished, checking status")
+
+                if task.exception:
+                    return f"Update failed with exception {repr(task.exception)}"
+
+                if task.exit_code != 0:
+                    return f"Update failed with exit code {repr(task.exit_code)}"
+
+                return f"Successfully updated update_info_auction_event->{auction_event_id}"
+
+            return f"Started updating auction_event info and after {seconds_wait} seconds still running: {auction_event_id=}"
+
+        self.update_info_auction_event_async(auction_event_id)
+
+    def update_info_auction_event_async(self, auction_event_id):
+        """
+        Update info for auction event.
+
+        :param auction_event_id:
+        :return:
+        """
+
+        try:
+            return self.update_auction_event_lots_ng(auction_event_id)
+        except NotImplementedError:
+            logger.warning(f"Not implemented for {auction_event_id}")
+        logger.info(f"Started update info for auction_event_id {auction_event_id}")
+
+        auction_event = self.init_auction_event_from_db(auction_event_id)
+        self.init_providers_from_db()
+
+        for provider in self.providers:
+            if auction_event.provider_id == provider.id:
+                break
+        else:
+            raise RuntimeError(f"Was not able to find {auction_event.provider_id=} in the DB")
+
+        logger.info(f"Updating {auction_event_id=} {auction_event.provider_id=}")
+
+        old_lots_by_url = {lot.url: lot for lot in auction_event.lots}
+        new_lots_by_url = {lot.url: lot for lot in provider.init_auction_event_lots(auction_event)}
+
+        for lot in new_lots_by_url.values():
+            self.upsert_db_lot(lot)
+
+        for lot_url, lot in old_lots_by_url.items():
+            if lot_url not in new_lots_by_url:
+                self.delete_db_lot(lot)
+
+        format_string = "%Y-%m-%d %H:%M:%S.%f"
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+
+        self.update_auction_event(auction_event.id, last_update_time=now.strftime(format_string))
+
+    def update_auction_event_lots_ng(self, auction_event_id):
+        """
+        Yield lot by lot.
+
+        :param auction_event_id:
+        :return:
+        """
+        logger.info(f"Started update info for auction_event_id {auction_event_id}")
+
+        auction_event = self.init_auction_event_from_db(auction_event_id)
+        self.init_providers_from_db()
+
+        for provider in self.providers:
+            if auction_event.provider_id == provider.id:
+                break
+        else:
+            raise RuntimeError(f"Was not able to find {auction_event.provider_id=} in the DB")
+
+        logger.info(f"Updating {auction_event_id=} {auction_event.provider_id=}")
+
+        old_lots_by_url = {lot.url: lot for lot in auction_event.lots}
+        new_lots_by_url = {}
+        for new_lot in provider.yield_auction_event_lots(auction_event):
+            new_lot.auction_event_id = auction_event.id
+            new_lots_by_url[new_lot.url] = new_lot
+
+            self.upsert_db_lot(new_lot)
+
+        for lot_url, lot in old_lots_by_url.items():
+            if lot_url not in new_lots_by_url:
+                self.delete_db_lot(lot)
+
+        format_string = "%Y-%m-%d %H:%M:%S.%f"
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+
+        self.update_auction_event(auction_event.id, last_update_time=now.strftime(format_string))
+
+    def delete_auction_event_with_lots(self, auction_event_id):
+        """
+        Delete auction event and lots.
+
+        :param auction_event_id:
+        :param connection:
+        :param cursor:
+        :return:
+        """
+
+        auction_event = self.init_auction_event_from_db(auction_event_id)
+        for lot in auction_event.lots:
+            self.delete_db_lot(lot)
+        self.delete_db_auction_event(auction_event)
+
+    def delete_db_lot(self, lot: Lot):
+        """
+        Delete lot.
+
+        :param lot:
+        :return:
+        """
+
+        table_name = 'lots'
+        delete_query = f"DELETE FROM {table_name} WHERE id = ?"
+
+        try:
+            self.db_cursor.execute(delete_query, (lot.id,))
+            self.db_connection.commit()
+        except Exception as inst_err:
+            logger.exception(inst_err)
+            breakpoint()
+            raise
+
+    def delete_db_auction_event(self, auction_event: AuctionEvent):
+        """
+        Delete auction event only.
+
+        :param auction_event:
+        :return:
+        """
+
+        table_name = 'auction_events'
+        delete_query = f"DELETE FROM {table_name} WHERE id = ?"
+        self.db_cursor.execute(delete_query, (auction_event.id, ))
+        self.db_connection.commit()
+
+    def init_auction_event_from_db(self, auction_event_id) -> AuctionEvent:
+        auction_event_id = int(auction_event_id)
+        self.init_auction_events_from_db()
+
+        for auction_event in self.auction_events:
+            if auction_event.id == auction_event_id:
+                self.init_lots_from_db()
+                auction_event.lots = [lot for lot in self.lots if lot.auction_event_id == auction_event_id]
+                return auction_event
+        raise ValueError(f"Was not able to find {auction_event_id=}")
+
+    def auction_event_manual_update(self):
+        self.init_auction_events_from_db()
+        for auction_event in self.auction_events:
+            print(f"{auction_event.id} - name: {auction_event.name} - {auction_event.end_time} - {auction_event.url}")
+        breakpoint()
+        auction_event_id = 99
+        self.update_auction_event(auction_event_id, end_time="2025-11-25 20:00:00.000000")
+
+    def add_column_after_column(self):
+        """
+            id INTEGER PRIMARY KEY,
+            auction_event_id INTEGER REFERENCES auction_events(id) NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL,
+            interested BOOL,
+            starting_bid REAL NOT NULL,
+            current_max REAL,
+            my_max REAL,
+            admin_fee STRING,
+            raw_text STRING,
+            url TEXT NOT NULL UNIQUE,
+            image_url TEXT,
+            address TEXT,
+            province TEXT
+
+        :return:
+        """
+        breakpoint()
+        self.raw_sqlite_command("ALTER TABLE lots RENAME TO _lots_old;")
+
+        self.provision_db_lots_table()
+        query = """
+        INSERT INTO lots (
+        id,
+        auction_event_id,
+        name,
+        description,
+        interested,
+        starting_bid,
+        current_max,
+        my_max,
+        admin_fee,
+        raw_text,
+        url,
+        image_url,
+        address,
+        province
+        )
+        SELECT
+        id,
+        auction_event_id,
+        name,
+        description,
+        interested,
+        1 AS starting_bid,
+        current_max,
+        my_max,
+        admin_fee,
+        raw_text,
+        url,
+        image_url,
+        address,
+        province
+        FROM
+        _lots_old;
+        """
+
+        self.raw_sqlite_command(query)
+
+        self.raw_sqlite_command("DROP TABLE _lots_old;")
+
+    def raw_sqlite_command(self, query, *args, **kwargs):
+        """
+        Command
+        :return:
+        """
+
+        try:
+            self.db_cursor.execute(query, *args, **kwargs)
+            self.db_connection.commit()
+        except Exception as inst_err:
+            logger.exception(inst_err)
+            breakpoint()
+            raise
+
+    def delete_providers_auction_events(self, provider):
+        """
+        Delete all auction events of the provider.
+
+        :param provider:
+        :return:
+        """
+
+        breakpoint()
+        return 0
+
+        provider = self.init_provider_from_db(provider_name=provider.name)
+        for auction_event in provider.auction_events:
+            self.raw_sqlite_command(f"DELETE FROM auction_events WHERE id = ?",
+                    (auction_event.id,))
+            logger.info(f"Deleted {auction_event.name=}")
+        logger.info(f"Deleted total {len(provider.auction_events)} auction events")
+
+    def remote_get_auction_event_lots(self, auction_provider_name, auction_event_url):
+        """
+        Get lots from remote provider.
+
+        :param auction_provider_name:
+        :param auction_event_url:
+        :return:
+        """
+
+        for provider in self.init_providers_from_db():
+            if provider.name == auction_provider_name:
+                break
+        else:
+            raise ValueError(f"Unknown provider: {auction_provider_name}")
+
+        auction_event = AuctionEvent()
+        auction_event.url = auction_event_url
+        auction_event.provider_id = provider.id
+        breakpoint()
+        lots = provider.load_auction_event_lots_remote(auction_event)
+
+        for lot in lots:
+            lot.auction_event_id = auction_event.id
+        return [lot.generate_db_tuple() for lot in lots]
+
+    def execute_provider_function(self, auction_provider_name, function_name, *lst_args, **kwargs):
+        """
+        Execute provider function.
+
+        :param function_name:
+        :param auction_provider_name:
+        :return:
+        """
+
+        for provider in self.init_providers_from_db():
+            if provider.name == auction_provider_name:
+                break
+        else:
+            raise ValueError(f"Unknown provider: {auction_provider_name}")
+
+        func = getattr(provider, function_name)
+        result = func(*lst_args, **kwargs)
+        return result
+
+
+class AuctionEventReport:
+    def __init__(self):
+        self.provider = None
+        self.auction_event = None
+
+    @property
+    def load_data_button_text(self):
+        if self.auction_event.end_time:
+            return f"<a href='{self.auction_event.url}'>[{self.auction_event.id}]</a> {self.provider.name} {self.auction_event.end_time.strftime('%d/%m')}"
+        return f"[{self.auction_event.id}] {self.provider.name} {self.auction_event.start_time.strftime('%d/%m')}"
+
+
+    @property
+    def timestamp_text(self):
+        if self.auction_event.end_time:
+            return self.auction_event.end_time.strftime("%d/%m/%Y %H:%M")
+        return self.auction_event.start_time.strftime("%d/%m/%Y %H:%M")
+
+    @property
+    def provider_name(self):
+        return self.provider.name
+
+    @property
+    def str_provider_id(self):
+        return str(self.provider.id)
+
+    @property
+    def str_auction_event_id(self):
+        return str(self.auction_event.id)
+

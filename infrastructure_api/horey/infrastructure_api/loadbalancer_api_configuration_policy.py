@@ -30,6 +30,16 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
         self._target_group_port = None
         self._target_group_protocol = None
         self._listener_port = None
+        self._slug = None
+
+    @property
+    def slug(self):
+        self.check_defined()
+        return self._slug
+
+    @slug.setter
+    def slug(self, value):
+        self._slug = value
 
     @property
     def listener_port(self):
@@ -163,7 +173,12 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def load_balancer_name(self):
         if self._load_balancer_name is None:
-            raise self.UndefinedValueError("load_balancer_name")
+            if self.scheme == "internet-facing":
+                self._load_balancer_name = f"lb-public-{self.slug}"
+            elif self.scheme ==  "internal":
+                self._load_balancer_name = f"lb-private-{self.slug}"
+            else:
+                raise ValueError(f"Unknown scheme: {self.scheme}")
         return self._load_balancer_name
 
     @load_balancer_name.setter

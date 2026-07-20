@@ -23,7 +23,7 @@ ignore_dir_path = os.path.join(
 def fixture_opensearch_api():
     configuration = OpensearchAPIConfigurationPolicy()
     configuration.configuration_file_full_path = os.path.abspath(
-        os.path.join(ignore_dir_path, "opensearch", "opensearch_api_configuration_values_eu.py")
+        os.path.join(ignore_dir_path, "opensearch", "opensearch_api_configuration_values.py")
     )
     configuration.init_from_file()
 
@@ -34,7 +34,7 @@ def fixture_opensearch_api():
 def fixture_opensearch_api_ng():
     configuration = OpensearchAPIConfigurationPolicy()
     configuration.configuration_file_full_path = os.path.abspath(
-        os.path.join(ignore_dir_path, "opensearch", "opensearch_api_configuration_values_ng.py")
+        os.path.join(ignore_dir_path, "opensearch", "opensearch_api_configuration_values.py")
     )
     configuration.init_from_file()
 
@@ -158,7 +158,7 @@ def test_backup(opensearch_api):
     ret = opensearch_api.backup(Path("/opt/backup_opensearch"))
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_restore(opensearch_api_ng):
     """
     Test dashboard object provisioning
@@ -167,3 +167,13 @@ def test_restore(opensearch_api_ng):
     """
 
     ret = opensearch_api_ng.restore(Path("/opt/backup_opensearch"))
+
+@pytest.mark.wip
+def test_restore(opensearch_api_ng):
+    """
+    Test dashboard object provisioning
+
+    @return:
+    """
+
+    ret = opensearch_api_ng.create_user("test1", "P@ssword1", ["readall", "opensearch_dashboards_user"])

@@ -3,6 +3,8 @@ Shamelessly stolen from:
 https://github.com/lukecyca/pyslack
 """
 import json
+import shutil
+from pathlib import Path
 
 import requests
 from horey.h_logger import get_logger
@@ -48,7 +50,12 @@ class GithubAPI:
 
         headers = {"Authorization": f"Bearer {self.configuration.pat}"}
         response = requests.get(request, headers=headers)
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except Exception:
+            logger.error(f"{response.status_code}: {response.text}")
+            raise
+
         try:
             return response.json()
         except Exception:
@@ -184,6 +191,29 @@ class GithubAPI:
                     break
         return True
 
+    def copy_repository_rule_sets(self, src_repo_name:str, dst_repo_name:str):
+        """
+        Copy permissions from one repo to another.
+
+        :param src_repo_name:
+        :param dst_repo_name:
+        :return:
+        """
+
+        rule_set = self.get_repository_rule_sets(src_repo_name)
+        breakpoint()
+        for team in teams:
+            for level in ["admin", "maintain", "push", "triage", "pull"]:
+                if team["permissions"][level]:
+                    data = {
+                        "permission": level
+                        }
+                    self.put(f"/orgs/{self.configuration.owner}/teams/{team['slug']}/repos/{self.configuration.owner}/{dst_repo_name}", data)
+                    break
+        return True
+
+
+
     def get_repository_direct_teams(self, repo_name):
         """
         List teams with direct repository access (not organization-level access).
@@ -208,3 +238,180 @@ class GithubAPI:
                 pass
 
         return direct_teams
+
+    def get_repository_rule_sets(self, repo_name):
+        """
+        List teams with direct repository access (not organization-level access).
+
+        :param repo_name: Repository name
+        :return: List of teams with direct access only
+        """
+        breakpoint()
+        all_rullsets = self.get(f"repos/{self.configuration.owner}/{repo_name}/rulesets")
+        breakpoint()
+        direct_teams = []
+
+        for team in all_teams:
+            # Check if team has explicit repository permissions
+            try:
+
+                self.get(
+                    f"orgs/{self.configuration.owner}/teams/{team['slug']}/repos/{self.configuration.owner}/{repo_name}")
+                direct_teams.append(team)
+            except Exception as inst_err:
+                if "Not Found for url" not in repr(inst_err):
+                    raise
+                pass
+
+        return direct_teams
+
+    def init_self_hosted_runners(self):
+        """
+        Initialize self-hosted runners.
+
+        :return:
+        """
+
+        runners = []
+        page = 1
+        while True:
+            response = self.get(
+                f"orgs/{self.configuration.owner}/actions/runners?per_page=100&page={page}"
+            )
+            logger.info(f"Page: {page}, Items: {len(response)}")
+            if not response:
+                break
+            runners.extend(response)
+            page += 1
+        logger.info(f"Total runners: {len(runners)}")
+        return runners
+
+    def init_github_hosted_runners(self):
+        """
+        Initialize github-hosted runners.
+
+        :return:
+        """
+
+        runners = []
+        page = 1
+        while True:
+            response = self.get(
+                f"orgs/{self.configuration.owner}/actions/hosted-runners?per_page=100&page={page}"
+            )
+            logger.info(f"Page: {page}, Items: {len(response)}")
+            if not response:
+                break
+            runners.extend(response)
+            page += 1
+        logger.info(f"Total runners: {len(runners)}")
+        return runners
+
+    def init_repository_self_hosted_runners(self, repo_name):
+        """
+        Initialize self-hosted runners for a specific repository.
+
+        :param repo_name: Name of the repository
+        :return:
+        """
+
+        runners = []
+        page = 1
+        while True:
+            response = self.get(
+                f"repos/{self.configuration.owner}/{repo_name}/actions/runners?per_page=100&page={page}"
+            )
+            if response["total_count"] == 0:
+                break
+            elif len(runners) == response["total_count"]:
+                break
+
+            page_runners = response["runners"]
+            logger.info(f"Page: {page}, Items: {len(page_runners)}")
+            runners.extend(page_runners)
+            page += 1
+        logger.info(f"Total runners: {len(runners)}")
+        return runners
+
+    def request_runner_registration_token(self, name):
+        """
+        https://api.github.com<OWNER>/<REPO>/actions/runners/registration-token
+
+        :return:
+        """
+        data = {"name": name}
+        response = self.post(
+            f"orgs/{self.configuration.owner}/actions/runners/registration-token", data
+        )
+        return response
+
+    def request_repository_runner_registration_token(self, repository_name: str):
+        """
+        Request a runner registration token for a repository.
+
+        :param repository_name: Name of the repository
+        :return:
+        """
+
+        response = self.post(
+            f"repos/{self.configuration.owner}/{repository_name}/actions/runners/registration-token",{}
+        )
+
+        return response
+
+    @staticmethod
+    def init_hagent_docker_build_dir(build_dir: Path):
+        """
+        Initialize docker build directory.
+
+        :param build_dir: Build directory path
+        :return:
+        """
+
+        build_dir.mkdir(parents=True, exist_ok=True)
+        for file_name in ["Dockerfile", "entrypoint.sh"]:
+            shutil.copy(Path(__file__).parent / "build" /file_name, build_dir / file_name)
+        return True
+
+
+    def delete_repository_runner(self, repo_name, runner_name):
+        """
+        Delete a repository runner.
+
+        :param repo_name:
+        :param runner_name:
+        :return:
+        """
+        runners = self.init_repository_self_hosted_runners(repo_name)
+        for runner in runners:
+            if runner["name"] == runner_name:
+                self.delete_repository_runner_by_id(repo_name, runner["id"])
+                return True
+        return False
+
+    def delete_repository_runner_by_id(self, repo_name, runner_id):
+        """
+        Delete a repository runner by id.
+
+        :param repo_name:
+        :param runner_id:
+        :return:
+        """
+
+        self.delete(f"repos/{self.configuration.owner}/{repo_name}/actions/runners/{runner_id}")
+
+    def delete(self, request_path):
+        """
+        Compose and send DELETE request
+
+        @param request_path:
+        @return:
+        """
+
+        request = self.create_request(request_path)
+        headers = {"Authorization": f"Bearer {self.configuration.pat}",
+                   "Content-Type": "application/vnd.github+json",
+                   "Accept": "application/vnd.github+json"}
+
+        response = requests.delete(request, headers=headers)
+        response.raise_for_status()

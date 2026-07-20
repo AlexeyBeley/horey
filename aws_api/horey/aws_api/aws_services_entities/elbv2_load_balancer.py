@@ -509,6 +509,143 @@ class LoadBalancer(AwsObject):
                 "Conditions": self.init_default_attr,
                 "Actions": self.init_default_attr,
                 "IsDefault": self.init_default_attr,
+                "Transforms": self.init_default_attr,
             }
 
             self.init_attrs(dict_src, init_options)
+
+        def compare_conditions(self, other):
+            """
+            Compare self conditions to others'.
+            Return True if equal, False if not.
+
+            :param other:
+            :return:
+            """
+
+            if len(self.conditions) != len(other.conditions):
+                return False
+
+            if len(self.conditions) != 1:
+                raise NotImplementedError("Not implemented for more than 1 condition")
+            condition_self = self.conditions[0]
+            condition_other = other.conditions[0]
+
+            if condition_self["Field"] == "path-pattern":
+                return self.compare_conditions_path_pattern(condition_self, condition_other)
+            elif condition_self["Field"] == "host-header":
+                return self.compare_conditions_host_header(condition_self, condition_other)
+            else:
+                raise NotImplementedError(f"Not implemented for other than path-pattern: {condition_self=}")
+        @staticmethod
+        def compare_conditions_path_pattern(condition_self, condition_other):
+            """
+            Compare self conditions path pattern to others'.
+
+            :param condition_self:
+            :param condition_other:
+            :return:
+            """
+
+            if "PathPatternConfig" in condition_self:
+                self_values = condition_self["PathPatternConfig"]["Values"]
+            else:
+                self_values = condition_self["Values"]
+            if len(self_values) != 1:
+                raise NotImplementedError("Not implemented for more than 1 value")
+
+            if "PathPatternConfig" in condition_self:
+                other_values = condition_other["PathPatternConfig"]["Values"]
+            else:
+                other_values = condition_other["Values"]
+
+            if len(other_values) != 1:
+                raise NotImplementedError("Not implemented for more than 1 value")
+
+            return self_values[0] == other_values[0]
+
+        @staticmethod
+        def compare_conditions_host_header(condition_self, condition_other):
+            """
+            Compare self conditions host header to others'.
+            :param condition_other:
+            :param condition_self:
+            :return:
+            """
+            if "HostHeaderConfig" in condition_self:
+                self_values = condition_self["HostHeaderConfig"]["Values"]
+            else:
+                self_values = condition_self["Values"]
+            if len(self_values) != 1:
+                raise NotImplementedError("Not implemented for more than 1 value")
+
+            if "HostHeaderConfig" in condition_self:
+                other_values = condition_other["HostHeaderConfig"]["Values"]
+            else:
+                other_values = condition_other["Values"]
+
+            if len(other_values) != 1:
+                raise NotImplementedError("Not implemented for more than 1 value")
+
+            return self_values[0] == other_values[0]
+
+
+        def compare_action(self, other):
+            """
+            Compare self actions to others'.
+            Return True if equal, False if not.
+
+            :param other:
+            :return:
+            """
+
+            if len(self.actions) != len(other.actions):
+                return False
+
+            if len(self.actions) != 1:
+                raise NotImplementedError("Not implemented for more than 1 action")
+
+            self_action = self.actions[0]
+            other_action = other.actions[0]
+            if self_action["Type"] != other_action["Type"]:
+                return False
+
+            match self_action["Type"]:
+                case "forward":
+
+                    if "TargetGroups" not in self_action["ForwardConfig"]:
+                        raise NotImplementedError("Not implemented for TargetGroups: self")
+
+                    if "TargetGroups" not in other_action["ForwardConfig"]:
+                        raise NotImplementedError("Not implemented for TargetGroups: other")
+
+                    self_tgs = self_action["ForwardConfig"]["TargetGroups"]
+                    other_tgs = other_action["ForwardConfig"]["TargetGroups"]
+
+                    if len(self_tgs) != len(other_tgs):
+                        return False
+
+                    if len(self_tgs) != 1:
+                        raise NotImplementedError("Not implemented for more than 1 target group")
+
+                    return self_tgs[0]["TargetGroupArn"] == other_tgs[0]["TargetGroupArn"]
+                case "fixed-response":
+                    return self_action["FixedResponseConfig"] == other_action["FixedResponseConfig"]
+                case _:
+                    raise NotImplementedError(f"Unknown type: {self_action['Type']}")
+
+
+        def get_target_group(self):
+            """
+            Get target group arn from actions.
+
+            :return:
+            """
+
+            if len(self.actions) != 1:
+                raise NotImplementedError("Not implemented for more than 1 action")
+
+            if len(self.actions[0]["ForwardConfig"]["TargetGroups"]) != 1:
+                raise NotImplementedError("Not implemented for more than 1 target group")
+
+            return self.actions[0]["ForwardConfig"]["TargetGroups"][0]["TargetGroupArn"]

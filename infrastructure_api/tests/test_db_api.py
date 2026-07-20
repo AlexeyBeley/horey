@@ -242,3 +242,24 @@ def test_compare_tables(db_api):
                                            Configuration.TEST_CONFIG.table_name
                                            )
     assert compare
+
+
+@pytest.mark.unit
+def test_provision_elasticache_serverless(db_api):
+    cache = db_api.provision_elasticache_serverless()
+    assert cache
+
+
+@pytest.mark.unit
+def test_update_elasticache_serverless(db_api):
+    cache = db_api.provision_elasticache_serverless()
+    cache.description = "test change description"
+    cache = db_api.provision_elasticache_serverless(cache=cache)
+
+    assert cache
+
+
+@pytest.mark.unit
+def test_dispose_elasticache_serverless(db_api):
+    compare = db_api.dispose_elasticache_serverless()
+    assert compare

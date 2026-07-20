@@ -163,6 +163,7 @@ class EC2SecurityGroup(AwsObject):
         :param desired_group:
         :return:
         """
+
         revoke_requests = []
         self_permissions = self.split_permissions(self.ip_permissions)
         desired_permissions = self.split_permissions(desired_group.ip_permissions)
@@ -174,10 +175,14 @@ class EC2SecurityGroup(AwsObject):
             if self_rule_description in seen_self_descriptions:
                 raise ValueError(f"Multiple rules with same description: {self.id} '{self_rule_description}'")
             seen_self_descriptions.append(self_rule_description)
+            self_permission_clean = self.clean_permission_from_user_id(self_permission)
 
             for desired_permission in desired_permissions:
-                if desired_permission == self_permission:
+                desired_permission_clean = self.clean_permission_from_user_id(desired_permission)
+
+                if desired_permission_clean == self_permission_clean:
                     continue
+
                 desired_rule_description = self.get_permission_description(desired_permission)
                 if desired_rule_description == self_rule_description:
                     revoke_requests.append(self_permission)
@@ -187,6 +192,25 @@ class EC2SecurityGroup(AwsObject):
             if revoke_requests
             else None
         )
+
+    def clean_permission_from_user_id(self, permission):
+        """
+        Delete user id
+
+        :param permission:
+        :return:
+        """
+
+        permission_clean = copy.deepcopy(permission)
+        for user_pair in permission_clean.get("UserIdGroupPairs", []):
+            user_id = user_pair.get("UserId")
+            if not user_id:
+                continue
+            if user_id == self.account_id:
+                del user_pair["UserId"]
+            else:
+                raise ValueError(user_pair)
+        return permission_clean
 
     def get_permission_description(self, permission):
         """
@@ -284,8 +308,7 @@ class EC2SecurityGroup(AwsObject):
 
         return lst_ret
 
-    @staticmethod
-    def check_permissions_equal(
+    def check_permissions_equal(self,
             permission_1, permission_2, check_without_description=False
     ):
         """
@@ -297,9 +320,11 @@ class EC2SecurityGroup(AwsObject):
         @return:
         """
         keys_without_description = ["FromPort", "IpProtocol", "ToPort"]
+        permission_1_clean = self.clean_permission_from_user_id(permission_1)
+        permission_2_clean = self.clean_permission_from_user_id(permission_2)
 
-        for key, value in permission_1.items():
-            target_value = permission_2.get(key)
+        for key, value in permission_1_clean.items():
+            target_value = permission_2_clean.get(key)
 
             # target value was not set
             if target_value is None:
@@ -318,7 +343,7 @@ class EC2SecurityGroup(AwsObject):
 
             if not isinstance(target_value, list) or not isinstance(value, list):
                 raise ValueError(
-                    f"For key: {key}, {value}, {target_value} in {permission_1}, {permission_2}"
+                    f"For key: {key}, {value}, {target_value} in {permission_1_clean}, {permission_2_clean}"
                 )
 
             # must be split already
@@ -417,3 +442,4 @@ class EC2SecurityGroup(AwsObject):
         }
 
         self.init_attrs(dict_src, init_options)
+

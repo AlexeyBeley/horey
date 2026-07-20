@@ -54,6 +54,30 @@ class Dashboard(GrafanaObject):
             ret["metadata"]["uid"] = slug
         return ret
 
+    def generate_update_request(self):
+        """
+        Generate create dashboard raw request
+        @return:
+        """
+
+        panels = self.generate_panels_with_positions(self.spec["panels"])
+        ret = {
+            "metadata": copy.deepcopy(self.metadata),
+            "spec": copy.deepcopy(self.spec),
+            "panels": [panel.generate_create_request() for panel in panels]
+        }
+
+        slug = self.spec["title"].replace(" ", "-")
+        if not ret["metadata"].get("name"):
+            ret["metadata"]["name"] = slug
+
+        if not ret["metadata"].get("uid"):
+            ret["metadata"]["uid"] = slug
+
+        del ret["metadata"]["labels"]
+
+        return ret
+
     def generate_panels_with_positions(self, lst_panels_dicts):
         """
         Generate x,y according to panels' sizes.

@@ -2915,7 +2915,7 @@ class AWSAPI:
             return None
 
         if save_to_secrets_manager:
-            self.put_secret_value(secrets_manager_region, key_pair.name if key_pair.name.endswith(".key") else key_pair.name + ".key",
+            self.put_secret_value(secrets_manager_region, key_pair.name,
                                   response["KeyMaterial"])
 
         return response
@@ -3770,7 +3770,7 @@ class AWSAPI:
         @return:
         """
 
-        self.ecs_client.attach_capacity_providers_to_ecs_cluster(
+        return self.ecs_client.attach_capacity_providers_to_ecs_cluster(
             ecs_cluster, capacity_provider_names, default_capacity_provider_strategy
         )
 

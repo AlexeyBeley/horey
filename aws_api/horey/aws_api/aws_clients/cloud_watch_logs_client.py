@@ -290,7 +290,7 @@ class CloudWatchLogsClient(Boto3Client):
         """
         log_group_current = CloudWatchLogGroup({"name": log_group.name})
         log_group_current.region = log_group.region
-        if self.update_log_group_information(log_group_current):
+        if self.update_log_group_information(log_group_current, update_info=True):
             delete_request, put_request = log_group_current.generate_retention_policy_requests(log_group)
             if delete_request and put_request:
                 raise RuntimeError(f"Can not be both: {delete_request=}, {put_request=}")

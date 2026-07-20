@@ -18,7 +18,6 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         super().__init__()
         self._load_balancer_target_group_arn = None
         self._ecr_repository_name = None
-        self._ecr_repository_name_slug = None
         self._ecr_repository_region = None
         self._infrastructure_update_time_tag = None
         self._ecr_repository_policy_text = None
@@ -28,7 +27,6 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._family = None
         self._container_name = None
         self._container_definition_port_mappings = None
-        self._cloudwatch_log_group_name = None
         self._requires_compatibilities = None
         self._network_mode = None
         self._ecs_task_definition_cpu_reservation = None
@@ -60,6 +58,18 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._schedule_expression = None
         self._cron_name = None
         self._adhoc_task_name = None
+        self._service_security_group_name = None
+        self._health_check_path = None
+        self._target_group_protocol = None
+
+    @property
+    def health_check_path(self):
+        self.check_defined()
+        return self._health_check_path
+
+    @health_check_path.setter
+    def health_check_path(self, value):
+        self._health_check_path = value
 
     @property
     def adhoc_task_name(self):
@@ -201,17 +211,21 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def slug(self):
         if self._slug is None:
+            raise NotImplementedError("Remove cluster. Set slug manually meanwhile")
             cluster_slug = self.cluster_name.replace('cluster_', '').replace('cluster-', '')
             if self.provision_service:
                 return f"{cluster_slug}-{self.service_name.replace('service_', '')}"
-            elif self.provision_cron:
+            if self.provision_cron:
                 return f"{cluster_slug}-{self.cron_name.replace('cron_', '')}"
-            elif self.provision_adhoc_task:
+            if self.provision_adhoc_task:
                 return f"{cluster_slug}-{self.adhoc_task_name.replace('adhoc_task_', '')}"
-            else:
-                raise ValueError("Not a service or a cron")
+            raise ValueError("Not a service or a cron")
 
         return self._slug
+
+    @slug.setter
+    def slug(self, value):
+        self._slug = value
 
     @property
     def service_load_balancers(self):
@@ -299,22 +313,26 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def ecs_task_execution_role_name(self):
-        if self._ecs_task_execution_role_name is None:
-            raise self.UndefinedValueError("ecs_task_execution_role_name")
+        self.check_defined()
         return self._ecs_task_execution_role_name
 
     @ecs_task_execution_role_name.setter
     def ecs_task_execution_role_name(self, value):
+        if self._ecs_task_execution_role_name and self._ecs_task_execution_role_name != value:
+            raise ValueError(f"Task execution role name already set to {self._ecs_task_execution_role_name},"
+                             f"trying to set new value: {value}")
         self._ecs_task_execution_role_name = value
 
     @property
     def ecs_task_role_name(self):
-        if self._ecs_task_role_name is None:
-            raise self.UndefinedValueError("ecs_task_role_name")
+        self.check_defined()
         return self._ecs_task_role_name
 
     @ecs_task_role_name.setter
     def ecs_task_role_name(self, value):
+        if self._ecs_task_role_name and self._ecs_task_role_name != value:
+            raise ValueError(f"Task role name already set to {self._ecs_task_role_name},"
+                             f"trying to set new value: {value}")
         self._ecs_task_role_name = value
 
     @property
@@ -352,32 +370,13 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         if self._requires_compatibilities is None:
             if self.launch_type == "FARGATE":
                 return ["FARGATE"]
-            else:
-                raise self.UndefinedValueError("requires_compatibilities")
+            raise self.UndefinedValueError("requires_compatibilities")
 
         return self._requires_compatibilities
 
     @requires_compatibilities.setter
     def requires_compatibilities(self, value):
         self._requires_compatibilities = value
-
-    @property
-    def cloudwatch_log_group_name(self):
-        if self._cloudwatch_log_group_name is None:
-            if self.provision_service:
-                return f"/ecs/{self.cluster_name}/{self.service_name}"
-            elif self.provision_cron:
-                return f"/ecs/{self.cluster_name}/{self.cron_name}"
-            elif self.provision_adhoc_task:
-                return f"/ecs/{self.cluster_name}/{self.adhoc_task_name}"
-            else:
-                raise ValueError("Not a service or cron")
-
-        return self._cloudwatch_log_group_name
-
-    @cloudwatch_log_group_name.setter
-    def cloudwatch_log_group_name(self, value):
-        self._cloudwatch_log_group_name = value
 
     @property
     def container_definition_port_mappings(self):
@@ -399,12 +398,15 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def family(self):
-        if self._family is None:
-            return f"td_{self.slug}"
+        self.check_defined()
         return self._family
 
     @family.setter
     def family(self, value):
+        if self._family and self._family != value:
+            raise ValueError(f"Task definition family already set to {self._family},"
+                             f"trying to set new value: {value}")
+
         self._family = value
 
     @property
@@ -438,6 +440,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def ecr_repository_policy_text(self):
         # todo: cleanup report It is recommended to use resource policy on ecr repos.
+        self.check_defined()
         return self._ecr_repository_policy_text
 
     @ecr_repository_policy_text.setter
@@ -465,20 +468,15 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def ecr_repository_name(self):
-        if self._ecr_repository_name is None:
-            return f"repo_{self.slug}"
+        self.check_defined()
         return self._ecr_repository_name
-
-    @property
-    def ecr_repository_name_slug(self):
-        return self._ecr_repository_name_slug
-
-    @ecr_repository_name_slug.setter
-    def ecr_repository_name_slug(self, value):
-        self._ecr_repository_name_slug = value
 
     @ecr_repository_name.setter
     def ecr_repository_name(self, value):
+        if self._ecr_repository_name and self._ecr_repository_name != value:
+            raise ValueError(f"Repository name already set to {self._ecr_repository_name},"
+                             f"trying to set new value: {value}")
+
         self._ecr_repository_name = value
 
     @property
@@ -523,3 +521,29 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
                 raise
 
         return False
+
+    @property
+    def service_security_group_name(self):
+        return f"sg_{self.cluster_name}-service-{self.service_name}"
+
+    @property
+    def task_security_group_name(self):
+        return f"sg_{self.cluster_name}-task-{self.slug}"
+
+    @property
+    def service_public_target_group_name(self):
+        return f"tg-pblc-{self.cluster_name}-{self.service_name}"
+
+    @property
+    def service_private_target_group_name(self):
+        return f"tg-prvt-{self.cluster_name}-{self.service_name}"
+
+    @property
+    def target_group_protocol(self):
+        self.check_defined()
+        return self._target_group_protocol
+
+    @target_group_protocol.setter
+    def target_group_protocol(self, value):
+        assert value in ["HTTP", "HTTPS"]
+        self._target_group_protocol = value

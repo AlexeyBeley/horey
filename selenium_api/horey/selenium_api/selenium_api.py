@@ -13,7 +13,7 @@ from selenium.webdriver.remote.webelement import WebElement
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
-
+from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
 
 from horey.h_logger import get_logger
 
@@ -22,10 +22,12 @@ logger = get_logger()
 
 class SeleniumAPI:
     driver = None
-    def __init__(self, data_dir:Path=None, chromedriver_path:Path=None, chrome_path:Path=None):
+    v_display = None
+    def __init__(self, data_dir:Path=None, chromedriver_path:Path=None, chrome_path:Path=None, proxy=None):
         self.data_dir = data_dir
         self.chromedriver_path = chromedriver_path
         self.chrome_path = chrome_path
+        self.proxy = proxy
 
 
     def wait_for_page_load(self, timeout=10):
@@ -58,7 +60,10 @@ class SeleniumAPI:
         logger.info("Connecting diver in SeleniumAPI")
 
         chrome_options = Options()
-        
+
+        if self.proxy:
+            chrome_options.add_argument(f"--proxy-server={self.proxy}")
+
         if self.chrome_path:
             return self.connect_from_chromedriver_file()
 
@@ -82,6 +87,9 @@ class SeleniumAPI:
 
         :return:
         """
+
+        logger.info(f"Options from chrome file: {self.chrome_path}")
+
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--no-sandbox")
@@ -98,6 +106,7 @@ class SeleniumAPI:
         chrome_options.add_argument("--log-path=/tmp")
         chrome_options.binary_location = str(self.chrome_path)
 
+        logger.info(f"Connecting from chromedriver file: {self.chromedriver_path}")
         service = Service(
             executable_path=str(self.chromedriver_path),
             service_log_path="/tmp/chromedriver.log"
@@ -115,12 +124,30 @@ class SeleniumAPI:
 
     @staticmethod
     def disconnect():
-        SeleniumAPI.driver.quit()
-        logger.info("Disconnecting diver in SeleniumAPI")
-        SeleniumAPI.driver = None
+        if SeleniumAPI.driver is not None:
+            SeleniumAPI.driver.quit()
+            logger.info("Disconnecting diver in SeleniumAPI")
+            SeleniumAPI.driver = None
+        try:
+            SeleniumAPI.v_display.stop()
+        except Exception:
+            pass
 
     def get_element(self, by, value) -> WebElement:
-        return self.driver.find_element(by, value)
+        """
+        Reliably get element
+
+        :param by:
+        :param value:
+        :return:
+        """
+
+        for _ in range(20):
+            try:
+                return self.driver.find_element(by, value)
+            except StaleElementReferenceException:
+                time.sleep(1)
+        raise TimeoutError("Was not able to fetch element")
 
     def get_elements(self, by, value):
         """
@@ -185,6 +212,12 @@ class SeleniumAPI:
         return SeleniumAPI.driver.get(url)
 
     def fill_input(self, str_id, input_data):
+        """
+        Fill id
+        :param str_id:
+        :param input_data:
+        :return:
+        """
         search_box = self.get_by_id(str_id)
         search_box.send_keys(input_data)
         return search_box
@@ -322,3 +355,68 @@ class SeleniumAPI:
 
         SeleniumAPI.driver.save_screenshot(str(path))
         return path
+
+    def throttled_get(self, url):
+        """
+        Get with throttling.
+
+        :param url:
+        :return:
+        """
+
+        retries = 10
+        for i in range(10):
+            self.get(url)
+            self.wait_for_page_load()
+
+            body = self.get_element(By.TAG_NAME, "body").text
+            if "This page is displayed while the website verifies you are not a bot" in body:
+                self.disconnect()
+                sleep_time = 0.2 * (i+1)
+                logger.info(f"{i}/{retries} Refetching after {sleep_time}")
+                time.sleep(sleep_time)
+                self.connect()
+                continue
+            return True
+        raise TimeoutError(f"Was not able to fetch url: {url}")
+
+
+    def retry_on_throttling(self, url, function, get_page=True):
+        """
+        Retry
+
+        :param get_page:
+        :param url:
+        :param function:
+        :return:
+        """
+
+        for _ in range(5):
+            try:
+                if get_page:
+                    self.get(url)
+
+                self.wait_for_page_load()
+
+                ret = function()
+                return ret
+            except StaleElementReferenceException:
+                time.sleep(1)
+                get_page = False
+            except NoSuchElementException as inst_err:
+                time.sleep(3)
+                body = self.get_element(By.TAG_NAME, "body").text
+                if "This page is displayed while the website verifies you are not a bot" in body:
+                    get_page = True
+                    self.disconnect()
+                elif "you were a bot" in body:
+                    get_page = True
+                    self.disconnect()
+                else:
+                    get_page=False
+                    logger.exception(inst_err)
+                    logger.info(f"Retrying to get data from: {url}")
+                    raise
+
+        breakpoint()
+        raise TimeoutError(f"Was not able to fetch from: {url}")

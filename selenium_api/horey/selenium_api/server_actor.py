@@ -18,12 +18,13 @@ action_manager = ActionsManager()
 def start_parser():
     description = "Run server"
     parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("-p", "--proxy", required=False, help="Proxy address:port")
 
     return parser
 
 
 def start(arguments, configs_dict) -> None:
-    server = Server()
+    server = Server(proxy=arguments.proxy)
     server.run()
 
 

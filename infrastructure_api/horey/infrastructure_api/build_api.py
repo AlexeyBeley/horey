@@ -8,7 +8,6 @@ import time
 import uuid
 from pathlib import Path
 
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.h_logger import get_logger
 
 from horey.aws_api.base_entities.region import Region
@@ -77,18 +76,40 @@ class BuildAPI:
         configuration.remote = "https://github.com/AlexeyBeley/horey.git"
         self._horey_git_api = GitAPI(configuration=configuration)
 
-    def run_build_image_routine(self, branch_name, build_number, nocache=False, dockerfile="Dockerfile"):
+    def run_prepare_image_build_directory_routine(self, branch_name, build_number):
+        """
+        Run the prepare routine
+
+        :return:
+        """
+        source_code_directory_path = self.prepare_source_code_directory(branch_name)
+        build_directory = self.prepare_docker_image_build_directory(source_code_directory_path, build_number)
+        return build_directory
+
+    def run_prepare_and_build_image_routine(self, branch_name, build_number, nocache=False, dockerfile="Dockerfile",
+                                            tags=None):
         """
         Run the build and upload routine
 
         :return:
         """
 
-        source_code_directory_path = self.prepare_source_code_directory(branch_name)
-        build_directory = self.prepare_docker_image_build_directory(source_code_directory_path, build_number)
-        tags = self.generate_docker_image_tags(build_number)
+        build_directory = self.run_prepare_image_build_directory_routine(branch_name, build_number)
+        tags = tags or []
+        breakpoint(self.docker_build_directory / "Dockerfile")
         image = self.build_docker_image(build_directory, tags, nocache=nocache, dockerfile=dockerfile)
-        # todo: self.validate_docker_image()
+        return image
+
+    def run_build_and_upload_image_routine(self, branch_name, build_number, nocache=False, dockerfile="Dockerfile"):
+        """
+        Run the build and upload routine
+
+        :return:
+        """
+
+        tags = self.generate_docker_image_tags(build_number)
+        image = self.run_prepare_and_build_image_routine(branch_name, build_number, nocache=nocache,
+                                                         dockerfile=dockerfile, tags=tags)
         self.upload_docker_image_to_artifactory(tags)
         return image
 
@@ -98,13 +119,13 @@ class BuildAPI:
         :return:
         """
 
-
         logger.info(f"Preparing source code directory, {branch_name=}")
         perf_counter_start = time.perf_counter()
         self.git_api.update_local_source_code(branch_name)
         self.commit_id = self.git_api.get_commit_id()
 
-        logger.info(f"Prepared source code directory commit: {self.commit_id}. Took {time.perf_counter() - perf_counter_start}")
+        logger.info(
+            f"Prepared source code directory commit: {self.commit_id}. Took {time.perf_counter() - perf_counter_start}")
         return self.git_api.configuration.directory_path
 
     @property
@@ -116,10 +137,22 @@ class BuildAPI:
         """
 
         if self._build_directory is None:
-            build_dir_path = Path("/tmp/ecs_api_build_temp_dirs") / str(uuid.uuid4())
+            build_dir_path = self.environment_api.configuration.data_directory_path / "ecs_api_build_temp_dirs" / str(
+                uuid.uuid4())
             build_dir_path.parent.mkdir(exist_ok=True)
             self._build_directory = build_dir_path
         return self._build_directory
+
+    @docker_build_directory.setter
+    def docker_build_directory(self, value):
+        """
+        Setter.
+
+        :param value:
+        :return:
+        """
+
+        self._build_directory = value
 
     def prepare_docker_image_build_directory(self, source_code_directory_path, build_number):
         """
@@ -130,7 +163,8 @@ class BuildAPI:
         :return:
         """
 
-        logger.info(f"Preparing docker build directory' {source_code_directory_path}' to '{self.docker_build_directory}'")
+        logger.info(
+            f"Preparing docker build directory' {source_code_directory_path}' to '{self.docker_build_directory}'")
         perf_counter_start = time.perf_counter()
 
         def ignore_git(_, file_names):
@@ -146,7 +180,8 @@ class BuildAPI:
 
         return build_dir_path
 
-    def prepare_docker_image_horey_package_build_directory(self, source_code_directory_path, package_raw_name, build_number):
+    def prepare_docker_image_horey_package_build_directory(self, source_code_directory_path, package_raw_name
+                                                           ):
         """
         Copy source code to tmp dir.
 
@@ -155,20 +190,121 @@ class BuildAPI:
         :return:
         """
 
-
+        dockerfile_path = self.docker_build_directory / "Dockerfile"
         logger.info(
             f"Preparing horey.{source_code_directory_path} docker build directory' {source_code_directory_path}' to '{self.docker_build_directory}'")
         perf_counter_start = time.perf_counter()
         self.docker_build_directory.mkdir(parents=True, exist_ok=True)
-        StandaloneMethods.copy_horey_package_required_packages_to_build_dir(package_raw_name, self.docker_build_directory , source_code_directory_path)
+        self.add_horey_base_to_dockerfile(dockerfile_path)
+        StandaloneMethods.copy_horey_package_required_packages_to_build_dir(package_raw_name,
+                                                                            self.docker_build_directory,
+                                                                            source_code_directory_path)
+
+        self.add_docker_instruction_copy(dockerfile_path, "horey", before_comment="HOREY_REPOS_END")
+        self.add_docker_instruction_run(dockerfile_path,
+                                        f"python /horey/pip_api/horey/pip_api/pip_api_make.py --install horey.{package_raw_name} --pip_api_configuration /horey/pip_api_docker_configuration.py",
+                                        before_comment = "HOREY_REPOS_END"
+                                        )
 
         build_dir_path = self.prepare_docker_image_build_directory_callback(self.docker_build_directory)
 
-        self.add_build_metadata_file(build_dir_path, build_number)
+        #file_name = self.add_build_metadata_file(build_dir_path, build_number)
+        #self.add_docker_instruction_copy(dockerfile_path, file_name)
 
         logger.info(f"Prepared docker build directory. Took {time.perf_counter() - perf_counter_start}")
-
         return build_dir_path
+
+    @staticmethod
+    def add_docker_instruction_copy(dockerfile_path: Path, source, before_comment=None):
+        """
+        Add copy instruction to dockerfile
+
+        :param before_comment:
+        :param dockerfile_path:
+        :param source:
+        :return:
+        """
+
+        if dockerfile_path.is_dir():
+            dockerfile_path = dockerfile_path / "Dockerfile"
+
+        with open(dockerfile_path, "r", encoding="utf-8") as file_handler:
+            lines = file_handler.readlines()
+
+        i = None
+        for i, line in enumerate(lines):
+            if before_comment:
+                if before_comment in line:
+                    break
+                continue
+
+            if "ENTRYPOINT" in line:
+                break
+        else:
+            if before_comment:
+                raise RuntimeError(f"Was not able to find comment {before_comment}")
+
+
+        lines = lines[:i] + [f"\nCOPY {source} /{source}\n"] + lines[i:]
+        with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
+            file_handler.writelines(lines)
+
+    @staticmethod
+    def add_docker_instruction_entrypoint(dockerfile_path, entrypoint):
+        """
+        Add copy instruction to dockerfile
+
+        :param dockerfile_path:
+        :param entrypoint:
+        :return:
+        """
+        if dockerfile_path.is_dir():
+            dockerfile_path = dockerfile_path / "Dockerfile"
+
+        with open(dockerfile_path, "r", encoding="utf-8") as file_handler:
+            lines = file_handler.readlines()
+
+        for line in lines:
+            if "ENTRYPOINT" in line:
+                raise ValueError(f"Entry point already exists in line: '{line}'")
+
+        lines += [f"\nENTRYPOINT {entrypoint}\n"]
+        with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
+            file_handler.writelines(lines)
+
+    @staticmethod
+    def add_docker_instruction_run(dockerfile_path, command, before_comment=None):
+        """
+        Add run instruction to dockerfile
+
+        :param before_comment:
+        :param dockerfile_path:
+        :param command:
+        :return:
+        """
+
+        if dockerfile_path.is_dir():
+            dockerfile_path = dockerfile_path / "Dockerfile"
+
+        with open(dockerfile_path, "r", encoding="utf-8") as file_handler:
+            lines = file_handler.readlines()
+
+        i = None
+        for i, line in enumerate(lines):
+            if before_comment:
+                if before_comment in line:
+                    break
+                continue
+
+            if "ENTRYPOINT" in line:
+                break
+        else:
+            if before_comment:
+                raise RuntimeError(f"Was not able to find comment {before_comment}")
+
+        lines = lines[:i] + [f"\nRUN {command}\n"] + lines[i:]
+        with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
+            file_handler.writelines(lines)
 
     def add_build_metadata_file(self, build_dir_path, build_number):
         """
@@ -177,8 +313,91 @@ class BuildAPI:
         :return:
         """
 
-        with open(build_dir_path / "build_metadata.json", "w", encoding="utf-8") as file_handler:
+        file_name = "build_metadata.json"
+        with open(build_dir_path / file_name, "w", encoding="utf-8") as file_handler:
             json.dump({"commit": self.commit_id, "build": str(build_number)}, file_handler)
+
+        self.add_file(build_dir_path, build_dir_path/file_name)
+        return file_name
+
+    def add_file(self, build_dir_path:Path, file_path:Path):
+        """
+        Copy to build dir if needed and add to Dockerfile
+        :param build_dir_path:
+        :param file_path:
+        :return:
+        """
+
+        if not file_path.is_relative_to(build_dir_path):
+            shutil.copy2(file_path, build_dir_path/file_path.name)
+        dockerfile_path = build_dir_path / "Dockerfile"
+        with open(dockerfile_path, encoding="utf-8") as fh:
+            lines = fh.readlines()
+
+        for i, line in enumerate(lines):
+            if line.startswith("COPY"):
+                lines = lines[:i+1] + [f"COPY {file_path.name} /{file_path.name}\n"] + lines[i+1:]
+                break
+        else:
+            raise NotImplementedError("Was not able to find anchor COPY instruction")
+
+        with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
+            file_handler.writelines(lines)
+
+
+    @staticmethod
+    def add_horey_base_to_dockerfile(dockerfile_path: Path):
+        """
+        Add base dockerfile
+
+        :param dockerfile_path:
+        :return:
+        """
+
+        if not dockerfile_path.exists():
+            dockerfile_path.write_text("FROM python:3.14-slim-trixie\n")
+
+        with open(dockerfile_path, "r", encoding="utf-8") as file_handler:
+            lines = file_handler.readlines()
+
+        horey_base_lines = [
+            "USER root\n",
+            "RUN apt update\n",
+            "RUN apt install -yqq python3 python3-pip git make wget which findutils\n",
+            "RUN ln -s /usr/bin/python3 /usr/bin/python\n",
+            "RUN apt-get update && apt-get remove -y python3-packaging && rm -rf /var/lib/apt/lists/*\n",
+            "RUN apt-get update && apt-get install -yqq --upgrade python3-packaging python3-pip  && rm -rf /var/lib/apt/lists/*\n",
+            "RUN  pip3 install --break-system-packages twine\n",
+            "#HOREY_REPOS_END\n"
+        ]
+
+        required_line_tokens = [
+                                ["RUN", "apt", "install", "git"],
+                                ["RUN", "apt", "install", "make"],
+                                ["RUN", "apt", "install", "wget"],
+                                ["RUN", "apt", "install", "which"],
+                                ["RUN", "apt", "install", "findutils"]
+                                ]
+        found_required_lines = 0
+        for required_line_token in required_line_tokens:
+            for line in lines:
+                if all(token in line for token in required_line_token):
+                    found_required_lines += 1
+                    break
+        if found_required_lines and found_required_lines != len(required_line_tokens):
+            raise ValueError(
+                f"Found {found_required_lines} required lines, while expecting {len(required_line_tokens)}")
+
+        for i, line in enumerate(lines):
+            if "from " in line.lower():
+                lines = lines[:i + 1] + horey_base_lines + lines[i + 1:]
+                break
+        else:
+            raise ValueError("Base dockerfile must contain FROM instruction")
+
+        with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
+            file_handler.writelines(lines)
+        return True
 
     def prepare_docker_image_build_directory_callback(self, build_dir_path: Path):
         """
@@ -211,10 +430,12 @@ class BuildAPI:
         :param tags:
         :return:
         """
+
         for _ in range(120):
             try:
                 logger.info(f"Building docker image with arguments: {self.configuration.docker_build_arguments}")
-                return self.environment_api.docker_api.build(str(dir_path), tags, nocache=nocache, **self.configuration.docker_build_arguments)
+                return self.environment_api.docker_api.build(str(dir_path), tags, nocache=nocache,
+                                                             **self.configuration.docker_build_arguments)
             except Exception as error_inst:
                 repr_error_inst = repr(error_inst).lower()
                 if "authorization token has expired" in repr_error_inst:
@@ -224,12 +445,14 @@ class BuildAPI:
                 else:
                     raise
 
-                for registry, username, password in self.extract_registries_credentials_from_dockerfile(dir_path / dockerfile):
+                for registry, username, password in self.extract_registries_credentials_from_dockerfile(
+                        dir_path / dockerfile):
                     if logout:
                         self.environment_api.docker_api.logout(registry)
                     self.environment_api.docker_api.login(registry, username, password)
 
-                return self.environment_api.docker_api.build(str(dir_path), tags, **self.configuration.docker_build_arguments)
+                return self.environment_api.docker_api.build(str(dir_path), tags,
+                                                             **self.configuration.docker_build_arguments)
 
         raise TimeoutError("Was not able to build and image")
 
@@ -367,7 +590,9 @@ class BuildAPI:
 
         for _ in range(3):
             try:
-                return self.environment_api.docker_api.copy_image(image_registry_reference, dst_ecs_api.ecr_repository.repository_uri, copy_all_tags=True)
+                return self.environment_api.docker_api.copy_image(image_registry_reference,
+                                                                  dst_ecs_api.ecr_repository.repository_uri,
+                                                                  copy_all_tags=True)
             except Exception as inst_error:
                 # Different ECR regions generate errors differently - part goes to repr part to str.
                 if "no basic auth credentials" not in repr(inst_error) + str(inst_error):
@@ -380,8 +605,8 @@ class BuildAPI:
                 else:
                     raise
                 self.login_to_ecr_registry(Region.get_region(region_mark))
-        raise RuntimeError("Was not able to copy image after 3 retries - 1 retry per each ECR region and final after both did relogin")
-
+        raise RuntimeError(
+            "Was not able to copy image after 3 retries - 1 retry per each ECR region and final after both did relogin")
 
     def init_temporary_source_code_directory(self):
         """
@@ -394,4 +619,3 @@ class BuildAPI:
         tmp_dir.mkdir(parents=True)
         self.configuration.tmp_source_code_dir_path = tmp_dir
         return tmp_dir
-    

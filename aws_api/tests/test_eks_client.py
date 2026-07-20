@@ -3,15 +3,13 @@ Test aws eks client
 
 """
 
-import os
-
 import pytest
 from horey.aws_api.aws_clients.eks_client import EKSClient
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.eks_cluster import EKSCluster
 from horey.aws_api.aws_services_entities.eks_fargate_profile import EKSFargateProfile
-from horey.common_utils.common_utils import CommonUtils
+from horey.aws_api.aws_services_entities.eks_access_entry import EKSAccessEntry
 
 logger = get_logger()
 
@@ -94,3 +92,33 @@ def test_provision_fargate_profiles():
     eks_fargate_profile.pod_execution_role_arn = ""
     client.provision_fargate_profile(eks_fargate_profile)
     assert eks_fargate_profile.arn is not None
+
+@pytest.mark.unit
+def test_yield_access_entries():
+    client = EKSClient()
+    clusters = client.get_region_clusters(Region.get_region("us-west-2"), full_information=True)
+    for cluster in clusters:
+        for access_entry in client.yield_access_entries(region= cluster.region, filters_req={"clusterName": cluster.name}):
+            logger.info(access_entry)
+
+@pytest.mark.unit
+def test_provision_access_entry():
+    client = EKSClient()
+    region = Region.get_region("us-west-2")
+    sts_client = client.sessions_manager.get_client("sts", region=region)
+    my_arn = sts_client.get_caller_identity()["Arn"]
+
+    access_entry = EKSAccessEntry({})
+    access_entry.region = region
+    clusters = client.get_region_clusters(Region.get_region("us-west-2"), full_information=True)
+    if len(clusters) != 1:
+        raise ValueError("Cluster")
+    for cluster in clusters:
+        ret = list(client.yield_access_entries(region= cluster.region, filters_req={"clusterName": cluster.name}))
+        existing_entry = ret[0]
+        access_entry.cluster_name = existing_entry.cluster_name
+        access_entry.principal_arn = my_arn
+        access_entry.tags = {"Name": "test"}
+        client.provision_access_entry(access_entry)
+
+

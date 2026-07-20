@@ -229,12 +229,16 @@ class Mcdougallauction(Provider):
                 month = month_number
                 day_year = date_line[date_line.index(month_name)+len(month_name):].strip()
                 day, year = day_year.split(",")
-                day = int(day.strip())
+                try:
+                    day = int(day.strip())
+                except Exception:
+                    breakpoint()
+
                 year = int(year.strip())
                 break
         else:
             breakpoint()
-            raise NotImplementedError(f"Can not determine month from: {date_line}")
+            # raise NotImplementedError(f"Can not determine month from: {date_line}")
 
         hour_minute, meridiem, gmt_string = time_line.strip().split(" ")
         hour, minute = hour_minute.split(":")

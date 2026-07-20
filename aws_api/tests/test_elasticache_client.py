@@ -5,6 +5,7 @@ Elasticache cluster.
 
 import os
 import pytest
+from six import assertRegex
 
 from horey.aws_api.aws_clients.elasticache_client import ElasticacheClient
 from horey.aws_api.aws_services_entities.elasticache_replication_group import (
@@ -13,9 +14,11 @@ from horey.aws_api.aws_services_entities.elasticache_replication_group import (
 from horey.aws_api.aws_services_entities.elasticache_cache_subnet_group import (
     ElasticacheCacheSubnetGroup,
 )
+from horey.aws_api.aws_services_entities.elasticache_user import ElasticacheUser
+from horey.aws_api.aws_services_entities.elasticache_user_group import ElasticacheUserGroup
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
-from horey.common_utils.common_utils import CommonUtils
+from horey.aws_api.base_entities.region import Region
 
 
 ElasticacheClient().main_cache_dir_path = os.path.abspath(
@@ -97,3 +100,109 @@ def test_yield_clusters():
     for obj in client.yield_clusters():
         break
     assert obj.arn is not None
+
+
+@pytest.mark.unit
+def test_yield_user_groups():
+    client = ElasticacheClient()
+    obj = None
+    for obj in client.yield_user_groups(region=Region.get_region("us-west-2")):
+        break
+    assert obj.arn is not None
+
+@pytest.mark.unit
+def test_yield_users():
+    client = ElasticacheClient()
+    obj = None
+    for obj in client.yield_users(region=Region.get_region("us-west-2")):
+        break
+    assert obj.arn is not None
+
+@pytest.mark.unit
+def test_update_user_information():
+    client = ElasticacheClient()
+    region = Region.get_region("us-west-2")
+    user = ElasticacheUser({})
+    user.region = region
+    user.id = "default"
+    user.user_name = "default"
+    user.engine = "redis"
+    assert client.update_user_information(user)
+
+
+@pytest.mark.unit
+def test_provision_user():
+    client = ElasticacheClient()
+    region = Region.get_region("us-west-2")
+    user = ElasticacheUser({})
+    user.region = region
+    user.id = "test"
+    user.user_name = "test"
+    user.engine = "redis"
+    user.passwords = ["Qwerty1234567891011!", "Aa1234567891011!"]
+    user.access_string = "on ~* +@all"
+    user.tags = [
+        {"Key": "lvl", "Value": "tst"},
+        {"Key": "name", "Value": user.id},
+    ]
+    client.provision_user(user)
+    assert user.arn is not None
+    assert client.update_user_information(user)
+
+
+@pytest.mark.unit
+def test_dispose_user():
+    client = ElasticacheClient()
+    region = Region.get_region("us-west-2")
+    user = ElasticacheUser({})
+    user.region = region
+    user.id = "test"
+    user.user_name = "test"
+    user.engine = "redis"
+    assert client.dispose_user(user)
+    assert not client.update_user_information(user)
+
+
+@pytest.mark.unit
+def test_update_user_group_information():
+    client = ElasticacheClient()
+    region = Region.get_region("us-west-2")
+    for obj in client.yield_user_groups(region=region):
+        assert client.update_user_group_information(obj)
+
+
+@pytest.mark.wip
+def test_provision_user_group():
+    client = ElasticacheClient()
+    region = Region.get_region("us-west-2")
+    user_group = ElasticacheUserGroup({})
+    user_group.region = region
+    user_group.id = "test"
+    user_group.engine = "redis"
+    user_group.tags = [
+        {"Key": "lvl", "Value": "tst"},
+        {"Key": "name", "Value": user_group.id},
+    ]
+    for user in client.yield_users(region=region):
+        if user.user_name == "default":
+            user_group.user_ids = [user.id]
+            break
+    else:
+        raise RuntimeError("Was not able to find 'default' user")
+
+
+    client.provision_user_group(user_group)
+    assert user_group.arn is not None
+    assert client.update_user_group_information(user_group)
+
+
+@pytest.mark.wip
+def test_dispose_user_group():
+    client = ElasticacheClient()
+    region = Region.get_region("us-west-2")
+    user_group = ElasticacheUserGroup({})
+    user_group.region = region
+    user_group.id = "test"
+    assert client.dispose_user_group(user_group)
+    assert not client.update_user_group_information(user_group)
+

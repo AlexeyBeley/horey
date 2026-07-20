@@ -136,7 +136,7 @@ def bell(time_sleep):
 
 
 def book_the_test(selenium_api):
-    with open("./stop.txt") as file_handler:
+    with open("../stop.txt") as file_handler:
         ret = file_handler.read()
     if ret == "stop":
         breakpoint()
@@ -172,4 +172,3 @@ def book_the_test_helper(selenium_api):
     return False
 
 
-main()

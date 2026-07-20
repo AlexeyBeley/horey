@@ -157,6 +157,12 @@ class LambdaClient(Boto3Client):
             self.provision_lambda_raw(desired_aws_lambda.region, desired_aws_lambda.generate_create_request())
             if desired_aws_lambda.policy is not None:
                 self.provision_lambda_permissions(desired_aws_lambda, current_lambda=current_lambda)
+        elif update_code:
+            update_code_request = current_lambda.generate_update_function_code_request(
+                desired_aws_lambda
+            )
+            if update_code_request is not None:
+                self.update_function_code_raw(desired_aws_lambda.region, update_code_request)
 
         update_function_configuration_request = (
             current_lambda.generate_update_function_configuration_request(
@@ -227,16 +233,6 @@ class LambdaClient(Boto3Client):
             )
 
         self.provision_lambda_permissions(desired_aws_lambda, current_lambda=current_lambda)
-
-        if not update_code:
-            self.update_lambda_information(desired_aws_lambda, full_information=False)
-            return True
-
-        update_code_request = current_lambda.generate_update_function_code_request(
-            desired_aws_lambda
-        )
-        if update_code_request is not None:
-            self.update_function_code_raw(desired_aws_lambda.region, update_code_request)
 
         return self.update_lambda_information(desired_aws_lambda, full_information=True)
 

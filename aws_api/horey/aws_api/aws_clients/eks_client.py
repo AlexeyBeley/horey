@@ -1,13 +1,17 @@
 """
 AWS lambda client to handle lambda service API requests.
 """
+from typing import List
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
+from horey.aws_api.aws_services_entities.elasticache_user import ElasticacheUser
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.eks_cluster import EKSCluster
 from horey.aws_api.aws_services_entities.eks_addon import EKSAddon
 from horey.aws_api.aws_services_entities.eks_fargate_profile import EKSFargateProfile
+from horey.aws_api.aws_services_entities.eks_access_entry import EKSAccessEntry
+from horey.aws_api.base_entities.region import Region
 
 from horey.h_logger import get_logger
 
@@ -50,7 +54,7 @@ class EKSClient(Boto3Client):
 
         return final_result
 
-    def get_region_clusters(self, region, full_information=True):
+    def get_region_clusters(self, region, full_information=True) -> List[EKSCluster]:
         """
         Region specific state machines.
 
@@ -374,5 +378,92 @@ class EKSClient(Boto3Client):
                 filters_req=request_dict,
         ):
             return response
+    
+    def yield_access_entries(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all subnets.
 
-    # endregion
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_access_entries_raw
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            EKSAccessEntry,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_access_entries_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for arn in self.execute(
+            self.get_session_client(region=region).list_access_entries, "accessEntries", filters_req=filters_req
+        ):
+            filters_req["principalArn"] = arn
+            for dict_src in self.execute(
+                self.get_session_client(region=region).describe_access_entry, "accessEntry", filters_req=filters_req
+            ):
+                yield dict_src
+
+    def update_access_entry_information(self, access_entry: EKSAccessEntry):
+        """
+        Update current status.
+
+        :param access_entry:
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.get_session_client(region=access_entry.region).describe_access_entry, "accessEntry",
+                filters_req={"clusterName": access_entry.cluster_name, "principalArn": access_entry.principal_arn}, exception_ignore_callback= lambda err: "ResourceNotFoundException" in repr(err)
+        ):
+            access_entry.update_from_raw_response(dict_src)
+            return True
+        return False
+
+    def provision_access_entry(self, access_entry: EKSAccessEntry):
+        """
+        Provision from object.
+
+        :return:
+        """
+
+        access_entry_current = EKSAccessEntry({})
+        access_entry_current.cluster_name = access_entry.cluster_name
+        access_entry_current.principal_arn = access_entry.principal_arn
+        if not self.update_access_entry_information(access_entry_current):
+            response = self.provision_access_entry_raw(access_entry_current.region, access_entry.generate_create_request())
+            access_entry.update_from_raw_response(response["accessEntry"])
+        request = access_entry.generate_modify_request(access_entry)
+        if request:
+            raise NotImplementedError(request)
+        access_entry.update_from_attrs(access_entry_current)
+        return True
+
+
+    def provision_access_entry_raw(self, region: Region, request: dict):
+        """
+        Provision from raw request.
+
+        :param region:
+        :param request:
+        :return:
+        """
+
+        logger.info(f"Creating access_entry: {request}")
+        for response in self.execute(
+                self.get_session_client(region=region).create_access_entry,
+                None,
+                raw_data=True,
+                filters_req=request,
+        ):
+            self.clear_cache(EKSAccessEntry)
+            return response
+        raise RuntimeError(f"Empty response while creating access entry: {request}")
+
+
+

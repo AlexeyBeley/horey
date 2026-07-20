@@ -8,6 +8,8 @@ from horey.selenium_api.auction_event import AuctionEvent
 from horey.selenium_api.pennerauction import Pennerauction
 from horey.selenium_api.mcdougallauction import Mcdougallauction
 from horey.selenium_api.kayesauction import Kayesauction
+from horey.selenium_api.neighbourhoodauctions import Neighbourhoodauctions
+
 from horey.selenium_api.lot import Lot
 import sqlite3
 from horey.h_logger import get_logger
@@ -16,12 +18,28 @@ logger = get_logger()
 
 
 class AuctionAPI:
-    def __init__(self):
+    def __init__(self, proxy=None):
         self.db_file_path = "/opt/horey/auctions.db"
-        self.providers = [Mcsherryauction(), MAauction(), Pennerauction(), Mcdougallauction(), Kayesauction()]
+
+        self.providers = [Neighbourhoodauctions(), Mcsherryauction(), MAauction(proxy=proxy), Pennerauction(), Mcdougallauction(), Kayesauction()]
         self.auction_events = None
         self.lots = None
         self.async_orchestrator = AsyncOrchestrator()
+        self._db_connection = None
+        self._db_cursor = None
+
+    @property
+    def db_connection(self):
+        if self._db_connection is None:
+            self._db_connection = sqlite3.connect(self.db_file_path, check_same_thread=False)
+        return self._db_connection
+
+    @property
+    def db_cursor(self):
+        if self._db_cursor is None:
+            self._db_cursor = self.db_connection.cursor()
+            self._db_cursor.execute("PRAGMA foreign_keys = ON;")
+        return self._db_cursor
 
     def init_providers_from_db(self):
         """
@@ -31,15 +49,13 @@ class AuctionAPI:
         """
 
         map_providers = {}
-        with sqlite3.connect(self.db_file_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(f"SELECT * FROM providers")
-            records = cursor.fetchall()
-            for auc_id, name in records:
-                for provider in self.providers:
-                    if provider.name == name:
-                        provider.id = auc_id
-                        map_providers[provider.id] = provider
+        self.db_cursor.execute(f"SELECT * FROM providers")
+        records = self.db_cursor.fetchall()
+        for auc_id, name in records:
+            for provider in self.providers:
+                if provider.name == name:
+                    provider.id = auc_id
+                    map_providers[provider.id] = provider
 
         return self.providers
 
@@ -50,35 +66,26 @@ class AuctionAPI:
         :return:
         """
 
-        with sqlite3.connect(self.db_file_path) as conn:
-            # Database operations can be performed here
-            # For example, creating a table:
-            cursor = conn.cursor()
-
-            for provider in self.providers:
-                cursor.execute(
+        for provider in self.providers:
+            self.db_cursor.execute(
                     "INSERT OR IGNORE INTO providers (name) VALUES (?)",
                     (provider.name,)
                 )
 
-    def provsion_db_providers_table(self):
+    def provision_db_providers_table(self):
         """
         Create table
 
         :return:
         """
 
-        with sqlite3.connect(self.db_file_path) as conn:
-            # Database operations can be performed here
-            # For example, creating a table:
-            cursor = conn.cursor()
-            cursor.execute('''
+        self.db_cursor.execute('''
                 CREATE TABLE IF NOT EXISTS providers (
                     id INTEGER PRIMARY KEY,
                     name TEXT NOT NULL UNIQUE
                 )
             ''')
-            conn.commit()  # Commit changes to the database
+        self.db_connection.commit()  # Commit changes to the database
         logger.info(f"Database '{self.db_file_path}' created successfully with 'providers' table.")
 
     def add_provider(self, provider):
@@ -93,12 +100,9 @@ class AuctionAPI:
                     VALUES (?)
                     """
 
-        with sqlite3.connect(self.db_file_path) as conn:
-            # Database operations can be performed here
-            # For example, creating a table:
-            cursor = conn.cursor()
-            cursor.execute(insert_sql, [provider.name])
-            conn.commit()
+
+        self.db_cursor.execute(insert_sql, [provider.name])
+        self.db_connection.commit()
         logger.info(f"Database '{self.db_file_path}' added {provider.name} to 'providers' table.")
 
 
@@ -112,11 +116,11 @@ class AuctionAPI:
         raise DeprecationWarning("Old")
 
     def provision_db_auction_events_table(self):
-        with sqlite3.connect(self.db_file_path) as conn:
-            # Database operations can be performed here
-            # For example, creating a table:
-            cursor = conn.cursor()
-            cursor.execute('''
+        """
+        DB auction_events_table
+        :return:
+        """
+        self.db_cursor.execute('''
                 CREATE TABLE IF NOT EXISTS auction_events (
                     id INTEGER PRIMARY KEY ,
                     provider_id INTEGER REFERENCES providers(id) NOT NULL,
@@ -129,8 +133,8 @@ class AuctionAPI:
                     provinces TEXT NOT NULL
                 )
             ''')
-            conn.commit()  # Commit changes to the database
-            logger.info(f"Database '{self.db_file_path}' created successfully with 'auction_events' table.")
+        self.db_connection.commit()  # Commit changes to the database
+        logger.info(f"Database '{self.db_file_path}' created successfully with 'auction_events' table.")
 
     def write_lots_to_db(self):
         """
@@ -148,11 +152,8 @@ class AuctionAPI:
         :return:
         """
 
-        with sqlite3.connect(self.db_file_path) as conn:
-            # Database operations can be performed here
-            # For example, creating a table:
-            cursor = conn.cursor()
-            cursor.execute('''
+
+        self.db_cursor.execute('''
                 CREATE TABLE IF NOT EXISTS lots(
                     id INTEGER PRIMARY KEY,
                     auction_event_id INTEGER REFERENCES auction_events(id) NOT NULL,
@@ -170,8 +171,8 @@ class AuctionAPI:
                     province TEXT
                 )
             ''')
-            conn.commit()  # Commit changes to the database
-            logger.info(f"Database '{self.db_file_path}' created successfully with 'lots' table.")
+        self.db_connection.commit()  # Commit changes to the database
+        logger.info(f"Database '{self.db_file_path}' created successfully with 'lots' table.")
 
     def init_auction_events_from_db(self):
         """
@@ -181,17 +182,15 @@ class AuctionAPI:
         """
 
         self.auction_events = []
-        with sqlite3.connect(self.db_file_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(f"SELECT * FROM auction_events")
-            known_auction_event_lines = cursor.fetchall()
-            for line in known_auction_event_lines:
-                event = AuctionEvent()
-                event.init_from_db_line(line)
+        self.db_cursor.execute(f"SELECT * FROM auction_events")
+        known_auction_event_lines = self.db_cursor.fetchall()
+        for line in known_auction_event_lines:
+            event = AuctionEvent()
+            event.init_from_db_line(line)
 
-                if not event.id:
-                    raise NotImplementedError("DB ID was not init properly")
-                self.auction_events.append(event)
+            if not event.id:
+                raise NotImplementedError("DB ID was not init properly")
+            self.auction_events.append(event)
 
         lots = self.init_lots_from_db()
 
@@ -203,15 +202,18 @@ class AuctionAPI:
         return self.auction_events
 
     def init_lots_from_db(self):
+        """
+        Init lots from DB
+        :return:
+        """
+
         self.lots = []
-        with sqlite3.connect(self.db_file_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(f"SELECT * FROM lots")
-            lots_lines = cursor.fetchall()
-            for line in lots_lines:
-                lot = Lot()
-                lot.init_from_db_line(line)
-                self.lots.append(lot)
+        self.db_cursor.execute(f"SELECT * FROM lots")
+        lots_lines = self.db_cursor.fetchall()
+        for line in lots_lines:
+            lot = Lot()
+            lot.init_from_db_line(line)
+            self.lots.append(lot)
         return self.lots
 
     def provision_tables(self):
@@ -221,7 +223,7 @@ class AuctionAPI:
         :return:
         """
 
-        self.provsion_db_providers_table()
+        self.provision_db_providers_table()
         self.provision_db_auction_events_table()
         self.provision_db_lots_table()
 
@@ -239,31 +241,31 @@ class AuctionAPI:
                 return self.update_auction_event(auction_event.id, end_time=auction_event.end_time.strftime(format_string))
             return True
 
-        sql = """
+        sql_insert = """
             INSERT INTO auction_events 
             (provider_id, name, description, url, start_time, end_time, address, provinces, last_update_time)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
 
-        with sqlite3.connect(self.db_file_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("PRAGMA foreign_keys = ON;")
+        self.db_cursor.execute("PRAGMA foreign_keys = ON;")
 
-            base_tuple = auction_event.generate_db_tuple()
-            data_tuple = (auction_event.provider_id,) + base_tuple
-            try:
-                cursor.execute(sql, data_tuple)
-                conn.commit()
-            except Exception as inst_err:
-                logger.exception(f"Error Inserting {repr(inst_err)}")
-                if "UNIQUE constraint" in repr(inst_err):
-                    logger.error(f"Data is not unique: {data_tuple}")
-                    select_sql = "select * from auction_events where name=? or url=?"
-                    ret = cursor.execute(select_sql, (auction_event.name, auction_event.url,))
-                    breakpoint()
-                else:
-                    logger.error(f"Unknown error with data: {data_tuple}")
-                breakpoint()
+        base_tuple = auction_event.generate_db_tuple()
+        data_tuple = (auction_event.provider_id,) + base_tuple
+        try:
+            self.db_cursor.execute(sql_insert, data_tuple)
+            self.db_connection.commit()
+        except Exception as inst_err:
+            logger.exception(f"Error Inserting {repr(inst_err)}")
+            if "UNIQUE constraint" in repr(inst_err):
+                logger.error(f"Data is not unique: {data_tuple}")
+                select_sql = "select * from auction_events where name=? or url=?"
+                ret = self.db_cursor.execute(select_sql, (auction_event.name, auction_event.url,))
+                lines = ret.fetchall()
+                self.delete_auction_event_with_lots(lines[0][0])
+                self.db_cursor.execute(sql_insert, data_tuple)
+                self.db_connection.commit()
+            else:
+                logger.error(f"Unknown error with data: {data_tuple}")
 
                 #delete_sql = "DELETE from auction_events where url = ?"
                 #ret = cursor.execute(delete_sql, (lot.url,))
@@ -291,44 +293,46 @@ class AuctionAPI:
 
         logger.info(f"Updating auction event: {auction_event_id}")
 
-        with sqlite3.connect(self.db_file_path) as conn:
-            cursor = conn.cursor()
-            if start_time:
-                sql_update_start_time = """
-                UPDATE auction_events
-                SET start_time = ?
-                WHERE id = ?
-                """
-                new_time = '{"horey_cached_type": "datetime", "value": "' + start_time + '"}'
-                cursor.execute(sql_update_start_time, (new_time, auction_event_id))
+        if start_time:
+            sql_update_start_time = """
+            UPDATE auction_events
+            SET start_time = ?
+            WHERE id = ?
+            """
+            new_time = '{"horey_cached_type": "datetime", "value": "' + start_time + '"}'
+            self.db_cursor.execute(sql_update_start_time, (new_time, auction_event_id))
+            self.db_connection.commit()
 
-            if end_time:
-                sql_update_end_time = """
-                UPDATE auction_events
-                SET end_time = ?
-                WHERE id = ?
-                """
-                new_time = '{"horey_cached_type": "datetime", "value": "' + end_time + '"}'
-                cursor.execute(sql_update_end_time, (new_time, auction_event_id))
+        if end_time:
+            sql_update_end_time = """
+            UPDATE auction_events
+            SET end_time = ?
+            WHERE id = ?
+            """
+            new_time = '{"horey_cached_type": "datetime", "value": "' + end_time + '"}'
+            self.db_cursor.execute(sql_update_end_time, (new_time, auction_event_id))
+            self.db_connection.commit()
 
-            if last_update_time:
-                sql_update_last_update_time = """
-                 UPDATE auction_events
-                 SET last_update_time = ?
-                 WHERE id = ?
-                 """
+        if last_update_time:
+            sql_update_last_update_time = """
+            UPDATE auction_events
+             SET last_update_time = ?
+             WHERE id = ?
+             """
 
-                new_time = '{"horey_cached_type": "datetime", "value": "' + last_update_time + '"}'
-                cursor.execute(sql_update_last_update_time, (new_time, auction_event_id))
+            new_time = '{"horey_cached_type": "datetime", "value": "' + last_update_time + '"}'
+            self.db_cursor.execute(sql_update_last_update_time, (new_time, auction_event_id))
+            self.db_connection.commit()
 
-            if url:
-                sql_update_url = """
-                 UPDATE auction_events
-                 SET url = ?
-                 WHERE id = ?
-                 """
+        if url:
+            sql_update_url = """
+            UPDATE auction_events
+             SET url = ?
+             WHERE id = ?
+            """
 
-                cursor.execute(sql_update_url, (url, auction_event_id))
+            self.db_cursor.execute(sql_update_url, (url, auction_event_id))
+            self.db_connection.commit()
 
     def update_db_auction_event(self, auction_event: AuctionEvent):
         """
@@ -338,13 +342,15 @@ class AuctionAPI:
         :return:
         """
 
-        with sqlite3.connect(self.db_file_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("PRAGMA foreign_keys = ON;")
-            for lot in auction_event.lots:
-                self.upsert_db_lot(conn, cursor, lot)
+        for lot in auction_event.lots:
+            self.upsert_db_lot(lot)
 
-    def upsert_db_lot(self, conn: sqlite3.Connection, cursor: sqlite3.Cursor, lot: Lot):
+    def upsert_db_lot(self, lot: Lot):
+        """
+        Update or insert lot.
+        :param lot:
+        :return:
+        """
         logger.info(f"Upserting Lot to DB: {lot.name}")
         insert_sql = """
                     INSERT INTO lots 
@@ -375,22 +381,24 @@ class AuctionAPI:
 
         try:
             if lot.id is not None:
-                cursor.execute(update_sql, data_tuple + (lot.id,))
+                self.db_cursor.execute(update_sql, data_tuple + (lot.id,))
             else:
                 try:
-                    cursor.execute(insert_sql, data_tuple)
+                    self.db_cursor.execute(insert_sql, data_tuple)
                 except Exception as inst_error:
                     logger.exception(f"Error: {repr(inst_error)} inserting: {data_tuple}")
                     if "IntegrityError" in repr(inst_error):
                         delete_sql = "DELETE from lots where url = ?"
-                        ret = cursor.execute(delete_sql, (lot.url,))
+                        ret = self.db_cursor.execute(delete_sql, (lot.url,))
+                        self.db_connection.commit()
                         logger.exception(f"Deleted: {ret.fetchall()}")
-                        cursor.execute(insert_sql, data_tuple)
+                        self.db_cursor.execute(insert_sql, data_tuple)
+
                     else:
                         breakpoint()
                         raise
 
-            conn.commit()
+            self.db_connection.commit()
         except sqlite3.OperationalError as e:
             if "unable to open database file" in str(e):
                 logger.error(f"Database file access error: {self.db_file_path}")
@@ -423,7 +431,7 @@ class AuctionAPI:
 
             except Exception:
                 breakpoint()
-                # self.update_auction_event(event.id, end_time="2026-01-23 10:00:00.000000")
+                # self.update_auction_event(event.id, end_time="2026-04-25 10:00:00.000000")
 
             if event.finished:
                 continue
@@ -501,11 +509,7 @@ class AuctionAPI:
 
         known_auction_events_by_url= {auction_event.url: auction_event  for auction_event in provider.auction_events}
 
-        new_auction_events = provider.init_auction_events(known_auction_events_by_url)
-        if new_auction_events is None:
-            return None
-
-        for auction_event in new_auction_events:
+        for auction_event in provider.yield_auction_events(known_auction_events_by_url):
             auction_event.provider_id = provider.id
 
             try:
@@ -558,6 +562,17 @@ class AuctionAPI:
         self.update_info_auction_event_async(auction_event_id)
 
     def update_info_auction_event_async(self, auction_event_id):
+        """
+        Update info for auction event.
+
+        :param auction_event_id:
+        :return:
+        """
+
+        try:
+            return self.update_auction_event_lots_ng(auction_event_id)
+        except NotImplementedError:
+            logger.warning(f"Not implemented for {auction_event_id}")
         logger.info(f"Started update info for auction_event_id {auction_event_id}")
 
         auction_event = self.init_auction_event_from_db(auction_event_id)
@@ -574,15 +589,49 @@ class AuctionAPI:
         old_lots_by_url = {lot.url: lot for lot in auction_event.lots}
         new_lots_by_url = {lot.url: lot for lot in provider.init_auction_event_lots(auction_event)}
 
-        with sqlite3.connect(self.db_file_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("PRAGMA foreign_keys = ON;")
-            for lot in new_lots_by_url.values():
-                self.upsert_db_lot(conn, cursor, lot)
+        for lot in new_lots_by_url.values():
+            self.upsert_db_lot(lot)
 
-            for lot_url, lot in old_lots_by_url.items():
-                if lot_url not in new_lots_by_url:
-                    self.delete_db_lot(conn, cursor, lot)
+        for lot_url, lot in old_lots_by_url.items():
+            if lot_url not in new_lots_by_url:
+                self.delete_db_lot(lot)
+
+        format_string = "%Y-%m-%d %H:%M:%S.%f"
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+
+        self.update_auction_event(auction_event.id, last_update_time=now.strftime(format_string))
+
+    def update_auction_event_lots_ng(self, auction_event_id):
+        """
+        Yield lot by lot.
+
+        :param auction_event_id:
+        :return:
+        """
+        logger.info(f"Started update info for auction_event_id {auction_event_id}")
+
+        auction_event = self.init_auction_event_from_db(auction_event_id)
+        self.init_providers_from_db()
+
+        for provider in self.providers:
+            if auction_event.provider_id == provider.id:
+                break
+        else:
+            raise RuntimeError(f"Was not able to find {auction_event.provider_id=} in the DB")
+
+        logger.info(f"Updating {auction_event_id=} {auction_event.provider_id=}")
+
+        old_lots_by_url = {lot.url: lot for lot in auction_event.lots}
+        new_lots_by_url = {}
+        for new_lot in provider.yield_auction_event_lots(auction_event):
+            new_lot.auction_event_id = auction_event.id
+            new_lots_by_url[new_lot.url] = new_lot
+
+            self.upsert_db_lot(new_lot)
+
+        for lot_url, lot in old_lots_by_url.items():
+            if lot_url not in new_lots_by_url:
+                self.delete_db_lot(lot)
 
         format_string = "%Y-%m-%d %H:%M:%S.%f"
         now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -590,38 +639,51 @@ class AuctionAPI:
         self.update_auction_event(auction_event.id, last_update_time=now.strftime(format_string))
 
     def delete_auction_event_with_lots(self, auction_event_id):
+        """
+        Delete auction event and lots.
+
+        :param auction_event_id:
+        :param connection:
+        :param cursor:
+        :return:
+        """
+
         auction_event = self.init_auction_event_from_db(auction_event_id)
-        with sqlite3.connect(self.db_file_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("PRAGMA foreign_keys = ON;")
-            for lot in auction_event.lots:
-                self.delete_db_lot(conn, cursor, lot)
+        for lot in auction_event.lots:
+            self.delete_db_lot(lot)
         self.delete_db_auction_event(auction_event)
 
-    def delete_db_lot(self, conn: sqlite3.Connection, cursor: sqlite3.Cursor, lot: Lot):
+    def delete_db_lot(self, lot: Lot):
+        """
+        Delete lot.
+
+        :param lot:
+        :return:
+        """
+
         table_name = 'lots'
         delete_query = f"DELETE FROM {table_name} WHERE id = ?"
 
         try:
-            cursor.execute(delete_query, (lot.id,))
-            conn.commit()
+            self.db_cursor.execute(delete_query, (lot.id,))
+            self.db_connection.commit()
         except Exception as inst_err:
             logger.exception(inst_err)
             breakpoint()
             raise
 
     def delete_db_auction_event(self, auction_event: AuctionEvent):
+        """
+        Delete auction event only.
+
+        :param auction_event:
+        :return:
+        """
+
         table_name = 'auction_events'
         delete_query = f"DELETE FROM {table_name} WHERE id = ?"
-        with sqlite3.connect(self.db_file_path) as conn:
-            cursor = conn.cursor()
-            try:
-                cursor.execute(delete_query, (auction_event.id,))
-                conn.commit()
-            except Exception as inst_err:
-                logger.exception(inst_err)
-                breakpoint()
-                raise
+        self.db_cursor.execute(delete_query, (auction_event.id, ))
+        self.db_connection.commit()
 
     def init_auction_event_from_db(self, auction_event_id) -> AuctionEvent:
         auction_event_id = int(auction_event_id)
@@ -711,15 +773,13 @@ class AuctionAPI:
         :return:
         """
 
-        with sqlite3.connect(self.db_file_path) as conn:
-            cursor = conn.cursor()
-            try:
-                cursor.execute(query, *args, **kwargs)
-                conn.commit()
-            except Exception as inst_err:
-                logger.exception(inst_err)
-                breakpoint()
-                raise
+        try:
+            self.db_cursor.execute(query, *args, **kwargs)
+            self.db_connection.commit()
+        except Exception as inst_err:
+            logger.exception(inst_err)
+            breakpoint()
+            raise
 
     def delete_providers_auction_events(self, provider):
         """

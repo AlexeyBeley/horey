@@ -41,7 +41,7 @@ setup(
             "system_functions/**/**/*.yml",
             "system_functions/**/**/*.txt",
             "system_functions/**/**/*.sh",
-            "system_functions/*.txt",
+            "system_functions/*.txt"
         ],
     },
     include_package_data=True,

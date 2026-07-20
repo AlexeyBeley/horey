@@ -50,13 +50,14 @@ class AWSLambdaAPI:
         :return:
         """
 
-        self.configuration.lambda_name_slug = self.configuration.lambda_name.replace("_", "-")
+        if self.configuration._lambda_name_slug is None:
+            self.configuration.lambda_name_slug = self.configuration.lambda_name.replace("_", "-")
 
-        for to_clean in ["lambda", self.environment_api.configuration.environment_name,
-                         self.environment_api.configuration.environment_level]:
-            self.configuration.lambda_name_slug = self.configuration.lambda_name_slug.replace(f"-{to_clean}",
-                                                                                              "").replace(
-                f"{to_clean}-", "")
+            for to_clean in ["lambda", self.environment_api.configuration.environment_name,
+                             self.environment_api.configuration.environment_level]:
+                self.configuration.lambda_name_slug = self.configuration.lambda_name_slug.replace(f"-{to_clean}",
+                                                                                                  "").replace(
+                    f"{to_clean}-", "")
 
         return self.configuration.lambda_name_slug
 
@@ -150,8 +151,10 @@ class AWSLambdaAPI:
 
         if self._ecs_api is None:
             config = ECSAPIConfigurationPolicy()
-            config.ecr_repository_name_slug = self.init_lambda_name_slug()
+            self.init_lambda_name_slug()
+            config.slug = self.configuration.lambda_name_slug
             ecs_api = ECSAPI(configuration=config, environment_api=self.environment_api)
+            ecs_api.set_ecr_repository_name(repository_name=f"repo_lambda_{self.environment_api.configuration.environment_name}_{config.slug}")
             self._ecs_api = ecs_api
         return self._ecs_api
 
@@ -269,6 +272,7 @@ class AWSLambdaAPI:
 
         self.configuration.policy["Statement"] += self.lambda_resource_policies_callback()
         self.cloudwatch_api.provision_log_group(self.log_group_name)
+
         self.provision_ecr_repository()
         self.provision_lambda_role()
 
@@ -503,7 +507,7 @@ class AWSLambdaAPI:
                 self.build_api.configuration.docker_build_arguments["platform"] = "linux/arm64"
             else:
                 raise ValueError(f"architecture must be x86_64 or arm64, got {self.configuration.architecture}")
-            image = self.build_api.run_build_image_routine(branch_name, build_number)
+            image = self.build_api.run_build_and_upload_image_routine(branch_name, build_number)
 
             image_registry_reference = image.tags[0]
 
@@ -855,3 +859,19 @@ class AWSLambdaAPI:
         """
 
         return self.cloudwatch_api.yield_logs(self.log_group_name, start_time=start_time)
+
+    def print_recent_execution_logs(self):
+        """
+        Print recent execution logs.
+
+        :return:
+        """
+        for stream in self.cloudwatch_api.yield_streams(log_group_name=self.log_group_name):
+            break
+        else:
+            raise NotImplementedError("No streams found")
+        ret = [log for log in  self.cloudwatch_api.yield_logs(self.log_group_name, streams=[stream])]
+
+        for log in ret:
+            print(log["message"])
+        return ret

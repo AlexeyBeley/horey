@@ -604,6 +604,8 @@ class ELBV2Client(Boto3Client):
             self.clear_cache(LoadBalancer.Listener)
             return response
 
+        return None
+
     def update_rule_information(self, rule: LoadBalancer.Rule, region_rules=None):
         """
         Standard.
@@ -617,12 +619,40 @@ class ELBV2Client(Boto3Client):
             rule.region, full_information=False, listener_arn=rule.listener_arn
         )
 
+        found_rule = None
         for region_rule in region_rules:
             if region_rule.get_tagname(ignore_missing_tag=True) == rule.get_tagname():
-                rule.update_from_raw_response(region_rule.dict_src)
-                return True
+                if found_rule:
+                    raise ValueError(f"Expected single rule, found one: {found_rule.arn} two: {region_rule.arn} by tag name")
+                found_rule = region_rule
+                continue
+            if rule.compare_conditions(region_rule):
+                if found_rule:
+                    raise ValueError(f"Expected single rule, found one: {found_rule.arn} two: {region_rule.arn} by conditions")
+                found_rule = region_rule
+                continue
+            if region_rule.priority == rule.priority:
+                if found_rule:
+                    raise ValueError(f"Expected single rule, found one: {found_rule.arn} two: {region_rule.arn} by priority")
+                found_rule = region_rule
+                continue
 
-        return False
+        if not found_rule:
+            return False
+
+        if str(found_rule.priority) != str(rule.priority):
+            raise NotImplementedError(f"ElbV2 rule priority change is not implemented [{found_rule.priority} -> {rule.priority}]")
+
+        if not rule.compare_conditions(found_rule):
+            raise NotImplementedError("ElbV2 rule condition change is not implemented")
+
+        if not rule.compare_action(found_rule):
+            raise NotImplementedError("ElbV2 rule action change is not implemented")
+
+
+        found_rule.listener_arn = rule.listener_arn
+        return rule.update_from_attrs(found_rule)
+
 
     def provision_load_balancer_rule(self, rule: LoadBalancer.Rule):
         """
@@ -633,11 +663,9 @@ class ELBV2Client(Boto3Client):
         """
 
         current_rule = LoadBalancer.Rule({})
-        current_rule.listener_arn = rule.listener_arn
+        current_rule.update_from_attrs(rule)
         if current_rule.tags is None:
             raise ValueError(f"Tags were not set: {rule.listener_arn=}")
-        current_rule.tags = rule.tags
-
         if self.update_rule_information(current_rule):
             rule.arn = current_rule.arn
             modify_request = current_rule.generate_modify_request(rule)
@@ -665,6 +693,7 @@ class ELBV2Client(Boto3Client):
                 self.get_session_client(region=region).create_rule, "Rules", filters_req=request_dict
         ):
             return response
+        return None
 
     def modify_rule_raw(self, region, request_dict):
         """

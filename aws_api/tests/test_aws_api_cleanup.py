@@ -15,20 +15,28 @@ from horey.aws_api.base_entities.region import Region
 
 # pylint: disable= missing-function-docstring
 logger = get_logger()
-configuration = AWSAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "..",
-        "..",
-        "ignore",
-        "aws_api_configuration_values_all_access.py",
-    )
-)
-configuration.init_from_file()
 
-aws_api = AWSAPI(configuration=configuration)
+
+@pytest.fixture(name="aws_api")
+def aws_api_fixture():
+    """Test fixture"""
+    configuration = AWSAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "..",
+            "..",
+            "ignore",
+            "accounts",
+            "aws_api_configuration_values_all_access.py",
+        )
+    )
+
+    configuration.init_from_file()
+
+    aws_api = AWSAPI()
+    yield aws_api
 
 
 @pytest.mark.skip(reason="IAM policies cleanup will be enabled explicitly")

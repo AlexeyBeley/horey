@@ -52,10 +52,14 @@ class ECSClient(Boto3Client):
         :return:
         """
 
+        logger.info(f"Running ECS Task: {request_dict}")
+
         for response in self.execute(
                 self.get_session_client(region=region).run_task, "tasks", filters_req=request_dict
         ):
             return response
+
+        return None
 
     def start_task(self, region, request_dict):
         """
@@ -687,6 +691,9 @@ class ECSClient(Boto3Client):
         :return:
         """
 
+        if len(str(request_dict)) > 65536:
+            print(f"Task definition request length {len(str(request_dict))} while expected less then 65536")
+
         logger.info(f"Creating ECS task definition: {request_dict}")
         for response in self.execute(
                 self.get_session_client(region=region).register_task_definition,
@@ -695,6 +702,7 @@ class ECSClient(Boto3Client):
         ):
             self.clear_cache(ECSTaskDefinition)
             return response
+        return None
 
     @staticmethod
     def get_cluster_from_arn(cluster_arn):
@@ -1085,7 +1093,7 @@ class ECSClient(Boto3Client):
             "capacityProviders": capacity_provider_names,
             "defaultCapacityProviderStrategy": default_capacity_provider_strategy,
         }
-        self.attach_capacity_providers_to_ecs_cluster_raw(ecs_cluster.region, request_dict)
+        return self.attach_capacity_providers_to_ecs_cluster_raw(ecs_cluster.region, request_dict)
 
     def attach_capacity_providers_to_ecs_cluster_raw(self, region, request_dict):
         """
@@ -1096,6 +1104,7 @@ class ECSClient(Boto3Client):
         """
 
         logger.info(f"Attaching capacity provider to ecs cluster: {request_dict}")
+
         for response in self.execute(
                 self.get_session_client(region=region).put_cluster_capacity_providers,
                 "cluster",
@@ -1104,6 +1113,7 @@ class ECSClient(Boto3Client):
             self.clear_cache(ECSCapacityProvider)
             self.clear_cache(ECSCluster)
             return response
+        return None
 
     def update_cluster_information(self, cluster: ECSCluster):
         """

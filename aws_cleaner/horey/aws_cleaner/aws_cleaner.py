@@ -1951,9 +1951,13 @@ class AWSCleaner:
 
         return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
-    def cleanup_report_ecr_images(self, permissions_only=False, months=6):
+    def cleanup_report_ecr_images(self, permissions_only=False, months=6, ignore_pulled_access=False):
         """
+
         Images compiled X months ago and later.
+
+        ignore_pulled_access= Do not check the pulled access, if there is an automatic scanner
+        that pulls it - ignore
 
         :return:
         """
@@ -1983,8 +1987,20 @@ class AWSCleaner:
 
         for repo_name, images in images_by_ecr_repo.items():
             action = ReportActionECR({"region": images[0].region, "repo": repo_name})
-            action.expired_images = [_image.image_tags for _image in images if _image.image_tags and
-                                     max(_image.image_pushed_at, (_image.last_recorded_pull_time or _image.image_pushed_at)) < age_limit_date]
+            action.expired_images = []
+            for _image in images:
+                if not _image.image_tags:
+                    continue
+                if ignore_pulled_access:
+                    accessed_time = _image.image_pushed_at
+                else:
+                    accessed_time = max(_image.last_recorded_pull_time, _image.image_pushed_at)
+
+                if max(_image.image_pushed_at, accessed_time) > age_limit_date:
+                    continue
+
+                action.expired_images.append(_image.image_tags)
+
             action.untagged_images = [_image.image_digest for _image in images if not _image.image_tags]
 
             if not action.expired_images and not action.untagged_images:

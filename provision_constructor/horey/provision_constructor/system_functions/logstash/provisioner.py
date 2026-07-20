@@ -113,10 +113,9 @@ class Provisioner(SystemFunctionCommon):
 
         logstash_tarball = f"logstash-oss-{logstash_version}-linux-x86_64.tar.gz"
         tarball_path = self.deployment_dir / logstash_tarball
-        if not tarball_path.exists():
-            logstash_url = f"https://artifacts.elastic.co/downloads/logstash/{logstash_tarball}"
-            self.deployment_dir.mkdir(exist_ok=True)
-            self.download_file_from_web(logstash_url, tarball_path)
+        logstash_url = f"https://artifacts.elastic.co/downloads/logstash/{logstash_tarball}"
+
+        self.download_file_from_web(logstash_url, tarball_path)
 
         self.remoter.put_file(tarball_path, Path(f"/tmp/{logstash_tarball}"))
 

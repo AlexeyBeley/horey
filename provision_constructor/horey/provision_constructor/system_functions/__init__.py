@@ -13,6 +13,8 @@ from .haproxy import *
 from .python import *
 from .java import *
 from .apt_package_generic import *
+from .nat import *
+from .net import *
 from .npm import *
 from .horey_package_generic import *
 from .copy_generic import *
@@ -26,3 +28,4 @@ from .raw import *
 from .hardening import *
 from .hushlogin import *
 from .vrrp import *
+from .github_agent import *

@@ -25,7 +25,10 @@ class SecretsAPI:
 
     @property
     def region(self):
-        return Region.get_region(self.configuration.region)
+        try:
+            return Region.get_region(self.configuration.region)
+        except self.configuration.UndefinedValueError:
+            return self.environment_api.region
 
     def get_secret_file(self, secret_name: str, file_path: Path):
         """

@@ -512,13 +512,15 @@ class Boto3Client:
         @param sleep_time:
         @return:
         """
+
         start_time = datetime.datetime.now()
         logger.info(
             f"Starting waiting loop for {observed_object.id} to become one of {desired_statuses}"
         )
 
         for i in range(timeout // sleep_time):
-            update_function(observed_object)
+            if not update_function(observed_object):
+                break
 
             try:
                 object_status = observed_object.get_status()
@@ -674,7 +676,8 @@ class Boto3Client:
             return True
 
         aws_api_account = self.aws_account if self.aws_account is not None else AWSAccount.get_aws_account()
-        cache_dir = os.path.join(self.main_cache_dir_path, aws_api_account.name)
+        str_account = aws_api_account.name if aws_api_account else self.account_id
+        cache_dir = os.path.join(self.main_cache_dir_path, str_account)
         if not os.path.exists(cache_dir):
             return False
 
@@ -748,8 +751,12 @@ class Boto3Client:
             file_name = file_name.replace(".", f"_{cache_suffix}.")
 
         aws_api_account = self.aws_account if self.aws_account is not None else AWSAccount.get_aws_account()
+        if aws_api_account is None:
+            account_id = self.account_id
+        else:
+            account_id = aws_api_account.name
 
-        cache_client_dir_path = os.path.join(self.main_cache_dir_path, aws_api_account.name, region_dir_name,
+        cache_client_dir_path = os.path.join(self.main_cache_dir_path, account_id, region_dir_name,
                                              self.client_cache_dir_name)
         if not os.path.exists(cache_client_dir_path):
             logger.info(f"Creating cache client dir: {cache_client_dir_path}")

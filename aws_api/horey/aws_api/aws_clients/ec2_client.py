@@ -3189,3 +3189,25 @@ class EC2Client(Boto3Client):
             ):
                 pass
             self.clear_cache(AMI)
+
+    def describe_instance_type_offerings_raw(self, region, instance_type):
+        """
+        Fetch availability zones by instance type.
+
+        :return:
+        """
+
+        filters_req = {"Filters": [
+            {
+                "Name": "instance-type",
+                "Values": [
+                    instance_type
+                ]
+            }
+        ],
+            "LocationType": "availability-zone"
+        }
+        return list(self.execute(
+            self.get_session_client(region=region).describe_instance_type_offerings, "InstanceTypeOfferings", filters_req=filters_req
+        ))
+

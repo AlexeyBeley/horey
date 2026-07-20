@@ -29,28 +29,34 @@ configuration_values_file_full_path = os.path.join(
 logger = get_logger(
 )
 
-configuration = AWSAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "..",
-        "..",
-        "ignore",
-        "accounts",
-        "aws_api_configuration_values.py",
+
+
+@pytest.fixture(name="aws_api")
+def aws_api_fixture():
+    """Test fixture"""
+    configuration = AWSAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "..",
+            "..",
+            "ignore",
+            "accounts",
+            "aws_api_configuration_values.py",
+        )
     )
-)
 
+    configuration.init_from_file()
 
-configuration.init_from_file()
-
-aws_api = AWSAPI()
+    aws_api = AWSAPI()
+    yield aws_api
 
 # pylint: disable = missing-function-docstring
 
 @pytest.mark.done
 def test_add_managed_region():
+
     aws_api.add_managed_region(Region.get_region("us-west-2"))
 
 

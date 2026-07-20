@@ -44,11 +44,11 @@ def test_load_page_lot_elements():
     assert provider.load_page_lot_elements("https://www.maauctions.com/auctions/24840-november-1-2025-automotive-timed-vehicles-and-rvs-alberta")
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_load_page_lots():
     provider = MAauction()
     provider.connect()
-    ret = provider.load_page_lots("https://www.maauctions.com/auctions/24840-november-1-2025-automotive-timed-vehicles-and-rvs-alberta")
+    ret = provider.load_page_lots("https://www.northtorontoauction.com/auctions/25103-june-17-2026-toronto-province-of-ontario-sealed-bid-auction-jiimaan-vessel?pageSize=125")
     assert ret
 
 
@@ -68,10 +68,10 @@ def test_init_auction_events_from_internal_url():
     assert ret
 
 
-@pytest.mark.done
-def test_init_auction_lots():
-    auction = MAauction()
-    ret = auction.init_auction_events()
-    for auction_event in ret:
-        lots = auction.init_auction_event_lots(auction_event)
-        assert isinstance(lots, list)
+@pytest.mark.unit
+def test_init_auction_events():
+    proxy = "socks5://99.79.69.29:1080"
+
+    auction = MAauction(proxy=proxy)
+    for x in auction.yield_auction_events({}):
+        assert x

@@ -21,7 +21,7 @@ class CloudwatchAPI:
         self.configuration = configuration
         self.environment_api = environment_api
 
-    def provision_log_group(self, log_group_name):
+    def provision_log_group(self, log_group_name=None):
         """
         Provision log group.
 
@@ -30,7 +30,7 @@ class CloudwatchAPI:
 
         log_group = CloudWatchLogGroup({})
         log_group.region = self.environment_api.region
-        log_group.name = log_group_name
+        log_group.name = log_group_name or self.configuration.log_group_name
         log_group.retention_in_days = self.configuration.retention_in_days
         log_group.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.configuration.tags}
         log_group.tags["name"] = log_group.name
@@ -107,23 +107,41 @@ class CloudwatchAPI:
 
         return alarm
 
-    def yield_logs(self, log_group_name, start_time=None):
+    def yield_logs(self, log_group_name=None, start_time=None, streams=None):
         """
         Get logs from the group.
 
+        :param streams:
         :param log_group_name:
         :param start_time:
         :return:
         """
-
+        log_group_name = log_group_name or self.configuration.log_group_name
         log_group = self.get_cloudwatch_log_group(log_group_name)
         # LogStreamName'|'LastEventTime
-        filters_req = {"orderBy": "LastEventTime", "descending": True}
+        streams = streams or self.yield_streams(log_group=log_group)
 
-        for stream in self.environment_api.aws_api.cloud_watch_logs_client.yield_log_group_streams(log_group, filters_req=filters_req):
-            if stream.get_last_event_timestamp() < start_time:
+        for stream in streams:
+            if start_time and stream.get_last_event_timestamp() < start_time:
                 continue
             logger.info(f"Stream: {stream.name}")
 
             for event in self.environment_api.aws_api.cloud_watch_logs_client.yield_log_events(log_group, stream, filters_req=None):
                 yield event
+
+    def yield_streams(self, log_group=None, log_group_name=None):
+        """
+        Get logs from the group.
+
+        :param log_group:
+        :param log_group_name:
+        :return:
+        """
+
+        log_group = log_group or self.get_cloudwatch_log_group(log_group_name)
+        # LogStreamName'|'LastEventTime
+        filters_req = {"orderBy": "LastEventTime", "descending": True}
+
+        for stream in self.environment_api.aws_api.cloud_watch_logs_client.yield_log_group_streams(log_group, filters_req=filters_req):
+            logger.info(f"Stream: {stream.name}")
+            yield stream

@@ -2,7 +2,9 @@
 Standard EC2 maintainer.
 
 """
+from typing import Union
 
+from horey.aws_api.aws_services_entities.key_pair import KeyPair
 from horey.h_logger import get_logger
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 from horey.infrastructure_api.ec2_api_configuration_policy import EC2APIConfigurationPolicy
@@ -57,18 +59,22 @@ class EC2API:
 
         self.provision_security_group()
 
-    def provision_security_group(self):
+    def provision_security_group(self, name=None, description=None):
         """
         Provision log group.
 
+        :param description:
         :param name:
         :return:
         """
 
+        if not name:
+            logger.error("Security group Name was not set, this is old style code")
+
         security_group = EC2SecurityGroup({})
         security_group.vpc_id = self.environment_api.vpc.id
-        security_group.name = self.configuration.name
-        security_group.description = security_group.name
+        security_group.name = name or self.configuration.name
+        security_group.description = description or security_group.name
         security_group.region = self.environment_api.region
         security_group.tags = self.environment_api.configuration.tags
         security_group.tags.append({
@@ -76,12 +82,36 @@ class EC2API:
             "Value": security_group.name
         })
 
-        if self.configuration.ip_permissions is not None:
-            security_group.ip_permissions = self.configuration.ip_permissions
-
-        self.environment_api.aws_api.provision_security_group(security_group, provision_rules=bool(self.configuration.ip_permissions))
+        self.environment_api.aws_api.provision_security_group(security_group, provision_rules=False)
 
         return security_group
+
+    def get_security_group(self, name=None, group_id=None):
+        """
+        Get security group.
+
+        :param group_id:
+        :param name:
+        :return:
+        """
+        if name:
+            filters = {"Filters": [
+                {"Name": "vpc-id", "Values": [self.environment_api.vpc.id]},
+                {"Name": "group-name", "Values": [name]}
+            ]}
+        elif group_id:
+            filters = {"Filters": [
+                {"Name": "vpc-id", "Values": [self.environment_api.vpc.id]},
+                {"Name": "group-id", "Values": [group_id]}
+            ]}
+        else:
+            raise NotImplementedError("Name and group_id not set")
+        security_groups = self.environment_api.aws_api.ec2_client.get_region_security_groups(
+            self.environment_api.region,
+            filters=filters)
+        if len(security_groups) != 1:
+            raise RuntimeError(f"Expected to find single security group, found: {len(security_groups)}")
+        return security_groups[0]
 
     def get_ubuntu24_04_image(self, architecture="amd64"):
         """
@@ -100,10 +130,11 @@ class EC2API:
         return amis[0]
 
     # pylint: disable=too-many-positional-arguments, too-many-arguments
-    def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None, instance_type=None, architecture="amd64"):
+    def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None, instance_type=None, architecture="amd64", asynchronous=False):
         """
         Provision instance.
 
+        :param asynchronous:
         :param instance_type:
         :param architecture:
         :param key_name:
@@ -122,7 +153,8 @@ class EC2API:
                 raise NotImplementedError("Unsupported architecture")
 
         if key_name is None:
-            raise NotImplementedError("key_name")
+            key = self.provision_ssh_key(f"key_{name}")
+            key_name = key.name
 
         ec2_instance = EC2Instance({})
 
@@ -142,10 +174,11 @@ class EC2API:
 
         ec2_instance.ebs_optimized = True
         ec2_instance.instance_initiated_shutdown_behavior = "stop"
+        available_subnets = self.choose_subnets_with_instance_type_offerings(instance_type, self.environment_api.private_subnets)
 
         ec2_instance.network_interfaces = [
             {
-                "AssociatePublicIpAddress": True,
+                "AssociatePublicIpAddress": False,
                 "DeleteOnTermination": True,
                 "Description": "Primary network interface",
                 "DeviceIndex": 0,
@@ -153,7 +186,7 @@ class EC2API:
                     security_group.id for security_group in security_groups
                 ],
                 "Ipv6AddressCount": 0,
-                "SubnetId": self.environment_api.private_subnets[0].id,
+                "SubnetId": available_subnets[0].id,
                 "InterfaceType": "interface",
             }
         ]
@@ -168,10 +201,22 @@ class EC2API:
                 },
             }
         ]
-        ec2_instance.monitoring = {"Enabled": True}
-
-        self.environment_api.aws_api.provision_ec2_instance(ec2_instance)
+        ec2_instance.monitoring = {"Enabled": False}
+        self.environment_api.aws_api.provision_ec2_instance(ec2_instance, wait_until_active=asynchronous)
         return ec2_instance
+
+    def choose_subnets_with_instance_type_offerings(self, instance_type, subnets):
+        """
+        Choose subnets with instance type offerings.
+
+        :param instance_type:
+        :param subnets:
+        :return:
+        """
+
+        responses = self.environment_api.aws_api.ec2_client.describe_instance_type_offerings_raw(self.environment_api.region, instance_type=instance_type)
+        available_zones = [response["Location"] for response in responses]
+        return [subnet for subnet in subnets if subnet.availability_zone in available_zones]
 
     def start_instance(self, name=None):
         """
@@ -209,6 +254,90 @@ class EC2API:
             raise ValueError(f"Was not able to find instance by {name=}")
         self.environment_api.aws_api.ec2_client.stop_instance(ec2_instance, asynchronous=asynchronous)
 
+    def provision_private_alb_security_group(self):
+        """
+        Provision internal ALB security group.
+
+        :return:
+        """
+
+        return self.provision_security_group(f"sg_private_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-internal-alb",
+                                      "Internal ALB security group")
+
+    def provision_public_alb_security_group(self):
+        """
+        Provision External ALB security group.
+
+        :return:
+        """
+
+        return self.provision_security_group(f"sg_public_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}-internal-alb",
+                                             "External ALB security group")
+
+    def security_group_add_rule(self, destination_group: EC2SecurityGroup, source_group: Union[EC2SecurityGroup, str]=None, port_range=None):
+        """
+        Add rule to security group.
+        :param destination_group:
+        :param source_group:
+        :param port_range:
+        :return:
+        """
+
+        if not self.environment_api.aws_api.ec2_client.update_security_group_information(destination_group):
+            raise RuntimeError("Failed to update security group information")
+
+        if not port_range:
+            raise NotImplementedError("port_range was not set")
+
+        if not source_group:
+            raise NotImplementedError("source_group was not set")
+
+        source_group_id = None
+        if isinstance(source_group, EC2SecurityGroup):
+            source_group_id = source_group.id
+
+        if isinstance(source_group, str):
+            source_group_id = source_group
+
+
+        desired_permission = {
+            "IpProtocol": "tcp",
+            "FromPort": port_range[0],
+            "ToPort": port_range[1],
+            "UserIdGroupPairs": [
+                {
+                    "GroupId": source_group_id,
+                    "Description": f"{source_group_id} {port_range[0]}-{port_range[1]}"
+                }
+            ],
+        }
+
+        for permission in destination_group.ip_permissions:
+            if permission.get("FromPort") == port_range[0] and \
+                permission.get("ToPort") == port_range[1] and \
+                permission.get("UserIdGroupPairs")[0].get("GroupId") == source_group_id:
+                return True
+        destination_group.ip_permissions.append(desired_permission)
+        return self.environment_api.aws_api.ec2_client.provision_security_group(destination_group)
+
+    def provision_ssh_key(self, name):
+        """
+        Standard.
+
+        :return:
+        """
+
+        key_pair = KeyPair({})
+        key_pair.name = name
+        key_pair.key_type = "ed25519"
+        key_pair.region = self.environment_api.region
+        key_pair.tags = self.environment_api.get_tags_with_name(key_pair.name)
+
+        self.environment_api.aws_api.provision_key_pair(key_pair, save_to_secrets_manager=True,
+                                        secrets_manager_region=self.environment_api.region
+                                            )
+
+        return key_pair
     def dispose_instance(self, name=None, missing_ok=True):
         """
         Stop EC2 instance.
@@ -229,18 +358,3 @@ class EC2API:
             return True
 
         return self.environment_api.aws_api.ec2_client.dispose_instance(ec2_instance)
-
-    def get_security_group(self, security_group_name):
-        """
-        Get security groups by names.
-
-        :param security_group_name:
-        :return:
-        """
-
-        group = self.environment_api.aws_api.get_security_group_by_vpc_and_name(self.environment_api.vpc, security_group_name)
-
-        if not group:
-            raise ValueError(f"Was not able to find security group: {security_group_name}")
-
-        return group

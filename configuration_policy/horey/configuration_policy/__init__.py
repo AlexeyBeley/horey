@@ -1,6 +1,6 @@
 """
-Logging package. Log formatting and routing.
+Configuration policy
 """
 
 
-__version__ = "1.0.10"
+__version__ = "1.0.13"

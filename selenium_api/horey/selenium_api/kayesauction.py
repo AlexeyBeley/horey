@@ -245,18 +245,19 @@ class Kayesauction(Provider):
                 auction_event.name = self.selenium_api.get_element(By.CLASS_NAME, "auction-title").text
                 if auction_event.name:
                     break
+
                 time.sleep(0.1)
             else:
                 raise ValueError("Name")
 
-            for _ in range(50):
+            for _ in range(5):
                 try:
                     logger.info(f"Looking for {auction_event.url} 'Auction Details' btn")
                     btn_details = self.selenium_api.get_element(By.CSS_SELECTOR, "[title='Auction Details']")
                     btn_details.click()
                     self.selenium_api.wait_for_page_load()
                 except Exception as inst_error:
-                    logger.error(f"Auction description Auction Details btn not found: {repr(inst_error)}")
+                    logger.warning(f"Auction description Auction Details btn not found: {repr(inst_error)}")
 
                 try:
                     auction_event.description = self.selenium_api.get_element(By.ID, "panel-auction-detail-auction-information").text
@@ -265,7 +266,8 @@ class Kayesauction(Provider):
                     logger.error(f"Auction description auction-information not found: {repr(inst_error)} retrying")
                     time.sleep(0.1)
             else:
-                raise TimeoutError("Was not able to fetch auction description")
+                auction_event.description = auction_event.name
+
 
             if not auction_event.address:
                 auction_event.address = self.selenium_api.get_element(By.TAG_NAME, "app-city-state-zip-link").text
@@ -284,13 +286,24 @@ class Kayesauction(Provider):
         month = self.MONTH_BY_NAME[month_name]
 
         line_date = line[month_index + len(month_name):]
-        day, line_date = line_date.split(",")
+
+        if line_date.count(",") > 1:
+            if "and closes" in line_date.lower():
+                line_date = line_date.split(" and closes")[0]
+            else:
+                breakpoint()
+        if " at " not in line:
+            day, year = line_date.split(",")
+            hour, minute = 13, 0
+        else:
+            day, line_date = line_date.split(",")
+            year, line_date = line_date.strip().split("at")
+
+            parts = line_date.strip().split(" ", 2)
+            hour_minute, meridiem = parts[0], parts[1]
+            hour, minute = self.extract_time_meridiem(hour_minute, meridiem)
         day = int(day.strip())
-        year, line_date = line_date.strip().split("at")
         year = int(year.strip())
-        parts = line_date.strip().split(" ", 2)
-        hour_minute, meridiem = parts[0], parts[1]
-        hour, minute = self.extract_time_meridiem(hour_minute, meridiem)
         return datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute)
 
     def init_auction_event_lots(self, auction_event: AuctionEvent):

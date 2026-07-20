@@ -1,7 +1,5 @@
-import json
 import datetime
 import time
-from pathlib import Path
 
 from selenium.webdriver.common.by import By
 from horey.h_logger import get_logger
@@ -43,19 +41,30 @@ class Mcsherryauction(Provider):
                     for line in lot_element.text.split("\n"):
                         if "Start Price" in line:
                             lot.starting_bid = float(line.split(":")[1].strip())
-            elif "No Online Bidding For This Lot" in lot_element.text:
+            elif ("No Online Bidding For This Lot" in lot_element.text or
+                  "Please Read Before Bidding" in lot_element.text or
+                  "More Items Coming" in lot_element.text):
                 continue
             else:
                 try:
                     highbid_element = lot_element.find_element(By.CLASS_NAME, "gridView_highbid")
-                except  NoSuchElementException as inst:
-                    logger.exception(inst)
-                    logger.info(f"{lot_element.text=}, {lot.url=}")
-                    breakpoint()
-                if "Current Bid: " not in highbid_element.text:
-                    breakpoint()
-                    raise ValueError("Current Bid does not present")
-                lot.current_max = float(highbid_element.text.split(" ")[-1].replace(",", ""))
+                    if "Current Bid: " not in highbid_element.text:
+                        breakpoint()
+                        raise ValueError("Current Bid does not present")
+                    lot.current_max = float(highbid_element.text.split(" ")[-1].replace(",", ""))
+                except NoSuchElementException as inst:
+                    if "Bidding Has Concluded" in lot_element.text:
+                        for line in lot_element.text.split("\n"):
+                            if "Sold to" in line:
+                                lot.current_max = float(line.split("=")[1].replace(",", "").strip())
+                                break
+                        else:
+                            breakpoint()
+                            lot.current_max = 0
+                    else:
+                        logger.exception(inst)
+                        logger.info(f"{lot_element.text=}, {lot.url=}")
+                        breakpoint()
 
             item_image_element = lot_element.find_element(By.TAG_NAME, "img")
             lot.image_url = item_image_element.get_attribute('src')

@@ -20,11 +20,47 @@ logger = get_logger()
 
 
 class MAauction(Provider):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, proxy=None):
+        super().__init__(proxy=proxy)
         self.name = "maauctions"
         self.initial_page = "https://www.maauctions.com/auctions/24839-october-28-2025-sporting-goods-liquidation-timed-auction-manitoba"
         self.main_page = "https://www.maauctions.com/auctions"
+
+    def yield_page_lots(self, page_url, auction_event_address=None):
+        """
+        Load free items.
+
+        :return:
+        """
+
+        for _ in range(5):
+            try:
+                lots_elements = self.load_page_lot_elements(page_url)
+                break
+            except self.ThrottlingError:
+                self.selenium_api.disconnect()
+                time.sleep(3)
+            except Exception as error_inst:
+                logger.exception("Fetch lotList failed: %s: %s", page_url, error_inst)
+                time.sleep(10)
+                continue
+        else:
+            raise TimeoutError("Was not able to fetch lot elements")
+
+
+        for i, lot_element in enumerate(lots_elements):
+
+            for _ in range(5):
+                try:
+                    lot = self.init_lot_from_element(lot_element, auction_event_address)
+                    yield lot
+                    break
+                except self.ThrottlingError:
+                    self.selenium_api.disconnect()
+                    time.sleep(3)
+            else:
+                raise TimeoutError("Was not able to init lot element")
+            logger.info(f"Finished lot elements: {i}/{len(lots_elements)}")
 
     def load_page_lots(self, page_url, auction_event_address=None):
         """
@@ -33,51 +69,87 @@ class MAauction(Provider):
         :return:
         """
 
-        lots_elements = self.load_page_lot_elements(page_url)
+        for _ in range(5):
+            try:
+                lots_elements = self.load_page_lot_elements(page_url)
+                break
+            except self.ThrottlingError:
+                self.selenium_api.disconnect()
+                time.sleep(3)
+            except Exception as error_inst:
+                logger.exception("Fetch lotList failed: %s: %s", page_url, error_inst)
+                time.sleep(10)
+                continue
+        else:
+            raise TimeoutError("Was not able to fetch lot elements")
+
 
         lots = []
 
         for i, lot_element in enumerate(lots_elements):
-            lot = Lot()
-            lot.raw_text = lot_element.text
-            lot.description = lot.raw_text
-            url_element = lot_element.find_element(By.TAG_NAME, "a")
-            try:
-                highbid_element = lot_element.find_element(By.CLASS_NAME, "tile-two-winning-bid")
-            except Exception as error_inst:
-                logger.exception("Fetch tile-two-winning-bid failed: %s: %s", lot_element.text, error_inst)
-                break
-            highbid = highbid_element.text
-            if not highbid.startswith("$"):
-                raise ValueError("Current Bid does not present")
-            lot.current_max = float(highbid.replace(",", "")[1:])
 
-            lot.url = url_element.get_attribute('href')
-            item_image_element = lot_element.find_element(By.TAG_NAME, "img")
-            lot.image_url = item_image_element.get_attribute('src')
-
-            element_title = lot_element.find_element(By.CLASS_NAME, "lot-title")
-            lot.name = element_title.text
-            if "Location:" in lot_element.text:
-                lines = lot_element.text.split("\n")
-                for line in lines:
-                    if "Location:" in line:
-                        lot.address = line.replace("Location:", "")
-                        break
-                else:
-                    breakpoint()
-                    raise NotImplementedError("Can not find location")
-            elif auction_event_address:
-                lot.address = auction_event_address
+            for _ in range(5):
+                try:
+                    lot = self.init_lot_from_element(lot_element, auction_event_address)
+                    break
+                except self.ThrottlingError:
+                    self.selenium_api.disconnect()
+                    time.sleep(3)
             else:
-                logger.warning(f"Was not able to find lot address: {page_url}")
-                lot.address = "none"
-                lot.province = "none"
-
+                raise TimeoutError("Was not able to init lot element")
             lots.append(lot)
             logger.info(f"Finished lot elements: {i}/{len(lots_elements)}")
 
         return lots
+
+    def init_lot_from_element(self, lot_element, auction_event_address):
+        """
+        Init from web element.
+        :param lot_element:
+        :param auction_event_address:
+        :return:
+        """
+
+        lot = Lot()
+        lot.raw_text = lot_element.text
+        lot.description = lot.raw_text
+        url_element = lot_element.find_element(By.TAG_NAME, "a")
+        try:
+            highbid_element = lot_element.find_element(By.CLASS_NAME, "tile-two-winning-bid")
+            highbid = highbid_element.text
+            if not highbid.startswith("$"):
+                raise ValueError("Current Bid does not present")
+            lot.current_max = float(highbid.replace(",", "")[1:])
+        except Exception as error_inst:
+            body = self.selenium_api.get_element(By.TAG_NAME, "body").text
+            if "This page is displayed while the website verifies you are not a bot" in body:
+                breakpoint()
+                raise self.ThrottlingError()
+            logger.exception("Fetch tile-two-winning-bid failed: %s: %s", lot_element.text, error_inst)
+            lot.current_max = 0
+
+        lot.url = url_element.get_attribute('href')
+        item_image_element = lot_element.find_element(By.TAG_NAME, "img")
+        lot.image_url = item_image_element.get_attribute('src')
+
+        element_title = lot_element.find_element(By.CLASS_NAME, "lot-title")
+        lot.name = element_title.text
+        if "Location:" in lot_element.text:
+            lines = lot_element.text.split("\n")
+            for line in lines:
+                if "Location:" in line:
+                    lot.address = line.replace("Location:", "")
+                    break
+            else:
+                breakpoint()
+                raise NotImplementedError("Can not find location")
+        elif auction_event_address:
+            lot.address = auction_event_address
+        else:
+            logger.warning(f"Was not able to find lot address: {lot.url}")
+            lot.address = "none"
+            lot.province = "none"
+        return lot
 
     def load_page_lot_elements(self, page_url):
         """
@@ -110,8 +182,10 @@ class MAauction(Provider):
                     if "No Lots Found" in lot_list_contianer_element.text:
                         return []
                 except Exception as inst_err:
+                    body = self.selenium_api.get_element(By.TAG_NAME, "body").text
+                    if "This page is displayed while the website verifies you are not a bot" in body:
+                        raise self.ThrottlingError()
                     logger.exception(f"Fetch lotListContainer failed: {page_url}: {inst_err}")
-                    breakpoint()
                     pass
 
                 h1_elements = self.selenium_api.get_elements(By.TAG_NAME, "h1")
@@ -243,7 +317,7 @@ class MAauction(Provider):
         auction_event.url = url
         title_element = self.selenium_api.get_element(By.CLASS_NAME, "infoBoxAuctionTitle")
 
-        self.init_auction_event_name(auction_event, title_element)
+        self.init_auction_event_name(auction_event, title_element.text)
 
         auction_description = self.selenium_api.get_element(By.CLASS_NAME, "auctionDescription")
         auction_event.description = auction_description.text
@@ -256,7 +330,14 @@ class MAauction(Provider):
             else:
                 breakpoint()
 
-        self.init_auction_event_times(auction_event)
+        for _ in range(5):
+            try:
+                self.init_auction_event_times(auction_event)
+                break
+            except self.ThrottlingError:
+                self.selenium_api.disconnect()
+                time.sleep(3)
+
         return [auction_event]
 
     def init_auction_event_times(self, auction_event):
@@ -281,6 +362,10 @@ class MAauction(Provider):
         if not lots:
             return False
 
+        if None in [auction_event.start_time, auction_event.end_time]:
+            self.selenium_api.throttled_get(lots[0].url)
+
+
         if auction_event.start_time is None:
             self.init_auction_event_start_time_from_lot(auction_event, lots[0])
 
@@ -297,12 +382,9 @@ class MAauction(Provider):
         :return:
         """
 
-        self.selenium_api.get(lot.url)
-        self.selenium_api.wait_for_page_load()
         try:
             start_time_element = self.selenium_api.get_element(By.CLASS_NAME, "startTime")
         except NoSuchElementException:
-            breakpoint()
             return None
         # '12/3/2025 10:00:00 PM'
         parse_format = '%m/%d/%Y %I:%M:%S %p'
@@ -331,11 +413,12 @@ class MAauction(Provider):
         :return:
         """
 
-        self.selenium_api.get(lot.url)
-        self.selenium_api.wait_for_page_load()
         try:
             end_time_element = self.selenium_api.get_element(By.CLASS_NAME, "endTime")
         except NoSuchElementException:
+            body = self.selenium_api.get_element(By.TAG_NAME, "body").text
+            if "This page is displayed while the website verifies you are not a bot" in body:
+                raise self.ThrottlingError()
             return None
 
         # '12/3/2025 10:00:00 PM'
@@ -357,17 +440,17 @@ class MAauction(Provider):
         auction_event.end_time = naive_dt.astimezone(tz)
 
     @staticmethod
-    def init_auction_event_name(auction_event, title_element):
+    def init_auction_event_name(auction_event, element_title_raw_text):
         """
 
         :param auction_event:
-        :param title_element:
+        :param element_title_raw_text:
         :return:
         """
 
         parsed_url = urlparse(auction_event.url)
         query_params = str(parsed_url.query)
-        auction_event.name = title_element.text
+        auction_event.name = element_title_raw_text
         if "filter" in query_params:
             auction_event.name += "-" + query_params.split("=")[1].strip("()").split(":")[1]
 
@@ -564,6 +647,7 @@ class MAauction(Provider):
         for i, lot in enumerate(lots):
             logger.info(f"Updating lot current max and starting bid: {i}/{len(lots)}")
             try:
+                breakpoint()
                 lot.current_max = self.init_lot_current_bid_from_url(lot.url)
                 lot.starting_bid = self.find_lot_starting_bid(lot) if lot.current_max == 0 else lot.current_max
             except Exception as inst_error:
@@ -576,6 +660,50 @@ class MAauction(Provider):
         self.disconnect()
 
         return lots
+
+    def _yield_auction_event_lots(self, auction_event: AuctionEvent):
+        """
+        Init from the web.
+
+        :param auction_event:
+        :return:
+        """
+
+        auction_event_address = auction_event.provinces \
+            if auction_event.provinces and "," not in auction_event.provinces \
+            else None
+
+        for page_counter in range(1, self.get_page_count(self.add_query_params(auction_event.url, {"page": 1, "pageSize": 125}))+1):
+
+            logger.info(f"Loading {self.name} page: {page_counter}")
+
+            for lot in self.yield_page_lots(self.add_query_params(auction_event.url, {"page": page_counter, "pageSize": 125}),
+                                                      auction_event_address=auction_event_address):
+
+                if not lot.current_max:
+                    logger.info("Updating lot current max and starting bid")
+                    for _ in range(5):
+                        try:
+                            lot.current_max = self.init_lot_current_bid_from_url(lot.url)
+                            lot.starting_bid = self.find_lot_starting_bid(lot) if lot.current_max == 0 else lot.current_max
+                            break
+                        except self.ThrottlingError:
+                            self.selenium_api.disconnect()
+                            logger.info("Updating lot current max and starting bid throttling error")
+                            time.sleep(3)
+                            continue
+                        except Exception as inst_error:
+                            logger.info(f"Updating lot current max Error: {repr(inst_error)}")
+                            breakpoint()
+                            raise
+                    else:
+                        raise TimeoutError("Was not able to load lot.")
+
+                    if lot.starting_bid is None:
+                        breakpoint()
+                    logger.info(f"Updated {lot.url}, {lot.current_max=}, {lot.starting_bid=}")
+                yield lot
+
 
     def validate(self, auction_event):
         """
@@ -609,11 +737,21 @@ class MAauction(Provider):
         return lot_maa_id_part.strip().split(" ")[1]
 
     def init_lot_current_bid_from_url(self, lot_url):
+        """
+        Current bid from lot url
+        :param lot_url:
+        :return:
+        """
+
         self.selenium_api.get(lot_url)
         self.selenium_api.wait_for_page_load()
         try:
             element = self.selenium_api.get_element(By.CLASS_NAME, "currentBid")
         except NoSuchElementException:
+            body = self.selenium_api.get_element(By.TAG_NAME, "body").text
+            if "This page is displayed while the website verifies you are not a bot" in body:
+                raise self.ThrottlingError()
+
             element = self.selenium_api.get_element(By.ID, "app-body")
             element_text = element.text
             if "Loading" in element_text:
@@ -631,6 +769,12 @@ class MAauction(Provider):
             breakpoint()
 
         element_text = element_text.replace("Current Bid:", "").replace("$", "").replace("CAD", "").replace(",", "")
+        if "x" in element_text:
+            if "=" in element_text:
+                result = element_text.split("=")[1]
+                return float(result.strip())
+            left, right = element_text.split("x")
+            return float(left.strip()) * float(right.strip())
         return float(element_text)
 
     def find_lot_starting_bid(self, lot: Lot):
@@ -648,6 +792,9 @@ class MAauction(Provider):
                 element = self.selenium_api.get_element(By.CLASS_NAME, "startingBid")
                 break
             except NoSuchElementException as error_inst:
+                body = self.selenium_api.get_element(By.TAG_NAME, "body").text
+                if "This page is displayed while the website verifies you are not a bot" in body:
+                    raise self.ThrottlingError()
                 logger.warning(f"Fetch startingBid failed: {lot.url}: {repr(error_inst)}")
 
                 h1_elements = self.selenium_api.get_elements(By.TAG_NAME, "h1")
@@ -685,3 +832,131 @@ class MAauction(Provider):
         # Reconstruct the URL with the new query string
         new_url = urlunparse(parsed_url._replace(query=new_query_string))
         return new_url
+
+    def yield_auction_events(self, known_auction_events_by_url):
+        """
+        Load free items.
+
+        :return:
+        """
+
+        self.connect()
+
+        logger.info(f"Loading provider {self.name} auctions")
+
+        self.selenium_api.get(self.main_page)
+        self.selenium_api.wait_for_page_load()
+        auction_list_element = self.selenium_api.get_element(By.CLASS_NAME, "auctionList")
+        auctions_elements = auction_list_element.find_elements(By.CLASS_NAME, "auction")
+
+        urls = []
+        for i, auctions_element in enumerate(auctions_elements):
+            url_element = auctions_element.find_element(By.TAG_NAME, "a")
+            url = url_element.get_attribute("href")
+            urls.append(url)
+
+        for i, url in enumerate(urls):
+            logger.info(f"Fetching event {i}/{len(urls)}")
+            for auction_event in self.yield_auction_events_from_internal_url(url, known_auction_events_by_url):
+                yield auction_event
+
+        self.disconnect()
+
+
+    def get_rings_sub_urls(self, url):
+        """
+        Get sub urls if the event has multiple rings.
+
+        :return:
+        """
+
+
+        try:
+            self.selenium_api.retry_on_throttling(url, lambda : self.selenium_api.get_element(By.CLASS_NAME, "pagination"))
+        except NoSuchElementException as inst_err:
+            auction_ring_elements = self.selenium_api.get_elements(By.CLASS_NAME, "auction-ring")
+            urls = []
+            for auction_ring_element in auction_ring_elements:
+                btn_element = auction_ring_element.find_element(By.CLASS_NAME, "viewRingCatalogBtn")
+                urls.append(btn_element.get_attribute("href"))
+
+            return urls
+        except Exception as inst_err:
+            logger.info(f"Unexpected error: {inst_err}")
+            breakpoint()
+        return []
+
+    def yield_auction_events_from_internal_url(self, url, known_auction_events_by_url):
+        """
+        This provider has multiple events under same base event.
+
+        :param url:
+        :return:
+        """
+
+        urls =  self.get_rings_sub_urls(url)
+        if urls:
+            for url in urls:
+                yield from self.yield_auction_events_from_internal_url(url, known_auction_events_by_url)
+            return True
+
+        auction_event = AuctionEvent()
+        auction_event.url = url
+        try:
+            title_element_text = self.selenium_api.get_element(By.CLASS_NAME, "infoBoxAuctionTitle").text
+            auction_description = self.selenium_api.get_element(By.CLASS_NAME, "auctionDescription").text
+            auction_location = self.selenium_api.get_element(By.CLASS_NAME, "auctionLocation").text
+        except Exception as inst:
+            breakpoint()
+            logger.info("todo: Protect")
+
+        self.init_auction_event_name(auction_event, title_element_text)
+        auction_event.description = auction_description
+        auction_event.address = auction_location
+        auction_event.init_provinces()
+        if not auction_event.provinces:
+            if auction_event.url in known_auction_events_by_url:
+                auction_event.provinces = known_auction_events_by_url[auction_event.url].provinces
+            else:
+                breakpoint()
+        self.init_auction_event_times(auction_event)
+
+        yield auction_event
+
+    def load_auction_event_lots_remote(self, auction_event: AuctionEvent):
+        """
+        Init from the web.
+
+        :param auction_event:
+        :return:
+        """
+
+        lots = []
+
+        auction_event_address = auction_event.provinces \
+            if auction_event.provinces and "," not in auction_event.provinces \
+            else None
+
+        for page_counter in range(1, self.get_page_count(self.add_query_params(auction_event.url, {"page": 1, "pageSize": 125}))+1):
+            lots += self.load_page_lots(self.add_query_params(auction_event.url, {"page": page_counter, "pageSize": 125}),
+                                                      auction_event_address=auction_event_address)
+
+        for i, lot in enumerate(lots):
+            lot = self.init_lot_remote_request(lot)
+
+        return lots
+
+    def init_lot_remote_request(self, lot):
+        """
+        Init lot from web.
+
+        :param lot:
+        :return:
+        """
+        breakpoint()
+
+    def init_lot_remote_executor(self, url):
+        lot.current_max = self.init_lot_current_bid_from_url(lot.url)
+        lot.starting_bid = self.find_lot_starting_bid(lot) if lot.current_max == 0 else lot.current_max
+
+
