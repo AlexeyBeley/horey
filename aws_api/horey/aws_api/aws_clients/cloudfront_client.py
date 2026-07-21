@@ -192,7 +192,7 @@ class CloudfrontClient(Boto3Client):
                     distribution_aliases = []
 
             for existing_distribution in existing_distributions:
-                for existing_distro_alias in existing_distribution.aliases["Items"]:
+                for existing_distro_alias in existing_distribution.aliases.get("Items", []):
                     if existing_distro_alias in distribution_aliases:
                         distribution.update_from_raw_response(existing_distribution.dict_src)
                         break
