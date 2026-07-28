@@ -21,7 +21,17 @@ class FreeStuffAPIConfigurationPolicy(ConfigurationPolicy):
         self._chromedriver_path = None
         self._chrome_path = None
         self._db_file_path = None
+        self._architecture = None
 
+    @property
+    def architecture(self):
+        return self._architecture
+
+    @architecture.setter
+    def architecture(self, value: str):
+        value = value.lower()
+        assert value in ["amd64", "arm64"]
+        self._architecture = value
 
     @property
     def db_file_path(self):

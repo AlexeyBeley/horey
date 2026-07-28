@@ -798,7 +798,7 @@ def test_provision_jenkins_master_infrastructure(cicd_api_integration, ec2_api_m
     assert cicd_api_integration.provision_jenkins_master_infrastructure(public_dns_prefix="jenkins-public",
                                                                         private_dns_prefix="jenkins")
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_update_jenkins_master(cicd_api_integration):
     cicd_api_integration.hagent_build_api.horey_git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
     assert cicd_api_integration.update_jenkins_master(public_dns_prefix="jenkins-public",

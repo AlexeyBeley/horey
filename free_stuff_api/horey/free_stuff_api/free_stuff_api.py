@@ -19,7 +19,7 @@ from horey.infrastructure_api.db_api import DBAPI
 from horey.infrastructure_api.db_api_configuration_policy import DBAPIConfigurationPolicy
 from horey.infrastructure_api.environment_api import EnvironmentAPIConfigurationPolicy, EnvironmentAPI
 from horey.selenium_api.selenium_api import SeleniumAPI
-from horey.free_stuff_api.platform import Platform
+from horey.free_stuff_api.frs_platform import FRSPlatform
 
 logger = get_logger()
 
@@ -62,7 +62,7 @@ class FreeStuffAPI:
                 platform_id, platform_name = line
                 for platform_api in platform_apis:
                     if platform_api.NAME == platform_name:
-                        platform = Platform(platform_id, platform_name, api=platform_api)
+                        platform = FRSPlatform(platform_id, platform_name, api=platform_api)
 
                         self._platforms.append(platform)
                         break
@@ -70,7 +70,7 @@ class FreeStuffAPI:
         for platform in self._platforms:
             self.init_platform_free_items(platform)
 
-    def init_platform_free_items(self, platform: Platform):
+    def init_platform_free_items(self, platform: FRSPlatform):
         """
         Init platform free items from DB
         :param platform:
@@ -143,7 +143,7 @@ class FreeStuffAPI:
             # configuration.architecture = "arm64"
             self._aws_lambda_api = AWSLambdaAPI(configuration, self.environment_api)
             self._aws_lambda_api.build_api.horey_git_api.configuration.git_directory_path = self.configuration.horey_directory_path.parent
-            self._aws_lambda_api.build_api.prepare_docker_image_build_directory = lambda x, y: self._eks_api.build_api.prepare_docker_image_horey_package_build_directory(x, "auction_api", y)
+            self._aws_lambda_api.build_api.prepare_docker_image_build_directory = lambda x, y: self._eks_api.build_api.prepare_docker_image_horey_package_build_directory(x, "free_stuff_api", y)
             self._aws_lambda_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_docker_image_build_directory_callback
 
         return self._aws_lambda_api
@@ -160,23 +160,29 @@ class FreeStuffAPI:
             self._eks_api = EKSAPI(configuration, self.environment_api)
             self._eks_api.ecs_api.set_ecr_repository_name("test_frs")
             self._eks_api.ecs_api.configuration.ecr_repository_region = self.configuration.region
-            self._eks_api.build_api.prepare_docker_image_build_directory_callback = self.prepare_docker_image_build_directory_callback_eks
+            self._eks_api.build_api.prepare_docker_image_build_directory = self.prepare_docker_image_build_directory_eks
+            self._eks_api.build_api.git_api.configuration.git_directory_path = self.configuration.horey_directory_path.parent
 
         return self._eks_api
 
-    def prepare_docker_image_build_directory_callback_eks(self, docker_build_directory):
+    def prepare_docker_image_build_directory_eks(self, source_code_directory_path, build_number):
         """
         Prepare the dir.
 
+        :param source_code_directory_path:
         :param docker_build_directory:
         :return:
         """
+
+        docker_build_directory = self.eks_api.build_api.prepare_docker_image_horey_package_build_directory(source_code_directory_path,
+                                                                                                  "free_stuff_api"
+                                                                                                  )
 
         response = requests.get(
             "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json")
         dict_data = response.json()
         # Determine platform based on architecture
-        if self.aws_lambda_api.configuration.architecture == "x86_64":
+        if self.configuration.architecture == "amd64":
             platform = "linux64"
             docker_platform = "linux/amd64"
         else:
@@ -184,7 +190,7 @@ class FreeStuffAPI:
             docker_platform = "linux/arm64"
 
         # Store docker platform for build process
-        self.aws_lambda_api.build_api.configuration.docker_build_arguments = {
+        self.eks_api.build_api.configuration.docker_build_arguments = {
             "platform": docker_platform
         }
         downloads_dir = self.environment_api.configuration.data_directory_path / dict_data["channels"]["Stable"][
@@ -210,12 +216,9 @@ class FreeStuffAPI:
         shutil.copytree(chrome_directory, docker_build_directory / "chrome")
         shutil.copytree(chromedriver_directory, docker_build_directory / "chromedriver")
 
-        shutil.copy(self.configuration.horey_directory_path / "auction_api" / "build" / "lambda_handler.py",
+        shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "horey" /"free_stuff_api" / "build" / "Dockerfile",
                     docker_build_directory)
-        shutil.copy(self.configuration.horey_directory_path / "auction_api" / "build" / "Dockerfile",
-                    docker_build_directory)
-        self.configuration.generate_configuration_file_ng(docker_build_directory / "frs_api_configuration.json")
-        breakpoint()
+        self.configuration.generate_configuration_file_ng(docker_build_directory / "free_stuff_api_config.json")
 
         return docker_build_directory
 
@@ -264,9 +267,9 @@ class FreeStuffAPI:
         shutil.copytree(chromedriver_directory, docker_build_directory/"chromedriver")
 
 
-        shutil.copy(self.configuration.horey_directory_path / "auction_api" / "build" / "lambda_handler.py",
+        shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "horey" /"free_stuff_api" / "build" / "lambda_handler.py",
                     docker_build_directory)
-        shutil.copy(self.configuration.horey_directory_path / "auction_api" / "build" / "Dockerfile" , docker_build_directory)
+        shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "horey" /"free_stuff_api" / "build" / "Dockerfile" , docker_build_directory)
         self.configuration.generate_configuration_file_ng(docker_build_directory/ "frs_api_configuration.json")
 
         return docker_build_directory
@@ -387,7 +390,7 @@ class FreeStuffAPI:
         # self.db_api.dispose_dynamo_table(self.configuration.dynamo_table_name)
         self.aws_lambda_api.dispose_docker_lambda()
 
-    def add_free_item_to_db(self, platform: Platform, free_item: FreeItem):
+    def add_free_item_to_db(self, platform: FRSPlatform, free_item: FreeItem):
         """
         Update or insert free item.
 
@@ -421,12 +424,16 @@ class FreeStuffAPI:
                 logger.exception(f"Error Inserting {repr(inst_err)}")
                 if "UNIQUE constraint" in repr(inst_err):
                     logger.error(f"Data is not unique: {data_tuple}")
+                    
+                    """
                     select_sql = "select * from auction_events where name=? or url=?"
                     ret = cursor.execute(select_sql, (auction_event.name, auction_event.url,))
                     lines = ret.fetchall()
                     self.delete_auction_event_with_lots(lines[0][0], connection=conn, cursor=cursor)
                     cursor.execute(sql_insert, data_tuple)
                     conn.commit()
+                    """
+                    raise
                 else:
                     logger.error(f"Unknown error with data: {data_tuple}")
 
@@ -494,7 +501,7 @@ class FreeStuffAPI:
         self.provision_db_free_items_table()
         return True
 
-    def add_platform(self, platform: Platform):
+    def add_platform(self, platform: FRSPlatform):
         """
         Create table
 
@@ -575,7 +582,7 @@ class FreeStuffAPI:
                 logger.exception(e)
                 return False
 
-    def delete_platform_items(self, platform: Platform):
+    def delete_platform_items(self, platform: FRSPlatform):
         """
         Delete all items of the platform from db.
 
@@ -627,3 +634,14 @@ class FreeStuffAPI:
         """
 
         self.eks_api.provision_service(None)
+
+    def run_server(self):
+        sleep_time = 90
+        while True:
+            try:
+                self.main_single_cycle_run()
+                self.selenium_api.disconnect()
+            except Exception as inst:
+                logger.exception(inst)
+            logger.info(f"Going to sleep for {sleep_time} seconds")
+            time.sleep(sleep_time)

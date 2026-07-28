@@ -1,5 +1,5 @@
 
-class Platform:
+class FRSPlatform:
     def __init__(self, _id, name, api=None):
         self.name = name
         self.api = api

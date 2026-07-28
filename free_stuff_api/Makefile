@@ -7,7 +7,7 @@ BUILD_TMP_DIR := ${BUILD_DIR}/_build
 VENV_DIR := $(realpath ${BUILD_TMP_DIR}/_venv)
 
 PROJECT_BUILD_DIR := ${BUILD_TMP_DIR}/fb_api
-
+FRS_CONFIG_FILE_PATH := ${HOREY_DIR_PATH}/../"ignore"/"frs_api_docker_configuration.py"
 
 .PHONY: build_ng
 
@@ -17,4 +17,4 @@ build_ng:
 
 update_component: build_ng
 	source ${VENV_DIR}/bin/activate &&\
-	python ${HOREY_DIR_PATH}/free_stuff_api/horey/free_stuff_api/free_stuff_api_actor.py --action update_component --free_stuff_api_config_file_path "/todo"
+	python ${HOREY_DIR_PATH}/free_stuff_api/horey/free_stuff_api/free_stuff_api_actor.py --action update_component --free_stuff_api_config_file_path ${FRS_CONFIG_FILE_PATH}

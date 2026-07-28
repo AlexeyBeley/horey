@@ -27,7 +27,7 @@ def update_component_parser():
 
 def update_component(arguments) -> None:
     free_stuff_api_config = FreeStuffAPIConfigurationPolicy()
-    # free_stuff_api_config.init_from_file(arguments.free_stuff_api_config_file_path)
+    free_stuff_api_config.init_from_file(arguments.free_stuff_api_config_file_path)
     free_stuff_api = FreeStuffAPI(free_stuff_api_config)
     free_stuff_api.update_component()
 
@@ -46,7 +46,7 @@ def run_server_parser():
 
 def run_server(arguments) -> None:
     free_stuff_api_config = FreeStuffAPIConfigurationPolicy()
-    # free_stuff_api_config.init_from_file(arguments.free_stuff_api_config_file_path)
+    free_stuff_api_config.init_from_file(arguments.free_stuff_api_config_file_path)
     free_stuff_api = FreeStuffAPI(free_stuff_api_config)
     free_stuff_api.run_server()
 

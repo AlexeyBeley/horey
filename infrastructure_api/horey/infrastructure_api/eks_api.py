@@ -82,11 +82,20 @@ class EKSAPI:
         image = self.build_api.run_build_and_upload_image_routine(branch_name, build_numer)
 
         for image_reference in image.tags:
-            if self.configuration.ecr_repository_name in image_reference:
+            if self.ecs_api.configuration.ecr_repository_name in image_reference:
                 break
         else:
             raise ValueError(f"Was not able to find image with repo {self.configuration.ecr_repository_name}")
-        task_definition = self.generate_ecs_task_definition(image_reference)
+
+        self.provision_deployment(image_reference)
+
+    def provision_deployment(self, image_reference):
+        """
+        Provision deployment.
+
+        :return:
+        """
+        breakpoint()
 
 
 

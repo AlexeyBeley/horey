@@ -776,6 +776,10 @@ class QuestradeAPI:
 
         if today.hour < 5:
             today -= timedelta(days=1)
+        
+        # todo:
+        #today -= timedelta(days=2)
+        
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
 
@@ -872,6 +876,7 @@ class QuestradeAPI:
             if len(symbol.candles) < 10:
                 continue
             filtered_symbols.append(symbol)
+
 
         str_ret = ""
         # todo: old
@@ -1009,7 +1014,6 @@ class QuestradeAPI:
         #closed_orders = self.api_get_orders(state_filter="Closed")
         #executed_sell_orders = [order for order in closed_orders if order.side == "Sell" and order.state == "Executed"]
         #ret = self.db_get_symbol(63320693)
-        #breakpoint()
 
 
         # todo:

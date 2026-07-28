@@ -7,15 +7,14 @@ import pytest
 from horey.free_stuff_api.free_stuff_api import FreeStuffAPIConfigurationPolicy, FreeStuffAPI
 
 from horey.common_utils.free_item import FreeItem
-from horey.free_stuff_api.platform import Platform
+from horey.free_stuff_api.frs_platform import FRSPlatform
 
 config = FreeStuffAPIConfigurationPolicy()
 config.configuration_file_full_path = Path(
     __file__).parent.parent.parent.parent / "ignore" / "test_frs_api_configuration.py"
 config.horey_directory_path = Path(__file__).parent.parent.parent
 config.init_from_file()
-config.db_file_path = Path("/opt/hfrs/hfrs.sqlite")
-config.region = "us-west-2"
+
 
 
 # pylint: disable= missing-function-docstring
@@ -62,7 +61,7 @@ def test_main():
 def test_add_free_item_to_db():
     free_stuff_api = FreeStuffAPI(config)
     free_item = FreeItem("name", "url")
-    assert free_stuff_api.add_free_item_to_db(Platform("test", "test") ,free_item)
+    assert free_stuff_api.add_free_item_to_db(FRSPlatform("test", "test") ,free_item)
 
 
 @pytest.mark.unit
@@ -101,7 +100,7 @@ def test_provision_db(free_stuff_mac_raw):
 
 @pytest.mark.unit
 def test_add_platform(free_stuff_mac_raw):
-    assert free_stuff_mac_raw.add_platform(Platform(None, "Facebook"))
+    assert free_stuff_mac_raw.add_platform(FRSPlatform(None, "Facebook"))
 
 
 @pytest.mark.unit
@@ -124,11 +123,11 @@ def test_provision_eks_infra(eks_free_stuff_api):
     assert eks_free_stuff_api.provision_eks_infra()
 
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_main_free_stuff_mac_raw(free_stuff_mac_raw):
     assert free_stuff_mac_raw.main()
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_update_component(eks_free_stuff_api):
     assert eks_free_stuff_api.update_component()
