@@ -1086,8 +1086,7 @@ class ECSAPI:
 
         alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
                                                    self.configuration.alerts_api_error_filter_text,
-                                                   "error", route_tags, dimensions=None,
-                                                   alarm_description=None)
+                                                   "error", route_tags)
 
         return True
 

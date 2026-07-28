@@ -394,7 +394,7 @@ class AlertsAPI:
         Provision Cloud watch logs based alarm.
 
         @return:
-        :param alarm_description:
+        :param alarm_description_base:
         :param dimensions:
         :param metric_name:
         :param routing_tags:
