@@ -200,7 +200,8 @@ class HostedZone(AwsObject):
             "LinkedService": self.init_default_attr,
             "VPCs": lambda x, y: self.init_default_attr(x, y, formatted_name="vpc_associations"),
             "DelegationSet": self.init_default_attr,
-            "Tags": self.init_default_attr
+            "Tags": self.init_default_attr,
+            "Features": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options, raise_on_no_option=True)
