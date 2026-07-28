@@ -388,7 +388,7 @@ class AlertsAPI:
     def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_slug, routing_tags,
                                         metric_name=None,
                                         dimensions=None,
-                                        alarm_description=None
+                                        alarm_description_base=None
                                         ):
         """
         Provision Cloud watch logs based alarm.
@@ -409,7 +409,7 @@ class AlertsAPI:
 
         metric_filter = self.provision_cloudwatch_log_group_metric(log_group_name, metric_name, filter_text)
 
-        alarm_description = self.alert_system.generate_alarm_description(log_group_name, filter_text, routing_tags, alarm_description=alarm_description)
+        alarm_description = self.alert_system.generate_alarm_description(log_group_name, filter_text, routing_tags, alarm_description=alarm_description_base)
 
         alarm = self.cloudwatch_api.provision_alarm(name=f"has3-alarm-{log_group_name}-{metric_slug}",
                                                 alarm_description=json.dumps(alarm_description),
