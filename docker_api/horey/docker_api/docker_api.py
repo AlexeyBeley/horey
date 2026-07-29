@@ -103,7 +103,7 @@ class DockerAPI:
 
         return docker_image
 
-    def build(self, dockerfile_directory_path, tags, stream=True, remove_intermediate_containers=True, **kwargs):
+    def build(self, dockerfile_directory_path, tags, stream=True, remove_intermediate_containers=True, nocache=False, **kwargs):
         """
         Entrypoint.
 
@@ -127,6 +127,9 @@ class DockerAPI:
             )
 
         tag = tags[0] if len(tags) > 0 else "latest"
+
+        if nocache:
+            kwargs["pull"] = True
 
         if stream:
             docker_image = self.build_streaming(path=dockerfile_directory_path, tag=tag,

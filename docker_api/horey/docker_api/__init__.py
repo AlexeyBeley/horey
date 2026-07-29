@@ -1,5 +1,5 @@
 """
-Logging package. Log formatting and routing.
+Docker API package.
 """
 
-__version__ = "1.0.20"
+__version__ = "1.0.21"
