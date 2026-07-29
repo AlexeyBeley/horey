@@ -20,8 +20,8 @@ class Provider:
                      "jul": 7,
                      " august ": 8,
                      " aug ": 8,
-                     " sep": 9,
                      " september": 9,
+                     " sep": 9,
                      "october": 10, "november": 11,
                      " nov ": 11, "december": 12,
                      "apr": 4}
