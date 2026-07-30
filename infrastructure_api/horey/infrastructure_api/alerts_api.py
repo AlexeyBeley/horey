@@ -439,6 +439,8 @@ class AlertsAPI:
         :return:
         """
 
+        yield_log_group_metric_filters
+
         metric_filter = self.environment_api.provision_log_group_metric_filter(
             name=metric_name,
             log_group_name=log_group_name, filter_text=filter_text)
