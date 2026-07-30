@@ -1035,6 +1035,7 @@ class ECSAPI:
         """
 
         for ecr_image in self.ecr_images:
+            breakpoint()
             build_numbers = [int(build_subtag.split("_")[1]) for str_image_tag in ecr_image.image_tags for build_subtag
                              in
                              str_image_tag.split("-") if build_subtag.startswith("build_")]

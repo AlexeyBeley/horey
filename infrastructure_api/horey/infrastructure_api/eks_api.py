@@ -96,7 +96,9 @@ class EKSAPI:
         :return:
         """
         breakpoint()
-        ""
+        
+        command = f"kubectl create deployment test-frs  --image={image_reference}"
+
 
 
 
