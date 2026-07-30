@@ -439,7 +439,10 @@ class AlertsAPI:
         :return:
         """
 
-        yield_log_group_metric_filters
+        existing_filters = list(self.environment_api.aws_api.cloud_watch_logs_client.yield_log_group_metric_filters(region=self.environment_api.region, 
+        update_info=True, 
+        filters_req={"logGroupName": log_group_name}))
+        breakpoint()
 
         metric_filter = self.environment_api.provision_log_group_metric_filter(
             name=metric_name,
