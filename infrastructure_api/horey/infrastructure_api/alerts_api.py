@@ -422,7 +422,7 @@ class AlertsAPI:
         self.environment_api.aws_api.cloud_watch_client.set_alarm_ok(alarm)
         return alarm
 
-    def provision_cloudwatch_log_group_metric(self, log_group_name, metric_name, path_pattern):
+    def provision_cloudwatch_log_group_metric(self, log_group_name, metric_name, filter_pattern):
         """
         Provision metric filter for log group.
 
@@ -438,15 +438,14 @@ class AlertsAPI:
         duplicates = []
         breakpoint()
         for existing_filter in existing_filters:
-            if existing_filter.path_pattern == path_pattern and existing_filter.name != metric_name:
+            if existing_filter.filter_pattern == filter_pattern and existing_filter.name != metric_name:
                 duplicates.append(existing_filter.name)
         if duplicates:
-            raise ValueError(f"Filters with {path_pattern=} already exist: {duplicates}")
- 
+            raise ValueError(f"Filters with {filter_pattern=} already exist: {duplicates}")
 
         metric_filter = self.environment_api.provision_log_group_metric_filter(
             name=metric_name,
-            log_group_name=log_group_name, filter_text=path_pattern)
+            log_group_name=log_group_name, filter_text=filter_pattern)
         if len(metric_filter.metric_transformations) != 1:
             raise NotImplementedError(
                 f"Unhandled situation when more then one metric transformation {metric_filter.metric_transformations}")
