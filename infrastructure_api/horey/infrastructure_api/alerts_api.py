@@ -23,7 +23,6 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPI, AWSLambdaAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI, CloudwatchAPIConfigurationPolicy
 from horey.h_logger import get_logger
-from horey.slack_api.slack_api import SlackAPI
 
 logger = get_logger()
 
@@ -171,7 +170,7 @@ class AlertsAPI:
 
         logger.info(f"Build custom_files_directory_callback from {self}")
 
-        with open(build_custom_files_dir/"dummy_file_for_docker_build", "w") as file_handler:
+        with open(build_custom_files_dir/"dummy_file_for_docker_build", "w", encoding="utf-8") as file_handler:
             file_handler.write("Hello from horey!")
 
         return True
@@ -225,7 +224,7 @@ class AlertsAPI:
 
         return self.aws_lambda_api.update_docker_lambda()
 
-    def generate_postgres_cluster_alarms(self, cluster_id, metric_data_start_time=None, metric_data_end_time=None,
+    def generate_postgres_cluster_alarms(self, cluster_id,
                                          metric_name=None):
         """
         Generate alerts per resource: RDS Postgres Cluster
@@ -240,18 +239,12 @@ class AlertsAPI:
         cluster = self.environment_api.get_rds_cluster(cluster_id)
         alerts_builder = PostgresAlertBuilder(cluster=cluster)
         return self.alert_system.generate_resource_alarms(alerts_builder,
-                                                          metric_data_start_time=metric_data_start_time,
-                                                          metric_data_end_time=metric_data_end_time,
                                                           metric_name=metric_name)
 
-    def generate_alb_alarms(self, alb_name, metric_data_start_time=None, metric_data_end_time=None,
-                            metric_name=None):
+    def generate_alb_alarms(self, alb_name):
         """
         Generate alerts per resource: Elastic load balancer
 
-        :param metric_name:
-        :param metric_data_end_time:
-        :param metric_data_start_time:
         :param alb_name:
         :return:
         """
@@ -384,7 +377,7 @@ class AlertsAPI:
 
         return self.environment_api.put_cloudwatch_log_lines(cloudwatch_log_group_name, [log_line])
 
-    # pylint: disable = too-many-arguments
+    # pylint: disable = too-many-arguments, too-many-positional-arguments)
     def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_slug, routing_tags,
                                         metric_name=None,
                                         dimensions=None,
@@ -429,7 +422,7 @@ class AlertsAPI:
         self.environment_api.aws_api.cloud_watch_client.set_alarm_ok(alarm)
         return alarm
 
-    def provision_cloudwatch_log_group_metric(self, log_group_name, metric_name, filter_text):
+    def provision_cloudwatch_log_group_metric(self, log_group_name, metric_name, path_pattern):
         """
         Provision metric filter for log group.
 
@@ -439,14 +432,20 @@ class AlertsAPI:
         :return:
         """
 
-        existing_filters = list(self.environment_api.aws_api.cloud_watch_logs_client.yield_log_group_metric_filters(region=self.environment_api.region, 
-        update_info=True, 
+        existing_filters = list(self.environment_api.aws_api.cloud_watch_logs_client.yield_log_group_metric_filters(region=self.environment_api.region,
+        update_info=True,
         filters_req={"logGroupName": log_group_name}))
+        duplicates = []
+        for existing_filter in existing_filters:
+            if existing_filter.path_pattern == path_pattern and existing_filter.name != metric_name:
+                duplicates.append(existing_filter.name)
+        if duplicates:
+            raise ValueError(f"Filters with {path_pattern=} already exist: {duplicates}")
         breakpoint()
 
         metric_filter = self.environment_api.provision_log_group_metric_filter(
             name=metric_name,
-            log_group_name=log_group_name, filter_text=filter_text)
+            log_group_name=log_group_name, filter_text=path_pattern)
         if len(metric_filter.metric_transformations) != 1:
             raise NotImplementedError(
                 f"Unhandled situation when more then one metric transformation {metric_filter.metric_transformations}")
@@ -582,7 +581,7 @@ class AlertsAPI:
                                                     filter_text,
                                                     "error",
                                                     [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
-                                                    alarm_description=alarm_description,
+                                                    alarm_description_base=alarm_description,
                                                     )
 
     def provision_self_monitoring_log_timeout_alarm(self):
@@ -601,7 +600,7 @@ class AlertsAPI:
                                                     "timeout",
                                                     [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
                                                     metric_name=f"has2-metric-filter-lambda-{self.configuration.lambda_name}-timeout",
-                                                    alarm_description=alarm_description
+                                                    alarm_description_base=alarm_description
                                                     )
 
     def provision_self_monitoring_errors_metric_alarm(self):
@@ -745,7 +744,7 @@ class AlertsAPI:
 
         if Notification.Types.__members__.get(notification_type) is None:
             raise ValueError(f"Notification type received '{notification_type}' is not one of:"
-                             f" {[x for x in Notification.Types.__members__.keys()]}")
+                             f" {list(Notification.Types.__members__.keys())}")
 
         return {AlertSystemConfigurationPolicy.ALERT_SYSTEM_RAW_MESSAGE_KEY: "",
                 "type": notification_type}
