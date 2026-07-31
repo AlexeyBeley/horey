@@ -1016,8 +1016,8 @@ class QuestradeAPI:
         #ret = self.db_get_symbol(63320693)
 
 
-        # todo:
-        skip_symbols = ["CCG.50480827", "PRPL.20419024"]
+        # todo: ignore
+        skip_symbols = ["CSAI"]
 
 
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
