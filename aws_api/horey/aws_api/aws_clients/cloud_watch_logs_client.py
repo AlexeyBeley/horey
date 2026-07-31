@@ -370,6 +370,7 @@ class CloudWatchLogsClient(Boto3Client):
                 self.get_session_client(region=region).put_log_events, None, raw_data=True, filters_req=request_dict
         ):
             return response
+        return True
 
     # pylint: disable= arguments-differ
     def get_tags(self, obj):
