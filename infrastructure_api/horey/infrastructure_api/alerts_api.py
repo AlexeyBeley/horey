@@ -436,12 +436,12 @@ class AlertsAPI:
         update_info=True,
         filters_req={"logGroupName": log_group_name}))
         duplicates = []
-        breakpoint()
+
         for existing_filter in existing_filters:
             if existing_filter.filter_pattern == filter_pattern and existing_filter.name != metric_name:
                 duplicates.append(existing_filter.name)
         if duplicates:
-            raise ValueError(f"Filters with {filter_pattern=} already exist: {duplicates}")
+            raise ValueError(f"Filter metrics {log_group_name=} {filter_pattern=} already exist: {duplicates}")
 
         metric_filter = self.environment_api.provision_log_group_metric_filter(
             name=metric_name,
