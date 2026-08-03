@@ -219,6 +219,7 @@ class FreeStuffAPI:
         shutil.copy(self.configuration.horey_directory_path / "free_stuff_api" / "horey" /"free_stuff_api" / "build" / "Dockerfile",
                     docker_build_directory)
         self.configuration.generate_configuration_file_ng(docker_build_directory / "free_stuff_api_config.json")
+        shutil.copy(self.configuration.db_file_path, docker_build_directory)
 
         return docker_build_directory
 

@@ -1017,7 +1017,7 @@ class QuestradeAPI:
 
 
         # todo: ignore
-        skip_symbols = ["CSAI"]
+        skip_symbols = ["PMI.65273932", "KWM.61958025", "TOP.42394762", "LEXX.33957033"]
 
 
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}

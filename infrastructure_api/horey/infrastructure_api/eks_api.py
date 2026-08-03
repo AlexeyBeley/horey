@@ -79,6 +79,8 @@ class EKSAPI:
         """
 
         build_numer = self.ecs_api.get_next_build_number()
+        self.build_api.init_commit_id()
+
         image = self.build_api.run_build_and_upload_image_routine(branch_name, build_numer)
 
         for image_reference in image.tags:
@@ -95,9 +97,57 @@ class EKSAPI:
 
         :return:
         """
-        breakpoint()
-        
+         
         command = f"kubectl create deployment test-frs  --image={image_reference}"
+
+        str_yaml = self.deployment_yaml()
+        str_yaml = str_yaml.replace("IMAGE_REFERENCE", image_reference)
+        with open(self.environment_api.configuration.data_directory_path / "deployment.yaml", "w", encoding="utf-8") as fh:
+            fh.write(str_yaml)
+        breakpoint()
+        logger.info(f"Run command: {command}")
+
+
+    @staticmethod
+    def deployment_yaml():
+        return """
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: test-frs
+  name: test-frs
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: test-frs
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: test-frs
+    spec:
+      containers:
+      - image: IMAGE_REFERENCE 
+        imagePullPolicy: Always 
+        name: frs
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      """
 
 
 
