@@ -22,6 +22,15 @@ class FreeStuffAPIConfigurationPolicy(ConfigurationPolicy):
         self._chrome_path = None
         self._db_file_path = None
         self._architecture = None
+        self._proxy = None
+    
+    @property
+    def proxy(self):
+        return self._proxy
+
+    @proxy.setter
+    def proxy(self, value: str):
+        self._proxy = value
 
     @property
     def architecture(self):

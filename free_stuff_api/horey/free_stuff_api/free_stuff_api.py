@@ -27,7 +27,8 @@ class FreeStuffAPI:
     def __init__(self, configuration: FreeStuffAPIConfigurationPolicy = None):
         self.configuration = configuration
         self.selenium_api = SeleniumAPI(chromedriver_path= self.configuration.chromedriver_path,
-                                                                   chrome_path=self.configuration.chrome_path)
+                                        chrome_path=self.configuration.chrome_path, 
+                                        proxy=self.configuration.proxy)
         self._platforms = None
         self._db_api = None
         self._environment_api = None

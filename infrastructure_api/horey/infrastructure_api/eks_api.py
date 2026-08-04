@@ -98,14 +98,16 @@ class EKSAPI:
         :return:
         """
          
-        command = f"kubectl create deployment test-frs  --image={image_reference}"
 
         str_yaml = self.deployment_yaml()
         str_yaml = str_yaml.replace("IMAGE_REFERENCE", image_reference)
-        with open(self.environment_api.configuration.data_directory_path / "deployment.yaml", "w", encoding="utf-8") as fh:
+        deployment_file_path = self.environment_api.configuration.data_directory_path / "deployment.yaml"
+        with open(deployment_file_path, "w", encoding="utf-8") as fh:
             fh.write(str_yaml)
-        breakpoint()
+        command = f"kubectl apply -f {deployment_file_path}"
+        print(command)
         logger.info(f"Run command: {command}")
+        breakpoint()
 
 
     @staticmethod
@@ -142,6 +144,11 @@ spec:
         resources: {}
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
+        resources:
+          requests:
+            memory: "2Gi"   # Guaranteed 2GB RAM allocated for the container
+          limits:
+            memory: "3Gi"   # Hard cap at 2GB RAM to prevent OOM spiking
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler

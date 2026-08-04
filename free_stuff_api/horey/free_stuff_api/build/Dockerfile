@@ -14,8 +14,8 @@ RUN apt-get install -y python3-pip python3-full
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 COPY chrome /app/chrome
-COPY chromedriver /app/chrome-driver
-RUN chmod -R 777 /app/chrome-driver
+COPY chromedriver /app/chromedriver
+RUN chmod -R 777 /app/chromedriver
 RUN chmod -R 777 /app/chrome
 
 COPY free_stuff_api_config.json free_stuff_api_config.json
