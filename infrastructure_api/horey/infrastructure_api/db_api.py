@@ -431,7 +431,7 @@ class DBAPI:
 
         return str_ret
 
-    def provision_elasticache_serverless(self, name=None, cache:ElasticacheServerlessCache=None, security_groups=None):
+    def provision_elasticache_serverless(self, name=None, cache:ElasticacheServerlessCache=None, security_groups=None, user_group=None):
         """
         Provision elasticache
         !!! Make sure you have: All permissions from role: ElastiCacheServiceRolePolicy
@@ -456,6 +456,9 @@ class DBAPI:
             })
             if security_groups:
                 cache.security_group_ids = [sec_group.id for sec_group in security_groups]
+
+            if user_group:
+                cache.user_group_id = user_group.id
 
         self.environment_api.aws_api.elasticache_client.provision_serverless_cache(cache)
 
