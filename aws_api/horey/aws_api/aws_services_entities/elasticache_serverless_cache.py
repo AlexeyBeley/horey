@@ -75,16 +75,6 @@ class ElasticacheServerlessCache(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def generate_modify_request(self, desired_state):
-        """
-        Standard.
-
-        :param desired_state:
-        :return:
-        """
-
-        raise NotImplementedError("Do the same as in elasticache replication group")
-
     def generate_create_request(self):
         """
         Standard
@@ -113,7 +103,7 @@ class ElasticacheServerlessCache(AwsObject):
 
         return self_request
 
-    def generate_update_request(self, desired_cache):
+    def generate_update_requests(self, desired_cache):
         """
         Generate changes.
 
@@ -122,14 +112,19 @@ class ElasticacheServerlessCache(AwsObject):
         """
 
         required = ["ServerlessCacheName"]
-        optional = ["Description", "CacheUsageLimits", "RemoveUserGroup", "UserGroupId", "SecurityGroupIds", "SnapshotRetentionLimit", "DailySnapshotTime",
+        optionals = ["Description", "CacheUsageLimits", "RemoveUserGroup", "UserGroupId", "SecurityGroupIds", "SnapshotRetentionLimit", "DailySnapshotTime",
                     "Engine", "MajorEngineVersion"]
-        modify_request = self.generate_request_aws_object_modify(desired_cache, required,
-                                           optional=optional,
+
+        modify_requests = []
+        for optional in optionals:
+            modify_request = self.generate_request_aws_object_modify(desired_cache, required,
+                                           optional=[optional],
                                            request_key_to_attribute_mapping=self.request_key_to_attribute_mapping,
                                            )
+            if modify_request:
+                modify_requests.append(modify_request)
 
-        return modify_request
+        return modify_requests
 
     def get_status(self):
         """
