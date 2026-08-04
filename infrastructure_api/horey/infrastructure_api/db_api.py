@@ -495,15 +495,22 @@ class DBAPI:
 
         return user_group
 
-    def provision_elasticache_user(self, cache: ElasticacheServerlessCache, user_group_name: str, user_name:str, passwords: List[str]):
+    def provision_elasticache_user(self, user_group_name: str, user_name:str, passwords: List[str], cache: ElasticacheServerlessCache=None, engine="redis"):
         """
         Provision elasticache user
 
         :return:
         """
 
+        engine = cache.engine if cache else engine
+
+        if engine != "redis":
+            raise ValueError(f"Unsupported engine: {engine}")
+
+        region = cache.region if cache else self.environment_api.region
+
         user_group = ElasticacheUserGroup({})
-        user_group.region = cache.region
+        user_group.region = region
         user_group.user_group_name = user_group_name
         user_group.id= user_group_name
 
@@ -514,19 +521,16 @@ class DBAPI:
                 "Value": user_group_name
             })
 
-            default_user = self.get_elasticache_user(cache.region, "default")
+            default_user = self.get_elasticache_user(region, "default")
             user_group.user_ids = [default_user.id]
 
-            if cache.engine == "redis":
-                user_group.engine = cache.engine
-            else:
-                raise ValueError("Unsupported engine")
+            user_group.engine = engine
 
             self.environment_api.aws_api.elasticache_client.provision_user_group(user_group)
 
 
         user = ElasticacheUser({})
-        user.region = cache.region
+        user.region = region
         user.user_group_id = user_group.id
         user.user_name = user_name
         user.id = user_name
@@ -538,10 +542,7 @@ class DBAPI:
             "Value": user_name
         })
 
-        if cache.engine == "redis":
-            user.engine = cache.engine
-        else:
-            raise ValueError("Unsupported engine")
+        user.engine = engine
 
         self.environment_api.aws_api.elasticache_client.provision_user(user)
 
