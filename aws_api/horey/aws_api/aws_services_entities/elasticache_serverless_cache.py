@@ -26,6 +26,7 @@ class ElasticacheServerlessCache(AwsObject):
         self.snapshot_retention_limit = None
         self.daily_snapshot_time = None
         self.major_engine_version = None
+        self.endpoint = None
 
         self.request_key_to_attribute_mapping = {"ARN": "arn", "ServerlessCacheName": "name"}
 
