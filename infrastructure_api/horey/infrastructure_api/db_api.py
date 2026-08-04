@@ -477,6 +477,21 @@ class DBAPI:
 
         return cache
 
+    def get_user_group(self, user_group_name):
+        """
+        Get user group
+        """
+
+        user_group = ElasticacheUserGroup({})
+        user_group.region = self.environment_api.region
+        user_group.user_group_name = user_group_name
+        user_group.id= user_group_name
+
+        if not self.environment_api.aws_api.elasticache_client.update_user_group_information(user_group):
+            raise self.environment_api.ResourceNotFoundError(f"Was not able to find {user_group_name=}")
+
+        return user_group
+
     def provision_elasticache_user(self, cache: ElasticacheServerlessCache, user_group_name: str, user_name:str, passwords: List[str]):
         """
         Provision elasticache user
