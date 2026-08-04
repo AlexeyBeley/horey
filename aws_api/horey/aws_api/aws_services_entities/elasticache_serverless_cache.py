@@ -59,6 +59,8 @@ class ElasticacheServerlessCache(AwsObject):
             "SubnetIds": self.init_default_attr,
             "SnapshotRetentionLimit": self.init_default_attr,
             "DailySnapshotTime": self.init_default_attr,
+            "UserGroupId": self.init_default_attr,
+            "NetworkType": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
