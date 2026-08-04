@@ -31,7 +31,12 @@ class DBAPI:
         self.environment_api = environment_api
         self._max_version_raw = None
         self.dns_api = None
-        self.configuration.slug = f"{self.environment_api.configuration.environment_level_abbr}-{self.environment_api.configuration.environment_name}"
+        
+        if self.environment_api.configuration.environment_level == self.environment_api.configuration.environment_name:
+            self.configuration.slug = self.environment_api.configuration.environment_name
+        else:
+            self.configuration.slug = f"{self.environment_api.configuration.environment_level_abbr}-{self.environment_api.configuration.environment_name}"
+            
 
     def provision(self):
         """
