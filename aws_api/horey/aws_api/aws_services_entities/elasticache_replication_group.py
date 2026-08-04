@@ -178,8 +178,10 @@ class ElasticacheReplicationGroup(AwsObject):
                                                                  "TransitEncryptionMode",
                                                                  "ClusterMode"],
                                                        request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
-        if response:
-            response["ApplyImmediately"] = True
+        if not response:
+            return None
+
+        response["ApplyImmediately"] = True
 
         mz_enabled = response.get("MultiAZEnabled")
         if mz_enabled is not None and not isinstance(mz_enabled, bool):
