@@ -597,8 +597,15 @@ class AlertsAPI:
         self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
 
         alarm = self.provision_self_monitoring_event_bridge_successful_invocations_alarm()
-        self.environment_api.aws_api.cloud_watch_client.set_alarm_state(alarm, "ALARM")
+        self.trigger_alarm(alarm)
         return True
+
+    def trigger_alarm(self, alarm):
+        """
+        Trigger Alarm
+        """
+
+        return self.environment_api.aws_api.cloud_watch_client.set_alarm_state(alarm, "ALARM")
 
     def provision_self_monitoring_log_error_alarm(self):
         """
