@@ -402,7 +402,7 @@ class AlertsAPI:
 
         metric_filter = self.provision_cloudwatch_log_group_metric(log_group_name, metric_name, filter_text)
 
-        alarm_description = self.alert_system.generate_alarm_description(log_group_name, filter_text, routing_tags, alarm_description=alarm_description_base)
+        alarm_description = self.alert_system.generate_log_group_alarm_description(log_group_name, filter_text, routing_tags, alarm_description=alarm_description_base)
 
         alarm = self.cloudwatch_api.provision_alarm(name=f"has3-alarm-{log_group_name}-{metric_slug}",
                                                 alarm_description=json.dumps(alarm_description),
@@ -419,6 +419,41 @@ class AlertsAPI:
                                                 alarm_actions = [alerts_lamda.arn],
                                                 ok_actions=[alerts_lamda.arn]
                                                 )
+        self.environment_api.aws_api.cloud_watch_client.set_alarm_ok(alarm)
+        return alarm
+
+    def provision_cloudwatch_sqs_visible_alarm(
+            self, sqs_queue_name, threshold, routing_tags
+    ):
+        """
+        Number of SQS visible messages.
+
+        @param sqs_queue_name:
+        @param threshold:
+        @param routing_tags:
+        @return:
+        """
+
+        message_data = {"routing_tags": routing_tags,
+                        "queue_name": sqs_queue_name,
+                        "environment_name": self.environment_api.configuration.environment_name,
+                        "environment_level": self.environment_api.configuration.environment_level
+        }
+
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3_alarm-{sqs_queue_name}-ApproximateNumberOfMessagesVisible",
+            alarm_description=json.dumps(message_data),
+            metric_name="ApproximateNumberOfMessagesVisible",
+            namespace="AWS/SQS",
+            statistic="Average",
+            period=300,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            threshold=threshold,
+            comparison_operator="GreaterThanThreshold",
+            treat_missing_data="notBreaching",
+            dimensions=[{"Name": "QueueName", "Value": sqs_queue_name}]
+        )
         self.environment_api.aws_api.cloud_watch_client.set_alarm_ok(alarm)
         return alarm
 
@@ -599,7 +634,7 @@ class AlertsAPI:
                                                     filter_text,
                                                     "timeout",
                                                     [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
-                                                    metric_name=f"has2-metric-filter-lambda-{self.configuration.lambda_name}-timeout",
+                                                    metric_name=f"has3-metric-filter-lambda-{self.configuration.lambda_name}-timeout",
                                                     alarm_description_base=alarm_description
                                                     )
 
@@ -615,7 +650,7 @@ class AlertsAPI:
                              "lambda_name": self.configuration.lambda_name,
                              AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
         alarm = self.provision_cloudwatch_alarm(
-            name=f"has2-alarm-{self.configuration.lambda_name}-metric-errors",
+            name=f"has3-alarm-{self.configuration.lambda_name}-metric-errors",
             alarm_description=json.dumps(alarm_description),
             metric_name="Errors",
             namespace="AWS/Lambda",
@@ -645,7 +680,7 @@ class AlertsAPI:
                              AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
 
         alarm = self.provision_cloudwatch_alarm(
-            name=f"has2-alarm-{self.configuration.lambda_name}-metric-duration",
+            name=f"has3-alarm-{self.configuration.lambda_name}-metric-duration",
             alarm_description=json.dumps(alarm_description),
             metric_name="Duration",
             namespace="AWS/Lambda",
@@ -676,7 +711,7 @@ class AlertsAPI:
                              AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
 
         alarm = self.provision_cloudwatch_alarm(
-            name=f"has2-alarm-{self.configuration.lambda_name}-eventbridge-successful-invocations",
+            name=f"has3-alarm-{self.configuration.lambda_name}-eventbridge-successful-invocations",
             alarm_description=json.dumps(alarm_description),
             metric_name="Invocations",
             namespace="AWS/Events",
