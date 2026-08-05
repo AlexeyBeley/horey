@@ -26,6 +26,7 @@ logger = get_logger()
 class FreeStuffAPI:
     def __init__(self, configuration: FreeStuffAPIConfigurationPolicy = None):
         self.configuration = configuration
+        logger.info(f"Free Stuff API {self.configuration.proxy=}")
         self.selenium_api = SeleniumAPI(chromedriver_path= self.configuration.chromedriver_path,
                                         chrome_path=self.configuration.chrome_path, 
                                         proxy=self.configuration.proxy)

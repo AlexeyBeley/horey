@@ -21,6 +21,7 @@ config.init_from_file()
 
 @pytest.fixture(scope="module", name="free_stuff_mac_raw")
 def fixture_free_stuff_mac_raw():
+    # config.proxy = "socks5://144.24.111.128:1088"
     free_stuff_api = FreeStuffAPI(config)
     yield free_stuff_api
     free_stuff_api.selenium_api.disconnect()
