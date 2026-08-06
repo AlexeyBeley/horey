@@ -351,7 +351,8 @@ class GitAPI:
             if ret["stdout"] or ret["stderr"]:
                 if "checked out" not in ret["stdout"] and \
                     "Cloning into" not in ret["stderr"] and \
-                        "Permanently added" not in ret["stderr"] :
+                        "Permanently added" not in ret["stderr"] and \
+                        "[new branch]" not in ret["stderr]:
                     raise ValueError(ret)
         return True
 
