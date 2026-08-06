@@ -96,7 +96,7 @@ class AlertsAPI:
                     }
                 }
             ]
-            
+
             # breakpoint()
             # lambda_api.ecs_api.config.slug = lambda_api.configuration.lambda_name
             lambda_api.build_api.git_api = lambda_api.build_api.horey_git_api
@@ -126,8 +126,10 @@ class AlertsAPI:
         :param source_code_directory_path:
         :return:
         """
-        
+
         self.aws_lambda_api.build_api.docker_build_directory =  self.aws_lambda_api.build_api.prepare_docker_image_horey_package_build_directory(source_code_directory_path, "alert_system")
+
+        self.aws_lambda_api.build_api.docker_build_directory = self.aws_lambda_api.build_api.prepare_docker_image_build_directory_callback(self.aws_lambda_api.build_api.docker_build_directory)
 
         logger.info(f"Start copying source code from '{source_code_directory_path}' to '{self.aws_lambda_api.build_api.docker_build_directory}'")
 
