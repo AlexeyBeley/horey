@@ -96,6 +96,9 @@ class AlertsAPI:
                     }
                 }
             ]
+            
+            # breakpoint()
+            # lambda_api.ecs_api.config.slug = lambda_api.configuration.lambda_name
             lambda_api.build_api.git_api = lambda_api.build_api.horey_git_api
             lambda_api.build_api.prepare_docker_image_build_directory = self.prepare_docker_image_build_directory
             self._aws_lambda_api = lambda_api
@@ -123,38 +126,12 @@ class AlertsAPI:
         :param source_code_directory_path:
         :return:
         """
+        
+        self.aws_lambda_api.build_api.docker_build_directory =  self.aws_lambda_api.build_api.prepare_docker_image_horey_package_build_directory(source_code_directory_path, "alert_system")
 
         logger.info(f"Start copying source code from '{source_code_directory_path}' to '{self.aws_lambda_api.build_api.docker_build_directory}'")
 
-        build_custom_files_dir = self.aws_lambda_api.build_api.docker_build_directory / "custom_files"
-        build_custom_files_dir.mkdir(parents=True, exist_ok=False)
-        self.build_custom_files_directory_callback(build_custom_files_dir)
-
-        build_horey_dir = self.aws_lambda_api.build_api.docker_build_directory / "horey"
-        build_horey_dir.mkdir(exist_ok=False)
-
-        def ignore_build(_, file_names):
-            return ["_build"] if "_build" in file_names else []
-
-        for obj_name in ["network", "pip_api", "build", "common_utils", "h_logger", "slack_api", "configuration_policy", "alert_system", "aws_api", "Makefile", "pip_api_docker_configuration.py", "pip_api_configuration.py"]:
-            obj_path = source_code_directory_path / obj_name
-            if obj_path.is_dir():
-                shutil.copytree(obj_path, build_horey_dir / obj_name, ignore=ignore_build)
-            else:
-                shutil.copy(obj_path, build_horey_dir / obj_name)
         self.aws_lambda_api.build_api.add_build_metadata_file(self.aws_lambda_api.build_api.docker_build_directory, build_number)
-
-        build_dir_obj_names = [obj.name for obj in self.aws_lambda_api.build_api.docker_build_directory.iterdir()]
-
-        for obj_path in self.alert_system.build_dir_path.iterdir():
-            if obj_path.name.startswith("_"):
-                continue
-            if obj_path.name in build_dir_obj_names:
-                raise ValueError(f"Overwriting is not supported, delete the files manually: {self.aws_lambda_api.build_api.docker_build_directory / obj_path.name}")
-            if obj_path.is_dir():
-                shutil.copytree(obj_path, self.aws_lambda_api.build_api.docker_build_directory / obj_path.name)
-            else:
-                shutil.copy(obj_path, self.aws_lambda_api.build_api.docker_build_directory / obj_path.name)
 
         alert_sys_config_path = self.aws_lambda_api.build_api.docker_build_directory / self.alert_system.configuration.ALERT_SYSTEM_CONFIGURATION_FILE_PATH
         self.alert_system.configuration.generate_configuration_file_ng(alert_sys_config_path)
