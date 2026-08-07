@@ -11,7 +11,7 @@ from horey.alert_system.alert_system_configuration_policy import AlertSystemConf
 
 from horey.h_logger import get_logger
 logger = get_logger()
-if (logger.handlers) > 1:
+if len(logger.handlers) > 1:
     logger.handlers = logger.handlers[:1]
 
 
