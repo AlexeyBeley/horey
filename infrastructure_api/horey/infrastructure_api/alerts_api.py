@@ -188,6 +188,7 @@ class AlertsAPI:
         
         self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
         slack_channel_configuration_file_path.name, before_comment="HOREY_REPOS_END", add_to_root=False)
+        breakpoint()
 
         return True
 
