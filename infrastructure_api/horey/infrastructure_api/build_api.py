@@ -211,7 +211,7 @@ class BuildAPI:
         return build_dir_path
 
     @staticmethod
-    def add_docker_instruction_copy(dockerfile_path: Path, source, before_comment=None):
+    def add_docker_instruction_copy(dockerfile_path: Path, source, before_comment=None, add_to_root=True):
         """
         Add copy instruction to dockerfile
 
@@ -240,8 +240,11 @@ class BuildAPI:
             if before_comment:
                 raise RuntimeError(f"Was not able to find comment {before_comment}")
 
+        if add_to_root:
+            lines = lines[:i] + [f"\nCOPY {source} /{source}\n"] + lines[i:]
+        else:
+            lines = lines[:i] + [f"\nCOPY {source} {source}\n"] + lines[i:]
 
-        lines = lines[:i] + [f"\nCOPY {source} /{source}\n"] + lines[i:]
         with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
             file_handler.writelines(lines)
 

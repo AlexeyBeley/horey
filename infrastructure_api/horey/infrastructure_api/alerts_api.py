@@ -141,7 +141,7 @@ class AlertsAPI:
         alert_sys_config_path = self.aws_lambda_api.build_api.docker_build_directory / self.alert_system.configuration.ALERT_SYSTEM_CONFIGURATION_FILE_PATH
         self.alert_system.configuration.generate_configuration_file_ng(alert_sys_config_path)
         self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
-        self.alert_system.configuration.ALERT_SYSTEM_CONFIGURATION_FILE_PATH, before_comment="HOREY_REPOS_END")
+        self.alert_system.configuration.ALERT_SYSTEM_CONFIGURATION_FILE_PATH, before_comment="HOREY_REPOS_END", add_to_root=False)
 
         return self.aws_lambda_api.build_api.docker_build_directory
 
