@@ -81,6 +81,8 @@ class NotificationChannelSlack:
         @return:
         """
 
+        # Replace critical alerts to something lower if needed.
+        # Save the heartattack to your Ops team!
         if notification.type == notification.Types.CRITICAL:
             notification_type_value = self.configuration.notification_type or notification.type.value
         else:
