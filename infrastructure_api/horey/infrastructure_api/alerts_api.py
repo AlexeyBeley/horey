@@ -126,7 +126,7 @@ class AlertsAPI:
         :param source_code_directory_path:
         :return:
         """
-        
+
         self.aws_lambda_api.build_api.docker_build_directory.mkdir()
         self.alert_system.generate_lambda_dockerfile(self.aws_lambda_api.build_api.docker_build_directory)
 
@@ -140,6 +140,8 @@ class AlertsAPI:
 
         alert_sys_config_path = self.aws_lambda_api.build_api.docker_build_directory / self.alert_system.configuration.ALERT_SYSTEM_CONFIGURATION_FILE_PATH
         self.alert_system.configuration.generate_configuration_file_ng(alert_sys_config_path)
+        self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
+        self.alert_system.configuration.ALERT_SYSTEM_CONFIGURATION_FILE_PATH, before_comment="HOREY_REPOS_END")
 
         return self.aws_lambda_api.build_api.docker_build_directory
 
@@ -737,16 +739,6 @@ class AlertsAPI:
 
         return self.environment_api.put_cloudwatch_log_lines(self.aws_lambda_api.log_group_name, [
             f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}: Neo, the Horey has you!"])
-
-    def build_and_validate(self, event):
-        """
-        Build and run on event.
-
-        :param event:
-        :return:
-        """
-
-        return self.alert_system.build_and_validate(self.configuration.files, event)
 
     def get_all_metrics(self, namespace):
         """
