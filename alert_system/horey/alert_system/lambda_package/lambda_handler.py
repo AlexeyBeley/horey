@@ -10,7 +10,7 @@ from horey.alert_system.lambda_package.event_handler import EventHandler
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 
 from horey.h_logger import get_logger
-logger = get_logger()
+logger = get_logger(add_handler=False)
 
 
 
@@ -22,9 +22,6 @@ def handler(event, _):
     :param _: context
     :return:
     """
-
-    if len(logger.handlers) > 1:
-        logger.handlers = logger.handlers[:1]
 
     logger_string = json.dumps(event).replace(AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN,
                                           "ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN")
