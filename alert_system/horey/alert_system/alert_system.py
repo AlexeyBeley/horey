@@ -9,7 +9,7 @@ import copy
 import datetime
 import json
 import os
-import pathlib
+from pathlib import Path
 import shutil
 from time import perf_counter
 import email.utils
@@ -73,7 +73,7 @@ class AlertSystem:
 
     @property
     def build_dir_path(self):
-        return pathlib.Path(__file__).parent / "build"
+        return Path(__file__).parent / "build"
 
     @property
     def pip_api(self):
@@ -340,7 +340,7 @@ class AlertSystem:
 
         shutil.copy2(os.path.join(os.path.dirname(__file__), "tests", "trigger_local.py"),
                      extraction_dir)
-        curdir = pathlib.Path(".").resolve()
+        curdir = Path(".").resolve()
         os.chdir(extraction_dir)
         try:
             main_function = CommonUtils.load_object_from_module_raw(extraction_dir / "trigger_local.py", "main")
@@ -1306,5 +1306,11 @@ class AlertSystem:
             raise ValueError(f"No routing tags: received: '{alarm_description}'")
         return alarm_description
 
+    @staticmethod
+    def generate_lambda_dockerfile(dst_dir: Path):
+        """
+        Generate dockerfile
+        """
 
-
+        src_file = Path(__file__).parent / "build" / "Dockerfile"
+        shutil.copy(src_file, dst_dir / src_file.name)
