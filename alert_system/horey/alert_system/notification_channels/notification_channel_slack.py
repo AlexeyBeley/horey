@@ -81,7 +81,10 @@ class NotificationChannelSlack:
         @return:
         """
 
-        notification_type_value = self.configuration.notification_type or notification.type.value
+        if notification.type == notification.Types.CRITICAL:
+            notification_type_value = self.configuration.notification_type or notification.type.value
+        else:
+            notification_type_value = notification.type.value
 
         notification_type_possible_values = [val.value for val in Notification.Types.__members__.values()]
         if notification_type_value not in notification_type_possible_values:
