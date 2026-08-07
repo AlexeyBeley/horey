@@ -176,6 +176,8 @@ class AlertsAPI:
         slack_notification_channel_file_path = Path(sys.modules[NotificationChannelSlack.__module__].__file__)
         self.alert_system.configuration.notification_channels.append(slack_notification_channel_file_path.name)
         shutil.copy2(slack_notification_channel_file_path, build_directory_path)
+        self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
+        slack_notification_channel_file_path.name, before_comment="HOREY_REPOS_END", add_to_root=False)
 
         slack_channel_configuration_file_path = os.path.join(build_directory_path, NotificationChannelSlack.CONFIGURATION_FILE_NAME)
         configuration.generate_configuration_file(slack_channel_configuration_file_path)
