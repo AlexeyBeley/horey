@@ -31,7 +31,12 @@ class DBAPI:
         self.environment_api = environment_api
         self._max_version_raw = None
         self.dns_api = None
-        self.configuration.slug = f"{self.environment_api.configuration.environment_level_abbr}-{self.environment_api.configuration.environment_name}"
+        
+        if self.environment_api.configuration.environment_level == self.environment_api.configuration.environment_name:
+            self.configuration.slug = self.environment_api.configuration.environment_name
+        else:
+            self.configuration.slug = f"{self.environment_api.configuration.environment_level_abbr}-{self.environment_api.configuration.environment_name}"
+            
 
     def provision(self):
         """
@@ -431,7 +436,7 @@ class DBAPI:
 
         return str_ret
 
-    def provision_elasticache_serverless(self, name=None, cache:ElasticacheServerlessCache=None, security_groups=None):
+    def provision_elasticache_serverless(self, name=None, cache:ElasticacheServerlessCache=None, security_groups=None, user_group=None):
         """
         Provision elasticache
         !!! Make sure you have: All permissions from role: ElastiCacheServiceRolePolicy
@@ -457,6 +462,9 @@ class DBAPI:
             if security_groups:
                 cache.security_group_ids = [sec_group.id for sec_group in security_groups]
 
+            if user_group:
+                cache.user_group_id = user_group.id
+
         self.environment_api.aws_api.elasticache_client.provision_serverless_cache(cache)
 
         return cache
@@ -477,15 +485,37 @@ class DBAPI:
 
         return cache
 
-    def provision_elasticache_user(self, cache: ElasticacheServerlessCache, user_group_name: str, user_name:str, passwords: List[str]):
+    def get_user_group(self, user_group_name):
+        """
+        Get user group
+        """
+
+        user_group = ElasticacheUserGroup({})
+        user_group.region = self.environment_api.region
+        user_group.user_group_name = user_group_name
+        user_group.id= user_group_name
+
+        if not self.environment_api.aws_api.elasticache_client.update_user_group_information(user_group):
+            raise self.environment_api.ResourceNotFoundError(f"Was not able to find {user_group_name=}")
+
+        return user_group
+
+    def provision_elasticache_user(self, user_group_name: str, user_name:str, passwords: List[str], cache: ElasticacheServerlessCache=None, engine="redis"):
         """
         Provision elasticache user
 
         :return:
         """
 
+        engine = cache.engine if cache else engine
+
+        if engine != "redis":
+            raise ValueError(f"Unsupported engine: {engine}")
+
+        region = cache.region if cache else self.environment_api.region
+
         user_group = ElasticacheUserGroup({})
-        user_group.region = cache.region
+        user_group.region = region
         user_group.user_group_name = user_group_name
         user_group.id= user_group_name
 
@@ -496,19 +526,16 @@ class DBAPI:
                 "Value": user_group_name
             })
 
-            default_user = self.get_elasticache_user(cache.region, "default")
+            default_user = self.get_elasticache_user(region, "default")
             user_group.user_ids = [default_user.id]
 
-            if cache.engine == "redis":
-                user_group.engine = cache.engine
-            else:
-                raise ValueError("Unsupported engine")
+            user_group.engine = engine
 
             self.environment_api.aws_api.elasticache_client.provision_user_group(user_group)
 
 
         user = ElasticacheUser({})
-        user.region = cache.region
+        user.region = region
         user.user_group_id = user_group.id
         user.user_name = user_name
         user.id = user_name
@@ -520,10 +547,7 @@ class DBAPI:
             "Value": user_name
         })
 
-        if cache.engine == "redis":
-            user.engine = cache.engine
-        else:
-            raise ValueError("Unsupported engine")
+        user.engine = engine
 
         self.environment_api.aws_api.elasticache_client.provision_user(user)
 

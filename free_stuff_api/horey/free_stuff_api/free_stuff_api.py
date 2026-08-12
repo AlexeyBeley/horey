@@ -13,6 +13,7 @@ from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
 from horey.common_utils.free_item import FreeItem
 from horey.facebook_api.facebook_api import FacebookAPI
+from horey.kijiji_api.kijiji_api import KijijiAPI
 from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPIConfigurationPolicy, AWSLambdaAPI
 from horey.infrastructure_api.eks_api import EKSAPIConfigurationPolicy, EKSAPI
 from horey.infrastructure_api.db_api import DBAPI
@@ -20,6 +21,7 @@ from horey.infrastructure_api.db_api_configuration_policy import DBAPIConfigurat
 from horey.infrastructure_api.environment_api import EnvironmentAPIConfigurationPolicy, EnvironmentAPI
 from horey.selenium_api.selenium_api import SeleniumAPI
 from horey.free_stuff_api.frs_platform import FRSPlatform
+from horey.infrastructure_api.cicd_api import CICDAPI, CICDAPIConfigurationPolicy
 
 logger = get_logger()
 
@@ -35,6 +37,7 @@ class FreeStuffAPI:
         self._environment_api = None
         self._eks_api = None
         self._aws_lambda_api = None
+        self._cicd_api = None
 
     @property
     def platforms(self):
@@ -54,7 +57,8 @@ class FreeStuffAPI:
         if self._platforms is None:
             self._platforms = []
 
-        platform_apis = [FacebookAPI(selenium_api=self.selenium_api)]
+        platform_apis = [FacebookAPI(selenium_api=self.selenium_api), KijijiAPI(selenium_api=self.selenium_api)]
+        self.add_platform(FRSPlatform(None, platform_apis[0].NAME))
 
         with sqlite3.connect(self.configuration.db_file_path) as conn:
             cursor = conn.cursor()
@@ -65,9 +69,10 @@ class FreeStuffAPI:
                 for platform_api in platform_apis:
                     if platform_api.NAME == platform_name:
                         platform = FRSPlatform(platform_id, platform_name, api=platform_api)
-
                         self._platforms.append(platform)
                         break
+                #else:
+                #    raise RuntimeError("Was not able to find platform with {platform_name=}")
 
         for platform in self._platforms:
             self.init_platform_free_items(platform)
@@ -166,6 +171,19 @@ class FreeStuffAPI:
             self._eks_api.build_api.git_api.configuration.git_directory_path = self.configuration.horey_directory_path.parent
 
         return self._eks_api
+    
+    @property
+    def cicd_api(self):
+        """
+        CICD API
+        :return:
+        """
+
+        if self._cicd_api is None:
+            configuration = CICDAPIConfigurationPolicy()
+            self._cicd_api = CICDAPI(configuration, self.environment_api)
+
+        return self._cicd_api
 
     def prepare_docker_image_build_directory_eks(self, source_code_directory_path, build_number):
         """
@@ -636,7 +654,11 @@ class FreeStuffAPI:
         :return:
         """
 
-        self.eks_api.provision_service(None)
+        target = self.cicd_api.init_raw_target(self.configuration.mgmt_server_address, self.configuration.mgmt_server_ssh_key_path)
+        ret = self.cicd_api.run_remote_provision_constructor(target, "raw", command="ls")
+        breakpoint()
+
+        #self.eks_api.provision_service(None)
 
     def run_server(self):
         sleep_time = 90

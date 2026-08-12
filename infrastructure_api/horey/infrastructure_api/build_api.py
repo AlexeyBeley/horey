@@ -217,14 +217,11 @@ class BuildAPI:
 
         build_dir_path = self.prepare_docker_image_build_directory_callback(self.docker_build_directory)
 
-        #file_name = self.add_build_metadata_file(build_dir_path, build_number)
-        #self.add_docker_instruction_copy(dockerfile_path, file_name)
-
         logger.info(f"Prepared docker build directory. Took {time.perf_counter() - perf_counter_start}")
         return build_dir_path
 
     @staticmethod
-    def add_docker_instruction_copy(dockerfile_path: Path, source, before_comment=None):
+    def add_docker_instruction_copy(dockerfile_path: Path, source, before_comment=None, add_to_root=True):
         """
         Add copy instruction to dockerfile
 
@@ -253,8 +250,11 @@ class BuildAPI:
             if before_comment:
                 raise RuntimeError(f"Was not able to find comment {before_comment}")
 
+        if add_to_root:
+            lines = lines[:i] + [f"\nCOPY {source} /{source}\n"] + lines[i:]
+        else:
+            lines = lines[:i] + [f"\nCOPY {source} {source}\n"] + lines[i:]
 
-        lines = lines[:i] + [f"\nCOPY {source} /{source}\n"] + lines[i:]
         with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
             file_handler.writelines(lines)
 
@@ -369,6 +369,15 @@ class BuildAPI:
         with open(dockerfile_path, "r", encoding="utf-8") as file_handler:
             lines = file_handler.readlines()
 
+        dockerfile_src = dockerfile_path.read_text()
+
+        if "pip" in dockerfile_src:
+            required_word_tokens = ["which", "wget", "make", "git", "findutils"]
+            for required_word_token in required_word_tokens:
+                if required_word_token not in dockerfile_src:
+                    raise ValueError(f"Existing {dockerfile_src} must include all of the {required_word_tokens=}")
+            return True
+
         horey_base_lines = [
             "USER root\n",
             "RUN apt update\n",
@@ -376,7 +385,7 @@ class BuildAPI:
             "RUN ln -s /usr/bin/python3 /usr/bin/python\n",
             "RUN apt-get update && apt-get remove -y python3-packaging && rm -rf /var/lib/apt/lists/*\n",
             "RUN apt-get update && apt-get install -yqq --upgrade python3-packaging python3-pip  && rm -rf /var/lib/apt/lists/*\n",
-            "RUN  pip3 install --break-system-packages twine\n",
+            "RUN pip3 install --break-system-packages twine\n",
             "#HOREY_REPOS_END\n"
         ]
 

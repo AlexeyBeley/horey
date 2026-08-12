@@ -2,7 +2,6 @@
 AWS clietn to handle service API requests.
 """
 import time
-from email.contentmanager import raw_data_manager
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.elasticache_serverless_cache import ElasticacheServerlessCache
@@ -350,7 +349,6 @@ class ElasticacheClient(Boto3Client):
             if request is None:
                 return desired_replication_group.update_from_attrs(existing_replication_group)
 
-            raise NotImplementedError("Have no idea why there was a breakpoint here")
             self.modify_replication_group_raw(desired_replication_group.region, request)
 
         self.wait_for_status(
@@ -368,6 +366,7 @@ class ElasticacheClient(Boto3Client):
         )
         return True
 
+    # pylint: disable = too-many-branches
     def update_replication_group_information(self, replication_group, full_information=True):
         """
         Standard
@@ -576,12 +575,14 @@ class ElasticacheClient(Boto3Client):
             if getattr(desired_cache, attr) is None:
                 setattr(desired_cache, attr, getattr(current_cache, attr))
 
-        request = current_cache.generate_update_request(desired_cache)
+        requests = current_cache.generate_update_requests(desired_cache)
 
-        if not request:
+        if not requests:
             return desired_cache.update_from_attrs(current_cache)
 
-        response = self.modify_serverless_cache_raw(desired_cache.region, request)
+        for request in requests:
+            response = self.modify_serverless_cache_raw(desired_cache.region, request)
+
         return desired_cache.update_from_raw_response(response)
 
 
@@ -954,4 +955,3 @@ class ElasticacheClient(Boto3Client):
             if desired_user_group.get_status() != desired_user_group.Status.DELETING:
                 raise ValueError(desired_user_group.get_status())
         raise TimeoutError("User group deletion is taking too long")
-

@@ -1,5 +1,5 @@
 """
-Logging package. Log formatting and routing.
+Alert system;
 """
 
-__version__ = "2.0.5"
+__version__ = "2.0.7"

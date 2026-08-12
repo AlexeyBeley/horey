@@ -506,6 +506,7 @@ class MAauction(Provider):
         :return:
         """
 
+        province = province.lower()
         if province == "alberta":
             tz = ZoneInfo("America/Edmonton")
         elif province == "manitoba":
@@ -533,6 +534,8 @@ class MAauction(Provider):
             year = 2025
         elif "2026" in line:
             year = 2026
+        elif "2027" in line:
+            year = 2027
         else:
             # 'https://www.maauctions.com/auctions/24918-january-10th-2026-automotive-timed-vehicles-and-rvs-alberta'
             new_line = auction_event.url.replace("th-", " ").replace("-", " ")
@@ -544,6 +547,7 @@ class MAauction(Provider):
                 logger.info(f"Manual check the date for: {auction_event.url}")
             else:
                 logger.info(f"Extracting date failed from URL: {auction_event.url}")
+                breakpoint()
                 return None
 
             raise_exception = True

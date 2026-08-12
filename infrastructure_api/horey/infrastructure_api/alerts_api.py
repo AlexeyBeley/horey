@@ -23,7 +23,6 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPI, AWSLambdaAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI, CloudwatchAPIConfigurationPolicy
 from horey.h_logger import get_logger
-from horey.slack_api.slack_api import SlackAPI
 
 logger = get_logger()
 
@@ -97,6 +96,7 @@ class AlertsAPI:
                     }
                 }
             ]
+
             lambda_api.build_api.git_api = lambda_api.build_api.horey_git_api
             lambda_api.build_api.prepare_docker_image_build_directory = self.prepare_docker_image_build_directory
             self._aws_lambda_api = lambda_api
@@ -125,40 +125,19 @@ class AlertsAPI:
         :return:
         """
 
+        self.aws_lambda_api.build_api.docker_build_directory.mkdir()
+        self.alert_system.generate_lambda_dockerfile(self.aws_lambda_api.build_api.docker_build_directory)
+
+        self.aws_lambda_api.build_api.docker_build_directory =  self.aws_lambda_api.build_api.prepare_docker_image_horey_package_build_directory(source_code_directory_path, "alert_system")
+
         logger.info(f"Start copying source code from '{source_code_directory_path}' to '{self.aws_lambda_api.build_api.docker_build_directory}'")
 
-        build_custom_files_dir = self.aws_lambda_api.build_api.docker_build_directory / "custom_files"
-        build_custom_files_dir.mkdir(parents=True, exist_ok=False)
-        self.build_custom_files_directory_callback(build_custom_files_dir)
-
-        build_horey_dir = self.aws_lambda_api.build_api.docker_build_directory / "horey"
-        build_horey_dir.mkdir(exist_ok=False)
-
-        def ignore_build(_, file_names):
-            return ["_build"] if "_build" in file_names else []
-
-        for obj_name in ["network", "pip_api", "build", "common_utils", "h_logger", "slack_api", "configuration_policy", "alert_system", "aws_api", "Makefile", "pip_api_docker_configuration.py", "pip_api_configuration.py"]:
-            obj_path = source_code_directory_path / obj_name
-            if obj_path.is_dir():
-                shutil.copytree(obj_path, build_horey_dir / obj_name, ignore=ignore_build)
-            else:
-                shutil.copy(obj_path, build_horey_dir / obj_name)
         self.aws_lambda_api.build_api.add_build_metadata_file(self.aws_lambda_api.build_api.docker_build_directory, build_number)
-
-        build_dir_obj_names = [obj.name for obj in self.aws_lambda_api.build_api.docker_build_directory.iterdir()]
-
-        for obj_path in self.alert_system.build_dir_path.iterdir():
-            if obj_path.name.startswith("_"):
-                continue
-            if obj_path.name in build_dir_obj_names:
-                raise ValueError(f"Overwriting is not supported, delete the files manually: {self.aws_lambda_api.build_api.docker_build_directory / obj_path.name}")
-            if obj_path.is_dir():
-                shutil.copytree(obj_path, self.aws_lambda_api.build_api.docker_build_directory / obj_path.name)
-            else:
-                shutil.copy(obj_path, self.aws_lambda_api.build_api.docker_build_directory / obj_path.name)
 
         alert_sys_config_path = self.aws_lambda_api.build_api.docker_build_directory / self.alert_system.configuration.ALERT_SYSTEM_CONFIGURATION_FILE_PATH
         self.alert_system.configuration.generate_configuration_file_ng(alert_sys_config_path)
+        self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
+        self.alert_system.configuration.ALERT_SYSTEM_CONFIGURATION_FILE_PATH, before_comment="HOREY_REPOS_END", add_to_root=False)
 
         return self.aws_lambda_api.build_api.docker_build_directory
 
@@ -171,7 +150,7 @@ class AlertsAPI:
 
         logger.info(f"Build custom_files_directory_callback from {self}")
 
-        with open(build_custom_files_dir/"dummy_file_for_docker_build", "w") as file_handler:
+        with open(build_custom_files_dir/"dummy_file_for_docker_build", "w", encoding="utf-8") as file_handler:
             file_handler.write("Hello from horey!")
 
         return True
@@ -193,11 +172,20 @@ class AlertsAPI:
             configuration.notification_type = notification_type
 
         slack_notification_channel_file_path = Path(sys.modules[NotificationChannelSlack.__module__].__file__)
+        
         self.alert_system.configuration.notification_channels.append(slack_notification_channel_file_path.name)
+        
         shutil.copy2(slack_notification_channel_file_path, build_directory_path)
 
-        slack_channel_configuration_file_path = os.path.join(build_directory_path, NotificationChannelSlack.CONFIGURATION_FILE_NAME)
-        configuration.generate_configuration_file(slack_channel_configuration_file_path)
+        self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
+        slack_notification_channel_file_path.name, before_comment="HOREY_REPOS_END", add_to_root=False)
+
+        slack_channel_configuration_file_path = build_directory_path / NotificationChannelSlack.CONFIGURATION_FILE_NAME
+        
+        configuration.generate_configuration_file_ng(slack_channel_configuration_file_path)
+        
+        self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
+        slack_channel_configuration_file_path.name, before_comment="HOREY_REPOS_END", add_to_root=False)
 
         return True
 
@@ -225,7 +213,7 @@ class AlertsAPI:
 
         return self.aws_lambda_api.update_docker_lambda()
 
-    def generate_postgres_cluster_alarms(self, cluster_id, metric_data_start_time=None, metric_data_end_time=None,
+    def generate_postgres_cluster_alarms(self, cluster_id,
                                          metric_name=None):
         """
         Generate alerts per resource: RDS Postgres Cluster
@@ -240,18 +228,12 @@ class AlertsAPI:
         cluster = self.environment_api.get_rds_cluster(cluster_id)
         alerts_builder = PostgresAlertBuilder(cluster=cluster)
         return self.alert_system.generate_resource_alarms(alerts_builder,
-                                                          metric_data_start_time=metric_data_start_time,
-                                                          metric_data_end_time=metric_data_end_time,
                                                           metric_name=metric_name)
 
-    def generate_alb_alarms(self, alb_name, metric_data_start_time=None, metric_data_end_time=None,
-                            metric_name=None):
+    def generate_alb_alarms(self, alb_name):
         """
         Generate alerts per resource: Elastic load balancer
 
-        :param metric_name:
-        :param metric_data_end_time:
-        :param metric_data_start_time:
         :param alb_name:
         :return:
         """
@@ -384,17 +366,17 @@ class AlertsAPI:
 
         return self.environment_api.put_cloudwatch_log_lines(cloudwatch_log_group_name, [log_line])
 
-    # pylint: disable = too-many-arguments
+    # pylint: disable = too-many-arguments, too-many-positional-arguments)
     def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_slug, routing_tags,
                                         metric_name=None,
                                         dimensions=None,
-                                        alarm_description=None
+                                        alarm_description_base=None
                                         ):
         """
         Provision Cloud watch logs based alarm.
 
         @return:
-        :param alarm_description:
+        :param alarm_description_base:
         :param dimensions:
         :param metric_name:
         :param routing_tags:
@@ -409,7 +391,7 @@ class AlertsAPI:
 
         metric_filter = self.provision_cloudwatch_log_group_metric(log_group_name, metric_name, filter_text)
 
-        alarm_description = self.alert_system.generate_alarm_description(log_group_name, filter_text, routing_tags, alarm_description=alarm_description)
+        alarm_description = self.alert_system.generate_log_group_alarm_description(log_group_name, filter_text, routing_tags, alarm_description=alarm_description_base)
 
         alarm = self.cloudwatch_api.provision_alarm(name=f"has3-alarm-{log_group_name}-{metric_slug}",
                                                 alarm_description=json.dumps(alarm_description),
@@ -429,7 +411,42 @@ class AlertsAPI:
         self.environment_api.aws_api.cloud_watch_client.set_alarm_ok(alarm)
         return alarm
 
-    def provision_cloudwatch_log_group_metric(self, log_group_name, metric_name, filter_text):
+    def provision_cloudwatch_sqs_visible_alarm(
+            self, sqs_queue_name, threshold, routing_tags
+    ):
+        """
+        Number of SQS visible messages.
+
+        @param sqs_queue_name:
+        @param threshold:
+        @param routing_tags:
+        @return:
+        """
+
+        message_data = {"routing_tags": routing_tags,
+                        "queue_name": sqs_queue_name,
+                        "environment_name": self.environment_api.configuration.environment_name,
+                        "environment_level": self.environment_api.configuration.environment_level
+        }
+
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3_alarm-{sqs_queue_name}-ApproximateNumberOfMessagesVisible",
+            alarm_description=json.dumps(message_data),
+            metric_name="ApproximateNumberOfMessagesVisible",
+            namespace="AWS/SQS",
+            statistic="Average",
+            period=300,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            threshold=threshold,
+            comparison_operator="GreaterThanThreshold",
+            treat_missing_data="notBreaching",
+            dimensions=[{"Name": "QueueName", "Value": sqs_queue_name}]
+        )
+        self.environment_api.aws_api.cloud_watch_client.set_alarm_ok(alarm)
+        return alarm
+
+    def provision_cloudwatch_log_group_metric(self, log_group_name, metric_name, filter_pattern):
         """
         Provision metric filter for log group.
 
@@ -439,9 +456,20 @@ class AlertsAPI:
         :return:
         """
 
+        existing_filters = list(self.environment_api.aws_api.cloud_watch_logs_client.yield_log_group_metric_filters(region=self.environment_api.region,
+        update_info=True,
+        filters_req={"logGroupName": log_group_name}))
+        duplicates = []
+
+        for existing_filter in existing_filters:
+            if existing_filter.filter_pattern == filter_pattern and existing_filter.name != metric_name:
+                duplicates.append(existing_filter.name)
+        if duplicates:
+            raise ValueError(f"Filter metrics {log_group_name=} {filter_pattern=} already exist: {duplicates}")
+
         metric_filter = self.environment_api.provision_log_group_metric_filter(
             name=metric_name,
-            log_group_name=log_group_name, filter_text=filter_text)
+            log_group_name=log_group_name, filter_text=filter_pattern)
         if len(metric_filter.metric_transformations) != 1:
             raise NotImplementedError(
                 f"Unhandled situation when more then one metric transformation {metric_filter.metric_transformations}")
@@ -558,8 +586,15 @@ class AlertsAPI:
         self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
 
         alarm = self.provision_self_monitoring_event_bridge_successful_invocations_alarm()
-        self.environment_api.aws_api.cloud_watch_client.set_alarm_state(alarm, "ALARM")
+        self.trigger_alarm(alarm)
         return True
+
+    def trigger_alarm(self, alarm):
+        """
+        Trigger Alarm
+        """
+
+        return self.environment_api.aws_api.cloud_watch_client.set_alarm_state(alarm, "ALARM")
 
     def provision_self_monitoring_log_error_alarm(self):
         """
@@ -577,7 +612,7 @@ class AlertsAPI:
                                                     filter_text,
                                                     "error",
                                                     [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
-                                                    alarm_description=alarm_description,
+                                                    alarm_description_base=alarm_description,
                                                     )
 
     def provision_self_monitoring_log_timeout_alarm(self):
@@ -595,8 +630,8 @@ class AlertsAPI:
                                                     filter_text,
                                                     "timeout",
                                                     [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
-                                                    metric_name=f"has2-metric-filter-lambda-{self.configuration.lambda_name}-timeout",
-                                                    alarm_description=alarm_description
+                                                    metric_name=f"has3-metric-filter-lambda-{self.configuration.lambda_name}-timeout",
+                                                    alarm_description_base=alarm_description
                                                     )
 
     def provision_self_monitoring_errors_metric_alarm(self):
@@ -611,7 +646,7 @@ class AlertsAPI:
                              "lambda_name": self.configuration.lambda_name,
                              AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
         alarm = self.provision_cloudwatch_alarm(
-            name=f"has2-alarm-{self.configuration.lambda_name}-metric-errors",
+            name=f"has3-alarm-{self.configuration.lambda_name}-metric-errors",
             alarm_description=json.dumps(alarm_description),
             metric_name="Errors",
             namespace="AWS/Lambda",
@@ -641,7 +676,7 @@ class AlertsAPI:
                              AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
 
         alarm = self.provision_cloudwatch_alarm(
-            name=f"has2-alarm-{self.configuration.lambda_name}-metric-duration",
+            name=f"has3-alarm-{self.configuration.lambda_name}-metric-duration",
             alarm_description=json.dumps(alarm_description),
             metric_name="Duration",
             namespace="AWS/Lambda",
@@ -672,7 +707,7 @@ class AlertsAPI:
                              AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
 
         alarm = self.provision_cloudwatch_alarm(
-            name=f"has2-alarm-{self.configuration.lambda_name}-eventbridge-successful-invocations",
+            name=f"has3-alarm-{self.configuration.lambda_name}-eventbridge-successful-invocations",
             alarm_description=json.dumps(alarm_description),
             metric_name="Invocations",
             namespace="AWS/Events",
@@ -710,16 +745,6 @@ class AlertsAPI:
         return self.environment_api.put_cloudwatch_log_lines(self.aws_lambda_api.log_group_name, [
             f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}: Neo, the Horey has you!"])
 
-    def build_and_validate(self, event):
-        """
-        Build and run on event.
-
-        :param event:
-        :return:
-        """
-
-        return self.alert_system.build_and_validate(self.configuration.files, event)
-
     def get_all_metrics(self, namespace):
         """
         Return all metrics for the namespace
@@ -740,7 +765,7 @@ class AlertsAPI:
 
         if Notification.Types.__members__.get(notification_type) is None:
             raise ValueError(f"Notification type received '{notification_type}' is not one of:"
-                             f" {[x for x in Notification.Types.__members__.keys()]}")
+                             f" {list(Notification.Types.__members__.keys())}")
 
         return {AlertSystemConfigurationPolicy.ALERT_SYSTEM_RAW_MESSAGE_KEY: "",
                 "type": notification_type}

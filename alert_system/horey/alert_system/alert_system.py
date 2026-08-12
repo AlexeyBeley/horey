@@ -9,7 +9,7 @@ import copy
 import datetime
 import json
 import os
-import pathlib
+from pathlib import Path
 import shutil
 from time import perf_counter
 import email.utils
@@ -73,7 +73,7 @@ class AlertSystem:
 
     @property
     def build_dir_path(self):
-        return pathlib.Path(__file__).parent / "build"
+        return Path(__file__).parent / "build"
 
     @property
     def pip_api(self):
@@ -173,19 +173,6 @@ class AlertSystem:
         self.build_and_validate(files)
 
         return self.deploy_lambda()
-
-    def build_and_validate(self, files, event=None):
-        """
-        Build the package locally and validate it
-
-        :param event:
-        :param files:
-        :return:
-        """
-
-        zip_file_path = self.create_lambda_package(files)
-        self.validate_lambda_package(zip_file_path, event=event)
-        return zip_file_path
 
     def provision_self_monitoring(self):
         """
@@ -341,81 +328,6 @@ class AlertSystem:
         self.provision_cloudwatch_alarm(alarm)
         return alarm
 
-    def create_lambda_package(self, files):
-        """
-        Create the zip package to be deployed.
-        NotificationChannelSlackConfigurationPolicy.CONFIGURATION_FILE_NAME can be one of the files
-
-        :return:
-        """
-
-        for file in files:
-            if "requirements.txt" in file:
-                raise NotImplementedError("Need to implement requirements overwrite in venv using serverless")
-
-        lambda_package_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "lambda_package")
-
-        self.pip_api.install_requirements_from_file(
-            os.path.join(
-                lambda_package_dir,
-                "requirements.txt"
-            ),
-            force_reinstall=True
-        )
-        current_dir = os.getcwd()
-        os.chdir(self.configuration.deployment_directory_path)
-
-        self.packer.zip_venv_site_packages(
-            self.configuration.lambda_zip_file_name,
-            self.configuration.deployment_venv_path
-        )
-
-        # old: lambda_handler_file_path = sys.modules["horey.alert_system.lambda_package.lambda_handler"].__file__
-        lambda_handler_file_path = os.path.join(os.path.dirname(__file__), "lambda_package", "lambda_handler.py")
-
-        notification_channels_and_message_classes_file_paths = self.configuration.notification_channels[:]
-        alert_system_config_file_path = os.path.join(self.configuration.deployment_directory_path,
-                                                     AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH)
-
-        lambda_package_configuration = AlertSystemConfigurationPolicy()
-        lambda_package_configuration.init_from_policy(self.configuration)
-        # todo: cd to parent(alert_system_config_file_path) and add os.file.exists in alert system configuration policy on notification channels
-        lambda_package_configuration.notification_channels = [os.path.basename(notification_channel_file_path) for
-                                                              notification_channel_file_path in
-                                                              lambda_package_configuration.notification_channels]
-        if self.configuration.message_classes:
-            notification_channels_and_message_classes_file_paths += self.configuration.message_classes[:]
-            lambda_package_configuration.message_classes = [os.path.basename(message_class_file_path) for
-                                                            message_class_file_path in
-                                                            lambda_package_configuration.message_classes]
-
-        lambda_package_configuration.generate_configuration_file(alert_system_config_file_path)
-
-        self.packer.add_files_to_zip(
-            self.configuration.lambda_zip_file_name, files + [lambda_handler_file_path,
-                                                              alert_system_config_file_path] + notification_channels_and_message_classes_file_paths
-        )
-        logger.info(
-            f"Created lambda package: {self.configuration.deployment_directory_path}/{self.configuration.lambda_zip_file_name}")
-
-        os.chdir(current_dir)
-        return os.path.join(
-            self.configuration.deployment_directory_path,
-            self.configuration.lambda_zip_file_name,
-        )
-
-    def validate_lambda_package(self, zip_file_path, event=None):
-        """
-        Unzip in a temporary dir and init the base dispatcher class.
-
-        @return:
-        """
-
-        extraction_dir = self.extract_lambda_package_for_validation(zip_file_path)
-        return self.trigger_lambda_handler_locally_python(extraction_dir, event)
-
     @staticmethod
     def trigger_lambda_handler_locally_python(extraction_dir, event):
         """
@@ -428,7 +340,7 @@ class AlertSystem:
 
         shutil.copy2(os.path.join(os.path.dirname(__file__), "tests", "trigger_local.py"),
                      extraction_dir)
-        curdir = pathlib.Path(".").resolve()
+        curdir = Path(".").resolve()
         os.chdir(extraction_dir)
         try:
             main_function = CommonUtils.load_object_from_module_raw(extraction_dir / "trigger_local.py", "main")
@@ -458,28 +370,6 @@ class AlertSystem:
         with open(result_file_path, encoding="utf-8") as file_handler:
             exec_ret = json.load(file_handler)
         return exec_ret
-
-    def extract_lambda_package_for_validation(self, zip_file_path):
-        """
-        Extract the zip to local tmp dir.
-
-        :return:
-        """
-        validation_dir_path = os.path.splitext(zip_file_path)[
-                                  0
-                              ] + "_validation"
-        try:
-            os.makedirs(validation_dir_path)
-        except FileExistsError:
-            shutil.rmtree(validation_dir_path)
-            os.makedirs(validation_dir_path)
-
-        tmp_zip_path = os.path.join(
-            validation_dir_path, self.configuration.lambda_zip_file_name
-        )
-        shutil.copyfile(zip_file_path, tmp_zip_path)
-        self.packer.extract(tmp_zip_path, validation_dir_path)
-        return pathlib.Path(validation_dir_path)
 
     def provision_lambda_role(self):
         """
@@ -1387,7 +1277,7 @@ class AlertSystem:
         plt.show()
 
     @staticmethod
-    def generate_alarm_description(log_group_name, filter_text, routing_tags, alarm_description=None):
+    def generate_log_group_alarm_description(log_group_name, filter_text, routing_tags, alarm_description=None):
         """
         Generate alarm description for the cloudwatch alarm
 
@@ -1416,5 +1306,11 @@ class AlertSystem:
             raise ValueError(f"No routing tags: received: '{alarm_description}'")
         return alarm_description
 
+    @staticmethod
+    def generate_lambda_dockerfile(dst_dir: Path):
+        """
+        Generate dockerfile
+        """
 
-
+        src_file = Path(__file__).parent / "build" / "Dockerfile"
+        shutil.copy(src_file, dst_dir / src_file.name)

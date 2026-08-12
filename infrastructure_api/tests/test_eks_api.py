@@ -69,7 +69,7 @@ def fixture_eks_api(env_api_integration):
     yield eks_api
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_provision_deployment(eks_api):
     ret = eks_api.provision_deployment("frs-manual:latest")
     assert ret

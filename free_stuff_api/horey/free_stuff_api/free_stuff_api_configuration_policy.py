@@ -23,7 +23,25 @@ class FreeStuffAPIConfigurationPolicy(ConfigurationPolicy):
         self._db_file_path = None
         self._architecture = None
         self._proxy = None
-    
+        self._mgmt_server_address = None
+        self._mgmt_server_ssh_key_path = None
+ 
+    @property
+    def mgmt_server_ssh_key_path(self):
+        return self._mgmt_server_ssh_key_path
+
+    @mgmt_server_ssh_key_path.setter
+    def mgmt_server_ssh_key_path(self, value: str):
+        self._mgmt_server_ssh_key_path = value
+     
+    @property
+    def mgmt_server_address(self):
+        return self._mgmt_server_address
+
+    @mgmt_server_address.setter
+    def _gmt_server_address(self, value: str):
+        self._mgmt_server_address = value
+ 
     @property
     def proxy(self):
         return self._proxy

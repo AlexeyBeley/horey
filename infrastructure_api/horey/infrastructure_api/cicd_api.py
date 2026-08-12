@@ -895,6 +895,17 @@ class CICDAPI:
 
         return target
 
+    def init_raw_target(self, address, ssh_key_path):
+        """
+        Raw host
+        """
+
+        target = DeploymentTarget()
+        target.deployment_target_user_name = "ubuntu"
+        target.deployment_target_ssh_key_path = ssh_key_path 
+        target.deployment_target_address = address 
+        return target
+
     def init_bastion_chain_link(self, ec2_instance: EC2Instance, address: str, ) -> DeploymentTarget.BastionChainLink:
         """
 

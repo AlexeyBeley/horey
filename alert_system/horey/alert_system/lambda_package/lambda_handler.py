@@ -10,7 +10,7 @@ from horey.alert_system.lambda_package.event_handler import EventHandler
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 
 from horey.h_logger import get_logger
-logger = get_logger()
+logger = get_logger(add_handler=False)
 
 
 def handler(event, _):

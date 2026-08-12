@@ -78,6 +78,7 @@ class MessageDispatcher:
             notification.link_href = "HAS2 lambda"
             notification.link = f"https://{self.configuration.region}.console.aws.amazon.com/lambda/home?region={self.configuration.region}#/functions/{self.configuration.lambda_name}?tab=monitoring"
 
+        logger.info(f"Number of notification channels: {len(self.notification_channels)}")
         for notification_channel in self.notification_channels:
             notification_channel.notify_alert_system_error(notification)
         raise RuntimeError(f"Exception in Message Dispatcher: {repr(error_inst)}") from error_inst

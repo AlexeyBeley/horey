@@ -379,7 +379,10 @@ class MessageCloudwatchDefault(MessageBase):
         alarm_time = self.state_change_time
 
         notification = Notification()
+
         notification.type = Notification.Types.STABLE if self.new_state_value == "OK" else Notification.Types.CRITICAL
+        logger.info(f"Decided notification type {self.new_state_value=}, {notification.type=}")
+
         notification.header = f"Alarm {self.alarm_name}"
         reason = f"Reason: Metric {self.metric_name}\n" if reason is None else (reason.strip("\n") + "\n")
         notification.text = (
