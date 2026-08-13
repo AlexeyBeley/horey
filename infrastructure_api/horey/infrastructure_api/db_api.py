@@ -524,11 +524,10 @@ class DBAPI:
                 "Key": "name",
                 "Value": user_group_name
             })
-        breakpoint()
         try:
             default_user = self.get_elasticache_user(region, user_id="default-secure")
         except self.environment_api.ResourceNotFoundError:
-            default_user = self.provision_elasticache_user_raw(region, "default-secure", "defualt", passwords, engine, "on ~* +@all")
+            default_user = self.provision_elasticache_user_raw(region, "default-secure", "default", passwords, engine, "on ~* +@all")
 
         user_group.user_ids_to_add = [default_user.id]
 
@@ -580,7 +579,7 @@ class DBAPI:
                 if user.id == user_id:
                     break
             else:
-                raise ValueError(f"User name or user id must be provided")
+                raise ValueError("User name or user id must be provided")
         else:
             raise self.environment_api.ResourceNotFoundError(f"Was not able to find '{user_name}' user")
 
