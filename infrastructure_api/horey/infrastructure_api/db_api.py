@@ -524,7 +524,6 @@ class DBAPI:
                 "Key": "name",
                 "Value": user_group_name
             })
-        breakpoint()
 
         try:
             default_user = self.get_elasticache_user(region, "default-secure")
