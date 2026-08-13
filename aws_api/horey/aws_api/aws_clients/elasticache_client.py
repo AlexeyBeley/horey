@@ -869,7 +869,8 @@ class ElasticacheClient(Boto3Client):
                                                )
             desired_user_group.update_from_raw_response(response)
         else:
-            desired_user_group.user_ids_to_add = [user_id for user_id in desired_user_group.user_ids_to_add if user_id not in current_user_group.user_ids]
+            desired_user_group.user_ids_to_add = [user_id for user_id in desired_user_group.user_ids_to_add if user_id 
+                                                not in current_user_group.user_ids] or None
 
             request = current_user_group.generate_modify_request(desired_user_group)
             if request:
