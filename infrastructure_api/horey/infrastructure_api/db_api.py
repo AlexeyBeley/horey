@@ -31,12 +31,12 @@ class DBAPI:
         self.environment_api = environment_api
         self._max_version_raw = None
         self.dns_api = None
-        
+
         if self.environment_api.configuration.environment_level == self.environment_api.configuration.environment_name:
             self.configuration.slug = self.environment_api.configuration.environment_name
         else:
             self.configuration.slug = f"{self.environment_api.configuration.environment_level_abbr}-{self.environment_api.configuration.environment_name}"
-            
+
 
     def provision(self):
         """
@@ -257,17 +257,17 @@ class DBAPI:
             logger.info(f"Provisioned DB instance: {counter}")
         return True
 
-    def get_cluster(self):
+    def get_cluster(self, cluster_name=None):
         """
         Get the cluster object from API.
 
         :return:
         """
-
-        cluster = RDSDBCluster({"DBClusterIdentifier": self.configuration.cluster_name})
+        cluster_name = cluster_name or self.configuration.cluster_name
+        cluster = RDSDBCluster({"DBClusterIdentifier": cluster_name})
         cluster.region = self.environment_api.region
         if not self.environment_api.aws_api.rds_client.update_cluster_information(cluster):
-            raise ValueError(f"Was not able to find cluster {cluster.id} in region {cluster.region.region_mark}")
+            raise ValueError(f"Was not able to find cluster {cluster_name} in region {cluster.region.region_mark}")
         return cluster
 
     @property
