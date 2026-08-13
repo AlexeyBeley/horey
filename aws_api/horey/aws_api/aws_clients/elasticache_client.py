@@ -926,7 +926,7 @@ class ElasticacheClient(Boto3Client):
                 raw_data=True,
                 filters_req=request,
         ):
-            breakpoint()
+            del response["ResponseMetadata"]            
             self.clear_cache(ElasticacheUserGroup)
             return response
 
