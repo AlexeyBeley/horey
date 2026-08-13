@@ -570,7 +570,7 @@ class DBAPI:
 
         return user
 
-    def get_elasticache_cache(self, name=None):
+    def get_serverless_cache(self, name=None):
         """
         Get elasticache cache
         :param name:
