@@ -595,6 +595,51 @@ class AlertsAPI:
         """
 
         return self.environment_api.aws_api.cloud_watch_client.set_alarm_state(alarm, "ALARM")
+    
+    def provision_lambda_monitoring(self, lambda_name, routing_tags,
+                                        alarm_description_base=None):
+        """
+        Provision Lambda monitoring.
+
+        """
+
+        aws_lambda = self.aws_lambda_api.get_lambda(name=lambda_name)
+        breakpoint()
+        log_group_name = aws_lambda.log_group_name
+
+        # first
+        filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN
+        self.provision_cloudwatch_logs_alarm(log_group_name,
+                                                    filter_text,
+                                                    "timeout",
+                                                    routing_tags,
+                                                    alarm_description_base=alarm_description_base,
+                                                    )
+        self.trigger_cloudwatch_logs_alarm(log_group_name, filter_text)
+        
+        # second
+        alarm_description = {"routing_tags": routing_tags,
+                             "lambda_name": lambda_name}
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3-alarm-{lambda_name}-metric-errors",
+            alarm_description=json.dumps(alarm_description),
+            metric_name="Errors",
+            namespace="AWS/Lambda",
+            statistic="Average",
+            period=300,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            threshold=1.0,
+            comparison_operator="GreaterThanThreshold",
+            treat_missing_data="notBreaching",
+            dimensions=[
+                {"Name": "FunctionName", "Value": lambda_name}
+            ]
+        )
+
+
+        alarm = self.provision_self_monitoring_duration_alarm()
+        self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
 
     def provision_self_monitoring_log_error_alarm(self):
         """

@@ -1467,7 +1467,6 @@ class ECSAPI:
         """
 
         if not name:
-            breakpoint()
             cluster_name = cluster_name or self.configuration.cluster_name
             slug = slug or self.configuration.slug
             name = self.get_ecs_service_log_group_name(cluster_name, slug)
