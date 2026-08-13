@@ -922,9 +922,11 @@ class ElasticacheClient(Boto3Client):
         logger.info(f"Modifying user group: {request}")
         for response in self.execute(
                 self.get_session_client(region=region).modify_user_group,
-                "UserGroup",
+                None,
+                raw_data=True,
                 filters_req=request,
         ):
+            breakpoint()
             self.clear_cache(ElasticacheUserGroup)
             return response
 
