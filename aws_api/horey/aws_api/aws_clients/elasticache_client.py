@@ -869,6 +869,9 @@ class ElasticacheClient(Boto3Client):
                                                )
             desired_user_group.update_from_raw_response(response)
         else:
+            desired_user_group.user_ids_to_add = [user_id for user_id in desired_user_group.user_ids_to_add if user_id 
+                                                not in current_user_group.user_ids] or None
+
             request = current_user_group.generate_modify_request(desired_user_group)
             if request:
                 response = self.modify_user_group_raw(desired_user_group.region,
@@ -920,9 +923,11 @@ class ElasticacheClient(Boto3Client):
         logger.info(f"Modifying user group: {request}")
         for response in self.execute(
                 self.get_session_client(region=region).modify_user_group,
-                "UserGroup",
+                None,
+                raw_data=True,
                 filters_req=request,
         ):
+            del response["ResponseMetadata"]            
             self.clear_cache(ElasticacheUserGroup)
             return response
 

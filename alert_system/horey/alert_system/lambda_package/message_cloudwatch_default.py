@@ -152,7 +152,7 @@ class MessageCloudwatchDefault(MessageBase):
                     raise ValueError(f'Expected 1 metric but found: {self.message_dict["configuration"]["metrics"]}')
                 self._namespace = self.message_dict["configuration"]["metrics"][0]["metricStat"]["metric"]["namespace"]
         return self._namespace
-    
+
     @property
     def new_state_reason(self):
         """
@@ -164,7 +164,7 @@ class MessageCloudwatchDefault(MessageBase):
         if self._new_state_reason is None:
             self._new_state_reason = self.message_dict.get("NewStateReason") or self.message_dict.get("state").get("reason")
         return self._new_state_reason
-    
+
     @property
     def state_change_time(self):
         """
@@ -176,7 +176,7 @@ class MessageCloudwatchDefault(MessageBase):
         if self._state_change_time is None:
             self._state_change_time = self.message_dict.get("StateChangeTime") or self.message_dict.get("state").get("timestamp")
         return self._state_change_time
-    
+
     @property
     def new_state_value(self):
         """
@@ -358,7 +358,7 @@ class MessageCloudwatchDefault(MessageBase):
 
         notification.link = self.generate_cloudwatch_log_search_link(log_group_name,
                                                                      pattern,
-                                                                     (self.start_time - datetime.timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                                                     (self.start_time - datetime.timedelta(minutes=15)).strftime("%Y-%m-%dT%H:%M:%SZ"),
                                                                      self.end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
                                                                      )
 

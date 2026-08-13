@@ -31,12 +31,12 @@ class DBAPI:
         self.environment_api = environment_api
         self._max_version_raw = None
         self.dns_api = None
-        
+
         if self.environment_api.configuration.environment_level == self.environment_api.configuration.environment_name:
             self.configuration.slug = self.environment_api.configuration.environment_name
         else:
             self.configuration.slug = f"{self.environment_api.configuration.environment_level_abbr}-{self.environment_api.configuration.environment_name}"
-            
+
 
     def provision(self):
         """
@@ -104,10 +104,10 @@ class DBAPI:
         db_cluster_parameter_group.parameters = [{"ParameterName": "binlog_format",
                                                   "ParameterValue": "ROW",
                                                   "Description": "Binary logging format for replication",
-                                                  "Source": "user", 
-                                                  "ApplyType": "static", 
+                                                  "Source": "user",
+                                                  "ApplyType": "static",
                                                   "DataType": "string",
-                                                  "AllowedValues": "ROW,STATEMENT,MIXED,OFF", 
+                                                  "AllowedValues": "ROW,STATEMENT,MIXED,OFF",
                                                   "IsModifiable": True,
                                                   "ApplyMethod": "pending-reboot",
                                                   "SupportedEngineModes": ["provisioned"]}]
@@ -257,17 +257,17 @@ class DBAPI:
             logger.info(f"Provisioned DB instance: {counter}")
         return True
 
-    def get_cluster(self):
+    def get_cluster(self, cluster_name=None):
         """
         Get the cluster object from API.
 
         :return:
         """
-
-        cluster = RDSDBCluster({"DBClusterIdentifier": self.configuration.cluster_name})
+        cluster_name = cluster_name or self.configuration.cluster_name
+        cluster = RDSDBCluster({"DBClusterIdentifier": cluster_name})
         cluster.region = self.environment_api.region
         if not self.environment_api.aws_api.rds_client.update_cluster_information(cluster):
-            raise ValueError(f"Was not able to find cluster {cluster.id} in region {cluster.region.region_mark}")
+            raise ValueError(f"Was not able to find cluster {cluster_name} in region {cluster.region.region_mark}")
         return cluster
 
     @property
@@ -517,30 +517,40 @@ class DBAPI:
         user_group = ElasticacheUserGroup({})
         user_group.region = region
         user_group.user_group_name = user_group_name
-        user_group.id= user_group_name
-
-        if not self.environment_api.aws_api.elasticache_client.update_user_group_information(user_group):
-            user_group.tags = self.environment_api.configuration.tags
-            user_group.tags.append({
+        user_group.id = user_group_name
+        user_group.engine = engine
+        user_group.tags = self.environment_api.configuration.tags
+        user_group.tags.append({
                 "Key": "name",
                 "Value": user_group_name
             })
+        try:
+            default_user = self.get_elasticache_user(region, user_id="default-secure")
+        except self.environment_api.ResourceNotFoundError:
+            default_user = self.provision_elasticache_user_raw(region, "default-secure", "default", passwords, engine, "on ~* +@all")
 
-            default_user = self.get_elasticache_user(region, "default")
-            user_group.user_ids = [default_user.id]
+        user_group.user_ids_to_add = [default_user.id]
 
-            user_group.engine = engine
+        user = self.provision_elasticache_user_raw(region, user_name, user_name, passwords, engine, "on ~* +@all")
 
-            self.environment_api.aws_api.elasticache_client.provision_user_group(user_group)
+        user_group.user_ids_to_add.append(user.id)
+        self.environment_api.aws_api.elasticache_client.provision_user_group(user_group)
 
+        return user
+
+    # pylint: disable = too-many-positional-arguments, too-many-arguments
+    def provision_elasticache_user_raw(self, region, user_id, user_name, passwords, engine, access_string):
+        """
+        Raw user withoug group.
+
+        """
 
         user = ElasticacheUser({})
         user.region = region
-        user.user_group_id = user_group.id
+        user.id = user_id
         user.user_name = user_name
-        user.id = user_name
         user.passwords = passwords
-        user.access_string = "on ~* +@all"
+        user.access_string = access_string
         user.tags = self.environment_api.configuration.tags
         user.tags.append({
             "Key": "name",
@@ -548,12 +558,11 @@ class DBAPI:
         })
 
         user.engine = engine
-
         self.environment_api.aws_api.elasticache_client.provision_user(user)
-
         return user
 
-    def get_elasticache_user(self, region, user_name):
+
+    def get_elasticache_user(self, region, user_name=None, user_id=None):
         """
         Get elasticache user
 
@@ -563,14 +572,20 @@ class DBAPI:
         """
 
         for user in self.environment_api.aws_api.elasticache_client.yield_users(region=region):
-            if user.user_name == "default":
-                break
+            if user_name:
+                if user.user_name == user_name:
+                    break
+            elif user_id:
+                if user.id == user_id:
+                    break
+            else:
+                raise ValueError("User name or user id must be provided")
         else:
-            raise RuntimeError(f"Was not able to find '{user_name}' user")
+            raise self.environment_api.ResourceNotFoundError(f"Was not able to find '{user_name}' user")
 
         return user
 
-    def get_elasticache_cache(self, name=None):
+    def get_serverless_cache(self, name=None):
         """
         Get elasticache cache
         :param name:

@@ -96,7 +96,7 @@ class ElasticacheUserGroup(AwsObject):
         request = {"UserGroupId": self.id,
                    "Engine": self.engine,
                    "Tags": self.tags,
-                   "UserIds": self.user_ids}
+                   "UserIds": self.user_ids or self.user_ids_to_add}
 
         return request
 
