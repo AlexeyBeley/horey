@@ -533,7 +533,7 @@ class DBAPI:
 
             self.environment_api.aws_api.elasticache_client.provision_user_group(user_group)
 
-
+        breakpoint()
         user = ElasticacheUser({})
         user.region = region
         user.user_group_id = user_group.id
