@@ -527,6 +527,7 @@ class DBAPI:
 
         try:
             default_user = self.get_elasticache_user(region, "default-secure")
+            breakpoint()
         except self.environment_api.ResourceNotFoundError:
             default_user = self.provision_elasticache_user_raw(region, "default-secure", "defualt", passwords, engine, "on ~* +@all")
 
