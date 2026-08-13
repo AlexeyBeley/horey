@@ -526,8 +526,7 @@ class DBAPI:
             })
 
         try:
-            default_user = self.get_elasticache_user(region, "default-secure")
-            breakpoint()
+            default_user = self.get_elasticache_user(region, user_id="default-secure")
         except self.environment_api.ResourceNotFoundError:
             default_user = self.provision_elasticache_user_raw(region, "default-secure", "defualt", passwords, engine, "on ~* +@all")
 
@@ -564,7 +563,7 @@ class DBAPI:
         return user
 
 
-    def get_elasticache_user(self, region, user_name):
+    def get_elasticache_user(self, region, user_name=None, user_id=None):
         """
         Get elasticache user
 
@@ -574,8 +573,14 @@ class DBAPI:
         """
 
         for user in self.environment_api.aws_api.elasticache_client.yield_users(region=region):
-            if user.user_name == "default":
-                break
+            if user_name:
+                if user.user_name == user_name:
+                    break
+            elif user_id:
+                if user.id == user_id:
+                    break
+            else:
+                raise ValueError(f"User name or user id must be provided")
         else:
             raise self.environment_api.ResourceNotFoundError(f"Was not able to find '{user_name}' user")
 
