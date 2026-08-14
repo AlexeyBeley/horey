@@ -542,6 +542,50 @@ class RemoteDeployer:
                 time.sleep(1)
         raise RemoteDeployer.DeployerError(f"{remote_address} Reached timeout waiting for SSH response") from inst_error
 
+    @staticmethod
+    def fetch_remote_shell_output_systemd_metadata(channel, cmd, echo_cmd, finish, end_time, remote_address):
+        """
+        Wait for the output of a command executed via remote shell.
+
+        :param channel:
+        :param cmd:
+        :param echo_cmd:
+        :param finish:
+        :param end_time:
+        :param remote_address:
+        :return:
+        """
+
+        shell_output = []
+        data_chunk_aggregator = bytes()
+        while datetime.datetime.now() < end_time:
+            if not channel.recv_ready():
+                time.sleep(0.01)
+                continue
+            raw_data = channel.recv(4096)
+            data_chunk_aggregator += raw_data
+            breakpoint()
+            try:
+                data = data_chunk_aggregator.decode('utf-8')
+            except Exception:
+                logger.error(f"Could not decode: {raw_data}")
+                time.sleep(1)
+                continue
+
+            shell_output_tmp, exit_code, exit_code_line_index = RemoteDeployer.parse_shell_output_chunk(data, cmd, finish, remote_address, echo_cmd, shell_output[-2:])
+            if shell_output_tmp:
+                # Augmented assignment operator behaves like extend()
+                shell_output += shell_output_tmp
+                data_chunk_aggregator = bytes()
+            if exit_code is not None:
+                while exit_code_line_index != 0:
+                    # Time complexity O(1)
+                    shell_output.pop()
+                    exit_code_line_index += 1
+
+                return shell_output, exit_code
+
+        raise TimeoutError(f"{remote_address} Reached timeout waiting for SSH response")
 
     @staticmethod
     def fetch_remote_shell_output(channel, cmd, echo_cmd, finish, end_time, remote_address):
@@ -559,7 +603,6 @@ class RemoteDeployer:
 
         shell_output = []
         data_chunk_aggregator = bytes()
-        breakpoint()
         while datetime.datetime.now() < end_time:
             if not channel.recv_ready():
                 time.sleep(0.01)
@@ -1625,7 +1668,7 @@ class RemoteDeployer:
                 self.sftp_clients[key] = client
         return client
 
-    def get_remoter(self, target:DeploymentTarget, windows=False, default_timeout=60*60) -> SSHRemoter:
+    def get_remoter(self, target:DeploymentTarget, windows=False, systemd_metadata=False, default_timeout=60*60) -> SSHRemoter:
         """
         Create remoter.
 
@@ -1647,7 +1690,34 @@ class RemoteDeployer:
             raise inst_error
 
         sftp_client = self.get_deployment_target_sftp_client(target)
+        
+        def init_executor_linux_systemd_metadata():
+            """
+            Execute remotely
 
+            :return:
+            """
+
+            channel = ssh_client.invoke_shell()
+            channel.settimeout(120)
+            # This is a prefix line to eliminate the SSH command header output
+            silent_shell_command = 'export PS1=""'
+
+            stdin, shout, [], exit_status = self.execute_remote_shell_systemd_metadata(channel, silent_shell_command, target.deployment_target_address)
+            logger.info(f"[REMOTE] [{target.deployment_target_address}] Initialized remote shell with params: {stdin=}, {shout=}, {exit_status=}")
+            def executor(command:str, timeout:int=None, retries=1):
+                """
+                Reuse channel
+
+                :param retries:
+                :param timeout:
+                :param command:
+                :return:
+                """
+                timeout = timeout or default_timeout
+                return self.execute_remote_shell_systemd_metadata(channel, command, target.deployment_target_address, stdin=stdin, timeout=timeout, retries=retries)
+
+            return executor
 
         def init_executor_linux():
             """
@@ -1692,6 +1762,11 @@ class RemoteDeployer:
             return self.execute_windows(ssh_client, command, target.deployment_target_address, timeout=timeout, retries=retries)
 
 
-        ret = SSHRemoter(executor_windows if windows else init_executor_linux(), sftp_client,  target.remote_deployment_dir_path, host_address=target.deployment_target_address)
+        if windows:
+            ret = SSHRemoter(executor_windows, sftp_client,  target.remote_deployment_dir_path, host_address=target.deployment_target_address)
+        elif systemd_metadata:
+            ret = SSHRemoter(init_executor_linux_systemd_metadata(), sftp_client,  target.remote_deployment_dir_path, host_address=target.deployment_target_address)
+        else:
+            ret = SSHRemoter(init_executor_linux(), sftp_client,  target.remote_deployment_dir_path, host_address=target.deployment_target_address)
 
         return ret
