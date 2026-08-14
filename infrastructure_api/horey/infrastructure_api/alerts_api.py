@@ -4,7 +4,6 @@ Alerts maintainer.
 """
 
 import json
-import os.path
 import shutil
 import sys
 from pathlib import Path
@@ -22,6 +21,7 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 
 from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPI, AWSLambdaAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI, CloudwatchAPIConfigurationPolicy
+from horey.infrastructure_api.db_api import DBAPI, DBAPIConfigurationPolicy
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -39,6 +39,7 @@ class AlertsAPI:
         self._aws_lambda_api = None
         self._alert_system = None
         self._cloudwatch_api = None
+        self._db_api = None
 
     @property
     def alert_system(self):
@@ -116,6 +117,19 @@ class AlertsAPI:
 
         return self._cloudwatch_api
 
+    @property
+    def db_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+        if self._db_api is None:
+            config = DBAPIConfigurationPolicy()
+            self._db_api = DBAPI(config, self.environment_api)
+
+        return self._db_api
+
     def prepare_docker_image_build_directory(self, source_code_directory_path: Path, build_number):
         """
         Prepare the dir
@@ -172,18 +186,18 @@ class AlertsAPI:
             configuration.notification_type = notification_type
 
         slack_notification_channel_file_path = Path(sys.modules[NotificationChannelSlack.__module__].__file__)
-        
+
         self.alert_system.configuration.notification_channels.append(slack_notification_channel_file_path.name)
-        
+
         shutil.copy2(slack_notification_channel_file_path, build_directory_path)
 
         self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
         slack_notification_channel_file_path.name, before_comment="HOREY_REPOS_END", add_to_root=False)
 
         slack_channel_configuration_file_path = build_directory_path / NotificationChannelSlack.CONFIGURATION_FILE_NAME
-        
+
         configuration.generate_configuration_file_ng(slack_channel_configuration_file_path)
-        
+
         self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
         slack_channel_configuration_file_path.name, before_comment="HOREY_REPOS_END", add_to_root=False)
 
@@ -213,7 +227,7 @@ class AlertsAPI:
 
         return self.aws_lambda_api.update_docker_lambda()
 
-    def generate_postgres_cluster_alarms(self, cluster_id,
+    def generate_postgres_cluster_alarms(self, cluster, routing_tags,
                                          metric_name=None):
         """
         Generate alerts per resource: RDS Postgres Cluster
@@ -225,9 +239,8 @@ class AlertsAPI:
         :return:
         """
 
-        cluster = self.environment_api.get_rds_cluster(cluster_id)
         alerts_builder = PostgresAlertBuilder(cluster=cluster)
-        return self.alert_system.generate_resource_alarms(alerts_builder,
+        return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
                                                           metric_name=metric_name)
 
     def generate_alb_alarms(self, alb_name):
@@ -595,7 +608,7 @@ class AlertsAPI:
         """
 
         return self.environment_api.aws_api.cloud_watch_client.set_alarm_state(alarm, "ALARM")
-    
+
     def provision_lambda_monitoring(self, lambda_name, routing_tags,
                                         alarm_description_base=None):
         """
@@ -604,8 +617,7 @@ class AlertsAPI:
         """
 
         aws_lambda = self.aws_lambda_api.get_lambda(name=lambda_name)
-        breakpoint()
-        log_group_name = aws_lambda.log_group_name
+        log_group_name = aws_lambda.logging_config["LogGroup"]
 
         # first
         filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN
@@ -616,7 +628,7 @@ class AlertsAPI:
                                                     alarm_description_base=alarm_description_base,
                                                     )
         self.trigger_cloudwatch_logs_alarm(log_group_name, filter_text)
-        
+
         # second
         alarm_description = {"routing_tags": routing_tags,
                              "lambda_name": lambda_name}
@@ -637,9 +649,63 @@ class AlertsAPI:
             ]
         )
 
-
-        alarm = self.provision_self_monitoring_duration_alarm()
         self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
+
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3-alarm-{lambda_name}-metric-duration",
+            alarm_description=json.dumps(alarm_description),
+            metric_name="Duration",
+            namespace="AWS/Lambda",
+            statistic="Average",
+            period=300,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            threshold=aws_lambda.timeout * 0.6 * 1000,
+            comparison_operator="GreaterThanThreshold",
+            treat_missing_data="notBreaching",
+            dimensions=[
+                {"Name": "FunctionName", "Value": lambda_name}
+            ]
+        )
+
+        self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
+    
+    def provision_rds_postgres_monitoring(self, cluster_name, routing_tags,
+                                        alarm_description_base=None):
+        """
+        Provision Lambda monitoring.
+
+        """
+
+        cluster = self.db_api.get_cluster(cluster_name=cluster_name)
+        ret = self.generate_postgres_cluster_alarms(cluster, routing_tags)
+        breakpoint()
+
+        # first
+        alarm_description = {"routing_tags": routing_tags,
+                             "cluster_name": cluster_name }
+
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3-alarm-{instance_id}-acu-util",
+            alarm_description=json.dumps(alarm_description),
+            metric_name="Errors",
+            namespace="AWS/RDS",
+            statistic="Average",
+            period=300,
+            evaluation_periods=2,
+            datapoints_to_alarm=2,
+            threshold=1.0,
+            comparison_operator="GreaterThanThreshold",
+            treat_missing_data="notBreaching",
+            dimensions=[
+                {"Name": "DBInstanceIdentifier", "Value": instance_id},
+                {"Name": "Role", "Value": "WRITER"},
+            ]
+        )
+
+        self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
+
+
 
     def provision_self_monitoring_log_error_alarm(self):
         """

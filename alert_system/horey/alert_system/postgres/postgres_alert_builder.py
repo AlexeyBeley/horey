@@ -2,7 +2,7 @@
 Monitor postgres like a boss!
 """
 import json
-
+from horey.common_utils.common_utils import CommonUtils
 from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.h_logger import get_logger
@@ -74,8 +74,12 @@ class PostgresAlertBuilder:
                                          "FreeLocalStorage": "free_local_storage",
                                          "AuroraReplicaLagMinimum": "aurora_replica_lag_minimum",
                                          "AuroraReplicaLag": "aurora_replica_lag",
-                                         "AuroraReplicaLagMaximum": "aurora_replica_lag_maximum"
+                                         "AuroraReplicaLagMaximum": "aurora_replica_lag_maximum",
+                                         "AuroraSlowHandshakeCount": "aurora_slow_handshake_count",
                                          }
+
+        for auto_generate_key in ["SelectThroughput", "NumUndoRowOperations"]:
+            self.camel_case_to_snake_case[auto_generate_key] = CommonUtils.camel_case_to_snake_case(auto_generate_key)
 
         self.cluster_metric_names_with_role_writer_dimension = ["NetworkThroughput",
                                                                 "ReadIOPS", "ReadThroughput",
@@ -675,7 +679,17 @@ class PostgresAlertBuilder:
                 raise NotImplementedError(median_min, mean_min, absolute_min_value)
             return ret_min, ret_max
 
-        breakpoint()
+        if metric_raw["MetricName"] in ["AuroraSlowHandshakeCount"]:
+            ret_min = absolute_min_value
+            ret_max = absolute_max_value
+            return ret_min, ret_max
+        
+        if metric_raw["MetricName"] in ["SelectThroughput", "NumUndoRowOperations"]:
+            ret_min = absolute_min_value
+            ret_max = absolute_max_value
+            return ret_min, ret_max
+
+        logger.info(f'Implicit metric: {metric_raw["MetricName"]}')
         return absolute_min_value, absolute_max_value
 
         median_max, mean_max, absolute_max_value
@@ -704,4 +718,9 @@ class PostgresAlertBuilder:
         if not prefix:
             raise NotImplementedError(f"Can not generate unique slug for metric: {metric_raw}")
 
-        return prefix + self.camel_case_to_snake_case[metric_raw["MetricName"]]
+        try:
+            snake_case = self.camel_case_to_snake_case[metric_raw["MetricName"]]
+        except KeyError:
+            snake_case = CommonUtils.camel_case_to_snake_case(metric_raw["MetricName"])
+
+        return prefix + snake_case 
