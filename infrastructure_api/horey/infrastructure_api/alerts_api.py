@@ -286,7 +286,7 @@ class AlertsAPI:
         """
 
         for alarm in resource_alarms:
-            self.environment_api.provision_cloudwatch_alarm_object(alarm)
+            self.provision_cloudwatch_alarm_object(alarm)
         return True
 
     def provision_dynamodb(self):
@@ -530,6 +530,18 @@ class AlertsAPI:
         )
         return alarm
 
+    def provision_cloudwatch_alarm_object(self, alarm):
+        """
+        Provision the AWS object.
+
+        :param alarm:
+        :return:
+        """
+
+        alarm.region = self.environment_api.region
+        self.environment_api.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
+        return alarm
+
     # pylint: disable = too-many-arguments
     def provision_cloudwatch_alarm(self, name=None,
                                    alarm_description=None,
@@ -678,34 +690,55 @@ class AlertsAPI:
         """
 
         cluster = self.db_api.get_cluster(cluster_name=cluster_name)
-        ret = self.generate_postgres_cluster_alarms(cluster, routing_tags)
-        breakpoint()
+        add_alarms, remove_alarms = self.generate_postgres_cluster_alarms(cluster, routing_tags)
+        
+        required_metric_names = ["ACUUtilization", 
+        "ActiveTransactions", 
+        "ConnectionAttempts", 
+        "CommitLatency", 
+        "CommitThroughput", 
+        "DatabaseConnections", 
+        "CPUUtilization", 
+        "InsertLatency",
+        "InsertThroughput",
+        "SelectLatency",
+        "SelectThroughput",
+        "NetworkReceiveThroughput",
+        "NetworkTransmitThroughput",
+        "NetworkThroughput",
+        "StorageNetworkReceiveThroughput",
+        "StorageNetworkTransmitThroughput",
+        "StorageNetworkThroughput",
+        "Queries",
+        "FreeableMemory",
+        "SwapUsage",
+        "TempStorageIOPS",
+        "UpdateLatency",
+        "WriteLatency",
+        "ReadLatency",
+        "UpdateThroughput",
+        "WriteThroughput",
+        "WriteIOPS",
+        "TotalIOPS"]
 
-        # first
-        alarm_description = {"routing_tags": routing_tags,
-                             "cluster_name": cluster_name }
+        added_metric_names = []
+        for add_alarm in add_alarms:
+            if add_alarm.metric_name not in required_metric_names:
+                continue
 
-        alarm = self.provision_cloudwatch_alarm(
-            name=f"has3-alarm-{instance_id}-acu-util",
-            alarm_description=json.dumps(alarm_description),
-            metric_name="Errors",
-            namespace="AWS/RDS",
-            statistic="Average",
-            period=300,
-            evaluation_periods=2,
-            datapoints_to_alarm=2,
-            threshold=1.0,
-            comparison_operator="GreaterThanThreshold",
-            treat_missing_data="notBreaching",
-            dimensions=[
-                {"Name": "DBInstanceIdentifier", "Value": instance_id},
-                {"Name": "Role", "Value": "WRITER"},
-            ]
-        )
+            alarm_description = {"routing_tags": routing_tags,
+                                 "cluster_name": cluster_name}
 
-        self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
+            add_alarm.desription = json.dumps(alarm_description)
+            self.provision_cloudwatch_alarm_object(add_alarm)
 
-
+            self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
+            added_metric_names.append(add_alarm.metric_name)
+        
+        logger.info(f"Added {len(added_metric_names)} alarms")
+        breakpoint() 
+        if len(set(added_metric_names)) != len(required_metric_names):
+            breakpoint()
 
     def provision_self_monitoring_log_error_alarm(self):
         """
