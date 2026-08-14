@@ -655,7 +655,6 @@ class AlertsAPI:
             ]
         )
 
-        alarm = self.provision_self_monitoring_duration_alarm()
         self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
 
     def provision_self_monitoring_log_error_alarm(self):
