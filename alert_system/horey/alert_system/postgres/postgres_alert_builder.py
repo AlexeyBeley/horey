@@ -74,7 +74,8 @@ class PostgresAlertBuilder:
                                          "FreeLocalStorage": "free_local_storage",
                                          "AuroraReplicaLagMinimum": "aurora_replica_lag_minimum",
                                          "AuroraReplicaLag": "aurora_replica_lag",
-                                         "AuroraReplicaLagMaximum": "aurora_replica_lag_maximum"
+                                         "AuroraReplicaLagMaximum": "aurora_replica_lag_maximum",
+                                         "AuroraSlowHandshakeCount": "aurora_slow_handshake_count",
                                          }
 
         self.cluster_metric_names_with_role_writer_dimension = ["NetworkThroughput",
@@ -673,6 +674,11 @@ class PostgresAlertBuilder:
             ret_max = max(mean_max, median_max) * max_multiplier
             if median_min != 0.0:
                 raise NotImplementedError(median_min, mean_min, absolute_min_value)
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["AuroraSlowHandshakeCount"]:
+            ret_min = absolute_min_value
+            ret_max = absolute_max_value
             return ret_min, ret_max
 
         breakpoint()
