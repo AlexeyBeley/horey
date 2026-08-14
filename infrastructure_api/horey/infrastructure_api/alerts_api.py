@@ -677,7 +677,7 @@ class AlertsAPI:
 
         """
 
-        cluster = self.db_api.get_cluster(name=cluster_name)
+        cluster = self.db_api.get_cluster(cluster_name=cluster_name)
         ret = self.generate_postgres_cluster_alarms(routing_tags)
         breakpoint()
 
