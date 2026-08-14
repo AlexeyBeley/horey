@@ -1078,6 +1078,7 @@ class AlertSystem:
             metrics_fetched_from_aws_filtered_by_request_dimensions = [result for result in metrics_fetched_from_aws if
                                                                        {dim["Name"]: dim["Value"] for dim in
                                                                         result["Dimensions"]} == filter_dimensions]
+            breakpoint()
             if not metrics_fetched_from_aws_filtered_by_request_dimensions:
                 raise RuntimeError(f"Was not able to find metrics: {filters_req}")
 
