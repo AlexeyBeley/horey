@@ -637,6 +637,24 @@ class AlertsAPI:
             ]
         )
 
+        self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
+
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3-alarm-{lambda_name}-metric-duration",
+            alarm_description=json.dumps(alarm_description),
+            metric_name="Duration",
+            namespace="AWS/Lambda",
+            statistic="Average",
+            period=300,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            threshold=lambda_timeout * 0.6 * 1000,
+            comparison_operator="GreaterThanThreshold",
+            treat_missing_data="notBreaching",
+            dimensions=[
+                {"Name": "FunctionName", "Value": lambda_name}
+            ]
+        )
 
         alarm = self.provision_self_monitoring_duration_alarm()
         self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
