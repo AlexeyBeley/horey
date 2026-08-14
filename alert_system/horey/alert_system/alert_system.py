@@ -1063,7 +1063,6 @@ class AlertSystem:
         """
 
         metric_filters = resource_alarms_builder.generate_cluster_metric_filters()
-        breakpoint()
 
         all_metrics = []
         for filters_req in metric_filters:
@@ -1078,7 +1077,6 @@ class AlertSystem:
             metrics_fetched_from_aws_filtered_by_request_dimensions = [result for result in metrics_fetched_from_aws if
                                                                        {dim["Name"]: dim["Value"] for dim in
                                                                         result["Dimensions"]} == filter_dimensions]
-            breakpoint()
             if not metrics_fetched_from_aws_filtered_by_request_dimensions:
                 raise RuntimeError(f"Was not able to find metrics: {filters_req}")
 
@@ -1129,7 +1127,6 @@ class AlertSystem:
             alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_max", metric_raw, max_value,
                                         "GreaterThanThreshold", routing_tags)
             if max_value is not None:
-
                 lst_ret.append(alarm)
             else:
                 lst_del.append(alarm)
