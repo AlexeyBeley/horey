@@ -689,7 +689,7 @@ class PostgresAlertBuilder:
             ret_max = absolute_max_value
             return ret_min, ret_max
 
-        breakpoint()
+        logger.info(f'Implicit metric: {metric_raw["MetricName"]}')
         return absolute_min_value, absolute_max_value
 
         median_max, mean_max, absolute_max_value
@@ -718,4 +718,9 @@ class PostgresAlertBuilder:
         if not prefix:
             raise NotImplementedError(f"Can not generate unique slug for metric: {metric_raw}")
 
-        return prefix + self.camel_case_to_snake_case[metric_raw["MetricName"]]
+        try:
+            snake_case = self.camel_case_to_snake_case[metric_raw["MetricName"]]
+        except KeyError:
+            snake_case = CommonUtils.camel_case_to_snake_case(metric_raw["MetricName"])
+
+        return prefix + snake_case 
