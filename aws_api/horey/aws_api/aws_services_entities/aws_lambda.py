@@ -38,6 +38,7 @@ class AWSLambda(AwsObject):
         self.package_type = None
         self.file_system_configs = None
         self.architectures = None
+        self.logging_confg = None
         self.request_key_to_attribute_mapping = {"FunctionArn": "arn", "FunctionName": "name"}
 
         if from_cache:

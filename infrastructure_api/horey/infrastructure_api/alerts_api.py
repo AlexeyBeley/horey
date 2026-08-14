@@ -4,7 +4,6 @@ Alerts maintainer.
 """
 
 import json
-import os.path
 import shutil
 import sys
 from pathlib import Path
@@ -172,18 +171,18 @@ class AlertsAPI:
             configuration.notification_type = notification_type
 
         slack_notification_channel_file_path = Path(sys.modules[NotificationChannelSlack.__module__].__file__)
-        
+
         self.alert_system.configuration.notification_channels.append(slack_notification_channel_file_path.name)
-        
+
         shutil.copy2(slack_notification_channel_file_path, build_directory_path)
 
         self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
         slack_notification_channel_file_path.name, before_comment="HOREY_REPOS_END", add_to_root=False)
 
         slack_channel_configuration_file_path = build_directory_path / NotificationChannelSlack.CONFIGURATION_FILE_NAME
-        
+
         configuration.generate_configuration_file_ng(slack_channel_configuration_file_path)
-        
+
         self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
         slack_channel_configuration_file_path.name, before_comment="HOREY_REPOS_END", add_to_root=False)
 
@@ -595,7 +594,7 @@ class AlertsAPI:
         """
 
         return self.environment_api.aws_api.cloud_watch_client.set_alarm_state(alarm, "ALARM")
-    
+
     def provision_lambda_monitoring(self, lambda_name, routing_tags,
                                         alarm_description_base=None):
         """
@@ -604,8 +603,7 @@ class AlertsAPI:
         """
 
         aws_lambda = self.aws_lambda_api.get_lambda(name=lambda_name)
-        breakpoint()
-        log_group_name = aws_lambda.log_group_name
+        log_group_name = aws_lambda.logging_confg["LogGroup"]
 
         # first
         filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN
@@ -616,7 +614,7 @@ class AlertsAPI:
                                                     alarm_description_base=alarm_description_base,
                                                     )
         self.trigger_cloudwatch_logs_alarm(log_group_name, filter_text)
-        
+
         # second
         alarm_description = {"routing_tags": routing_tags,
                              "lambda_name": lambda_name}
@@ -648,7 +646,7 @@ class AlertsAPI:
             period=300,
             evaluation_periods=1,
             datapoints_to_alarm=1,
-            threshold=lambda_timeout * 0.6 * 1000,
+            threshold=aws_lambda.timeout * 0.6 * 1000,
             comparison_operator="GreaterThanThreshold",
             treat_missing_data="notBreaching",
             dimensions=[
