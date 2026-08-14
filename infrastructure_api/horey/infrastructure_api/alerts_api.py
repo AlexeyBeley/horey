@@ -604,7 +604,7 @@ class AlertsAPI:
 
         aws_lambda = self.aws_lambda_api.get_lambda(name=lambda_name)
         breakpoint()
-        log_group_name = aws_lambda.logging_confg["LogGroup"]
+        log_group_name = aws_lambda.logging_config["LogGroup"]
 
         # first
         filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN
