@@ -1167,9 +1167,6 @@ class AlertSystem:
         alarm.actions_enabled = True
         alarm.insufficient_data_actions = []
         alarm.metric_name = metric_raw["MetricName"]
-        breakpoint()
-        raise RuntimeError("Why AWS/RDS?")
-        alarm.namespace = "AWS/RDS"
         alarm.namespace = metric_raw["Namespace"]
         alarm.statistic = "Average"
         alarm.dimensions = metric_raw["Dimensions"]
