@@ -603,7 +603,6 @@ class AlertsAPI:
         """
 
         aws_lambda = self.aws_lambda_api.get_lambda(name=lambda_name)
-        breakpoint()
         log_group_name = aws_lambda.logging_config["LogGroup"]
 
         # first
