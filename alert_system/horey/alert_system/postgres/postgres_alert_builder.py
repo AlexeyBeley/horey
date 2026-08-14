@@ -76,12 +76,10 @@ class PostgresAlertBuilder:
                                          "AuroraReplicaLag": "aurora_replica_lag",
                                          "AuroraReplicaLagMaximum": "aurora_replica_lag_maximum",
                                          "AuroraSlowHandshakeCount": "aurora_slow_handshake_count",
-                                         "SelectThroughput": "select_throughput",
                                          }
 
-        for auto_generate_key in ["NumUndoRowOperations"]:
-            self.camel_case_to_snake_case[auto_generate_key] = CommonUtils.camel_case_to_snake_case(auto_generate_key),
-
+        for auto_generate_key in ["SelectThroughput", "NumUndoRowOperations"]:
+            self.camel_case_to_snake_case[auto_generate_key] = CommonUtils.camel_case_to_snake_case(auto_generate_key)
 
         self.cluster_metric_names_with_role_writer_dimension = ["NetworkThroughput",
                                                                 "ReadIOPS", "ReadThroughput",
@@ -686,12 +684,7 @@ class PostgresAlertBuilder:
             ret_max = absolute_max_value
             return ret_min, ret_max
         
-        if metric_raw["MetricName"] in ["SelectThroughput"]:
-            ret_min = absolute_min_value
-            ret_max = absolute_max_value
-            return ret_min, ret_max
-        
-        if metric_raw["MetricName"] in ["NumUndoRowOperations"]:
+        if metric_raw["MetricName"] in ["SelectThroughput", "NumUndoRowOperations"]:
             ret_min = absolute_min_value
             ret_max = absolute_max_value
             return ret_min, ret_max
