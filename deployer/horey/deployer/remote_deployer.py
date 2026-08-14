@@ -559,6 +559,7 @@ class RemoteDeployer:
 
         shell_output = []
         data_chunk_aggregator = bytes()
+        breakpoint()
         while datetime.datetime.now() < end_time:
             if not channel.recv_ready():
                 time.sleep(0.01)
@@ -1490,7 +1491,7 @@ class RemoteDeployer:
 
     @staticmethod
     def connect_to_target(target_host: str, target_user: str, target_key_path,
-                          proxy_jump_client: paramiko.SSHClient = None) -> paramiko.SSHClient:
+                          proxy_jump_client: paramiko.SSHClient = None, port=None) -> paramiko.SSHClient:
         """
         Connects to the target host using the bastion client's transport.
 
@@ -1500,7 +1501,7 @@ class RemoteDeployer:
         :param target_key_path: Path /str
         :return:
         """
-
+        port = port or 22
         target_channel = None
         if proxy_jump_client:
             # Get the transport from the active bastion connection
@@ -1512,15 +1513,15 @@ class RemoteDeployer:
                     # The channel acts as our 'tunnel'
                     target_channel = proxy_jump_transport.open_channel(
                     "direct-tcpip",
-                    (target_host, 22),  # The final destination host and port
+                    (target_host, port),  # The final destination host and port
                     ("127.0.0.1", 0)  # The local source (can be anything, as it's a proxy)
                     )
                     break
                 except Exception:
-                    logger.info(f"Connecting to {target_host} via Proxy Jump Server: failed. Going to sleep {counter}/{retries}")
+                    logger.info(f"Connecting to {target_host}:{port} via Proxy Jump Server: failed. Going to sleep {counter}/{retries}")
                     time.sleep(5)
             else:
-                raise TimeoutError(f"Reached timeout retrying to connect {target_host} via the Proxy Jump Server")
+                raise TimeoutError(f"Reached timeout retrying to connect {target_host}:{port} via the Proxy Jump Server")
 
         # Create a new SSH client and connect it using the new channel
         target_client = paramiko.SSHClient()
@@ -1528,16 +1529,18 @@ class RemoteDeployer:
         target_client.connect(
             hostname=target_host,
             username=target_user,
+            port=port,
             key_filename=str(target_key_path),
             sock=target_channel
         )
-        logger.info(f"Connection to target {target_host} successful.")
+        logger.info(f"Connection to target {target_host}:{port} successful.")
         return target_client
 
     # pylint: disable = too-many-arguments, too-many-positional-arguments
     def get_ssh_client(self, target_host: str, target_user: str, target_key_path: str,
                        proxy_jump_addr: str = None,
-                       proxy_jump_client: paramiko.SSHClient = None
+                       proxy_jump_client: paramiko.SSHClient = None,
+                       port = None
                        ) -> paramiko.SSHClient:
         """
         Connect to bastion if not yet connected.
@@ -1562,7 +1565,9 @@ class RemoteDeployer:
             client = RemoteDeployer.connect_to_target(target_host,
                                                           target_user,
                                                           target_key_path,
-                                                          proxy_jump_client=proxy_jump_client)
+                                                          proxy_jump_client=proxy_jump_client,
+                                                          port=port
+                                                          )
             self.ssh_clients[key] = client
 
         return client
@@ -1591,7 +1596,8 @@ class RemoteDeployer:
                                    target.deployment_target_user_name,
                                    target.deployment_target_ssh_key_path,
                                    proxy_jump_client=proxy_jump_client,
-                                   proxy_jump_addr=proxy_jump_addr)
+                                   proxy_jump_addr=proxy_jump_addr,
+                                   port=target.deployment_target_ssh_port)
 
 
     def get_deployment_target_sftp_client(self, target: DeploymentTarget

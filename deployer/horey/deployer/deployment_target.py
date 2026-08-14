@@ -27,6 +27,7 @@ class DeploymentTarget:
         self.bastion_chain: List[DeploymentTarget.BastionChainLink] = []
 
         self.deployment_target_ssh_key_path = None
+        self.deployment_target_ssh_port = None
         self.deployment_target_address = None
         self.deployment_target_user_name = "ubuntu"
 

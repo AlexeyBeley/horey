@@ -895,14 +895,16 @@ class CICDAPI:
 
         return target
 
-    def init_raw_target(self, address, ssh_key_path):
+    def init_raw_target(self, address, ssh_key_path, port=22):
         """
         Raw host
         """
 
         target = DeploymentTarget()
         target.deployment_target_user_name = "ubuntu"
+        target.deply = "ubuntu"
         target.deployment_target_ssh_key_path = ssh_key_path 
+        target.deployment_target_ssh_port = port
         target.deployment_target_address = address 
         return target
 

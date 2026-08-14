@@ -3,4 +3,4 @@ Per package configs
 
 """
 
-force = False
+force = True

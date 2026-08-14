@@ -654,7 +654,10 @@ class FreeStuffAPI:
         :return:
         """
 
-        target = self.cicd_api.init_raw_target(self.configuration.mgmt_server_address, self.configuration.mgmt_server_ssh_key_path)
+        target = self.cicd_api.init_raw_target(self.configuration.mgmt_server_address, 
+                                                self.configuration.mgmt_server_ssh_key_path, 
+                                                port=self.configuration.mgmt_server_ssh_port)
+
         ret = self.cicd_api.run_remote_provision_constructor(target, "raw", command="ls")
         breakpoint()
 
