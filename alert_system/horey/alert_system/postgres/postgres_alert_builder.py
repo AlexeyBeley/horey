@@ -2,7 +2,7 @@
 Monitor postgres like a boss!
 """
 import json
-
+from horey.common_utils.common_utils import CommonUtils
 from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.h_logger import get_logger
@@ -78,6 +78,10 @@ class PostgresAlertBuilder:
                                          "AuroraSlowHandshakeCount": "aurora_slow_handshake_count",
                                          "SelectThroughput": "select_throughput",
                                          }
+
+        for auto_generate_key in ["NumUndoRowOperations"]:
+            self.camel_case_to_snake_case[auto_generate_key] = CommonUtils.camel_case_to_snake_case(auto_generate_key),
+
 
         self.cluster_metric_names_with_role_writer_dimension = ["NetworkThroughput",
                                                                 "ReadIOPS", "ReadThroughput",
@@ -683,6 +687,11 @@ class PostgresAlertBuilder:
             return ret_min, ret_max
         
         if metric_raw["MetricName"] in ["SelectThroughput"]:
+            ret_min = absolute_min_value
+            ret_max = absolute_max_value
+            return ret_min, ret_max
+        
+        if metric_raw["MetricName"] in ["NumUndoRowOperations"]:
             ret_min = absolute_min_value
             ret_max = absolute_max_value
             return ret_min, ret_max
