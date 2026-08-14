@@ -21,6 +21,7 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 
 from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPI, AWSLambdaAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI, CloudwatchAPIConfigurationPolicy
+from horey.infrastructure_api.db_api import DBAPI, DBAPIConfigurationPolicy
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -38,6 +39,7 @@ class AlertsAPI:
         self._aws_lambda_api = None
         self._alert_system = None
         self._cloudwatch_api = None
+        self._db_api = None
 
     @property
     def alert_system(self):
@@ -114,6 +116,19 @@ class AlertsAPI:
             self._cloudwatch_api = CloudwatchAPI(config, self.environment_api)
 
         return self._cloudwatch_api
+
+    @property
+    def db_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+        if self._db_api is None:
+            config = DBAPIConfigurationPolicy()
+            self._db_api = DBAPI(config, self.environment_api)
+
+        return self._db_api
 
     def prepare_docker_image_build_directory(self, source_code_directory_path: Path, build_number):
         """
@@ -212,7 +227,7 @@ class AlertsAPI:
 
         return self.aws_lambda_api.update_docker_lambda()
 
-    def generate_postgres_cluster_alarms(self, cluster_id,
+    def generate_postgres_cluster_alarms(self, cluster, routing_tags,
                                          metric_name=None):
         """
         Generate alerts per resource: RDS Postgres Cluster
@@ -224,9 +239,8 @@ class AlertsAPI:
         :return:
         """
 
-        cluster = self.environment_api.get_rds_cluster(cluster_id)
         alerts_builder = PostgresAlertBuilder(cluster=cluster)
-        return self.alert_system.generate_resource_alarms(alerts_builder,
+        return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
                                                           metric_name=metric_name)
 
     def generate_alb_alarms(self, alb_name):
@@ -655,6 +669,43 @@ class AlertsAPI:
         )
 
         self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
+    
+    def provision_rds_postgres_monitoring(self, cluster_name, routing_tags,
+                                        alarm_description_base=None):
+        """
+        Provision Lambda monitoring.
+
+        """
+
+        cluster = self.db_api.get_cluster(name=cluster_name)
+        ret = self.generate_postgres_cluster_alarms(routing_tags)
+        breakpoint()
+
+        # first
+        alarm_description = {"routing_tags": routing_tags,
+                             "cluster_name": cluster_name }
+
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3-alarm-{instance_id}-acu-util",
+            alarm_description=json.dumps(alarm_description),
+            metric_name="Errors",
+            namespace="AWS/RDS",
+            statistic="Average",
+            period=300,
+            evaluation_periods=2,
+            datapoints_to_alarm=2,
+            threshold=1.0,
+            comparison_operator="GreaterThanThreshold",
+            treat_missing_data="notBreaching",
+            dimensions=[
+                {"Name": "DBInstanceIdentifier", "Value": instance_id},
+                {"Name": "Role", "Value": "WRITER"},
+            ]
+        )
+
+        self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
+
+
 
     def provision_self_monitoring_log_error_alarm(self):
         """

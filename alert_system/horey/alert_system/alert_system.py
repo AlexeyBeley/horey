@@ -1048,6 +1048,7 @@ class AlertSystem:
         ret = self.aws_api.lambda_client.invoke_raw(self.region, request)
 
     def generate_resource_alarms(self, resource_alarms_builder,
+                                 routing_tags,
                                  metric_data_start_time=None,
                                  metric_data_end_time=None,
                                  metric_name=None):
@@ -1086,11 +1087,13 @@ class AlertSystem:
 
             all_metrics += metrics_fetched_from_aws_filtered_by_request_dimensions
 
-        return self.generate_alarms_from_metrics(resource_alarms_builder, all_metrics,
+        return self.generate_alarms_from_metrics(resource_alarms_builder, all_metrics, routing_tags,
                                                  metric_data_start_time=metric_data_start_time,
                                                  metric_data_end_time=metric_data_end_time)
 
-    def generate_alarms_from_metrics(self, resource_alarms_builder, metrics, metric_data_start_time=None,
+    def generate_alarms_from_metrics(self, resource_alarms_builder, metrics, 
+                                     routing_tags, 
+                                     metric_data_start_time=None,
                                      metric_data_end_time=None):
         """
         Filtered resource metrics transformed into alarms.
@@ -1115,14 +1118,14 @@ class AlertSystem:
             slug = resource_alarms_builder.generate_metric_alarm_slug(metric_raw)
 
             alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_min", metric_raw, min_value,
-                                        "LessThanThreshold")
+                                        "LessThanThreshold", routing_tags)
             if min_value is not None:
                 lst_ret.append(alarm)
             else:
                 lst_del.append(alarm)
 
             alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_max", metric_raw, max_value,
-                                        "GreaterThanThreshold")
+                                        "GreaterThanThreshold", routing_tags)
             if max_value is not None:
 
                 lst_ret.append(alarm)
@@ -1131,7 +1134,7 @@ class AlertSystem:
         logger.info(f"Generated alarms from metrics. To add: {len(lst_ret)}, to delete: {len(lst_del)}")
         return lst_ret, lst_del
 
-    def generate_builder_filtered_resource_alarms(self, resource_alarms_builder, metrics,
+    def generate_builder_filtered_resource_alarms(self, resource_alarms_builder, metrics, routing_tags,
                                                   metric_data_start_time=None,
                                                   metric_data_end_time=None):
         """
@@ -1145,11 +1148,11 @@ class AlertSystem:
         """
 
         all_metrics = resource_alarms_builder.filter_metrics(metrics)
-        return self.generate_alarms_from_metrics(resource_alarms_builder, all_metrics,
+        return self.generate_alarms_from_metrics(resource_alarms_builder, all_metrics, routing_tags,
                                                  metric_data_start_time=metric_data_start_time,
                                                  metric_data_end_time=metric_data_end_time)
 
-    def get_base_alarm(self, name, metric_raw, threshold, comparison_operator):
+    def get_base_alarm(self, name, metric_raw, threshold, comparison_operator, routing_tags):
         """
         Generate template alarm.
 
@@ -1176,7 +1179,7 @@ class AlertSystem:
         alarm.comparison_operator = comparison_operator
         alarm.treat_missing_data = "notBreaching"
 
-        alarm_description = {"routing_tags": self.configuration.routing_tags}
+        alarm_description = {"routing_tags": routing_tags}
         alarm.alarm_description = json.dumps(alarm_description)
         alarm.region = self.region
         alarm.ok_actions = [self.lambda_arn]
