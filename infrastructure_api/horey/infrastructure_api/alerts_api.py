@@ -732,7 +732,7 @@ class AlertsAPI:
             add_alarm.desription = json.dumps(alarm_description)
             self.provision_cloudwatch_alarm_object(add_alarm)
 
-            self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
+            self.environment_api.trigger_cloudwatch_alarm(add_alarm, "Explicitly changed state to ALARM")
             added_metric_names.append(add_alarm.metric_name)
         
         logger.info(f"Added {len(added_metric_names)} alarms")
