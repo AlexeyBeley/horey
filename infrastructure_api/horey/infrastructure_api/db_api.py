@@ -267,7 +267,9 @@ class DBAPI:
         cluster = RDSDBCluster({"DBClusterIdentifier": cluster_name})
         cluster.region = self.environment_api.region
         if not self.environment_api.aws_api.rds_client.update_cluster_information(cluster):
-            raise ValueError(f"Was not able to find cluster {cluster_name} in region {cluster.region.region_mark}")
+            self.environment_api.aws_api.rds_client.clear_cache(RDSDBCluster)
+            if not self.environment_api.aws_api.rds_client.update_cluster_information(cluster):
+                raise self.environment_api.ResourceNotFoundError(f"Was not able to find cluster {cluster_name} in region {cluster.region.region_mark}")
         return cluster
 
     @property
