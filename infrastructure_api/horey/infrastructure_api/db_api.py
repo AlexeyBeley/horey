@@ -47,7 +47,7 @@ class DBAPI:
 
         # todo: cleanup report delete unused parameter groups.
         # todo: cleanup report delete unused users, user groups,
-        # todo: cleanup report find user groups with "default" user 
+        # todo: cleanup report find user groups with "default" user
 
         self.environment_api.aws_api.rds_client.clear_cache(None, all_cache=True)
         self.provision_serverless_cluster_parameter_group()
@@ -596,9 +596,11 @@ class DBAPI:
         :return:
         """
 
-        name = name or self.configuration.serverless_elasticache_name
-        for cache in self.environment_api.aws_api.elasticache_client.yield_serverless_caches(region=self.environment_api.region):
-            if cache.name == name:
-                return cache
-
-        raise ValueError(f"Was not able to find cache '{name}'")
+        cache = ElasticacheServerlessCache({})
+        cache.region = self.environment_api.region
+        cache.name = name or self.configuration.serverless_elasticache_name
+        if not self.environment_api.aws_api.elasticache_client.update_serverless_cache_information(cache):
+            self.environment_api.aws_api.elasticache_client.clear_cache(ElasticacheServerlessCache)
+            if not self.environment_api.aws_api.elasticache_client.update_serverless_cache_information(cache):
+                raise self.environment_api.ResourceNotFoundError(f"Was not able to find cache '{name}' in region {self.environment_api.configuration.region}")
+        return cache
