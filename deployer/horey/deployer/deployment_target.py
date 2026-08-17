@@ -30,6 +30,7 @@ class DeploymentTarget:
         self.deployment_target_ssh_port = None
         self.deployment_target_address = None
         self.deployment_target_user_name = "ubuntu"
+        self.deployment_target_ssh_systemd_metadata = False
 
         self.deployment_step_configuration_file_name = None
 

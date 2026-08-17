@@ -17,7 +17,7 @@ def test_init_auction_events():
 
 
 @pytest.mark.unit
-def test_yiel():
+def test_yield():
     auction = Neighbourhoodauctions()
     auction_event = AuctionEvent()
     auction_event.url = "https://www.icollector.com/APR-JUN-Estate-Collectibles-Auction-Winnipeg-MB_as115310"

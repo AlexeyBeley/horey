@@ -245,10 +245,20 @@ def test_generate_profit_review(questrade_api):
 def test_fetch_symbols_by_max_price(questrade_api):
     assert questrade_api.fetch_symbols_by_price_range(0.001, 2)
 
+
+@pytest.mark.unit
+def test_selenium_open_symbol_page(questrade_api):
+    questrade_api.selenium_login()
+    assert questrade_api.selenium_open_symbol_page("MGIH")
+
+@pytest.mark.unit
+def test_selenium_sell_symbol(questrade_api):
+    questrade_api.selenium_login()
+    assert questrade_api.selenium_sell_symbol("MGIH", 1.63)
+
 @pytest.mark.wip
 def test_get_positions_without_sell_orders(questrade_api):
     assert questrade_api.get_positions_without_sell_orders()
-        
 
 @pytest.mark.wip
 def test_update_cheap_candles_with_today_data(questrade_api):

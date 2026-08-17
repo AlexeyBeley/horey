@@ -15,6 +15,7 @@ import requests
 from selenium.webdriver.common.by import By
 
 from horey.h_logger import get_logger
+from horey.selenium_api.selenium_api import SeleniumAPI
 from horey.questrade_api.questrade_api_configuration_policy import (
     QuestradeAPIConfigurationPolicy,
 )
@@ -46,7 +47,6 @@ class QuestradeAPI:
         """
 
         if self._selenium_api is None:
-            from horey.selenium_api.selenium_api import SeleniumAPI
             self._selenium_api = SeleniumAPI()
             self._selenium_api.connect()
         return self._selenium_api
@@ -1017,8 +1017,7 @@ class QuestradeAPI:
 
 
         # todo: ignore
-        skip_symbols = ["PMI.65273932", "KWM.61958025", "TOP.42394762", "LEXX.33957033"]
-
+        skip_symbols = []
 
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
         for position in positions:
@@ -1151,16 +1150,64 @@ class QuestradeAPI:
         btn_container = self.selenium_api.get_element(By.CLASS_NAME, "container-action")
         btn = btn_container.find_element(By.NAME ,"button")
         btn.click()
+        breakpoint()
+    
+    def selenium_open_symbol_page(self, symbol):
+        """
+        Open sybol page
+        """
 
-    def open_symbol_page(self, symbol_name):
+        self.selenium_api.throttled_get(f"https://myportal.questrade.com/investing/summary/quote/{symbol}")
+
+    def selenium_sell_symbol(self, symbol:str, price:float):
         """
         Open symbol page
         :param symbol_name:
         :return:
         """
 
-        raise NotImplementedError()
+        self.selenium_open_symbol_page(symbol)
+        breakpoint()
+        btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
+        if not btn:
+            btn = self.selenium_api.get_shadowed_element_by_text("button", "Sell")
+        btn.click()
+        div_input = self.get_div_input_by_label("Limit Price")
     
+    def get_div_input_by_label(self, label_text):
+        js_script = """
+function findInShadow(root = document) {
+    // 1. Try finding input relative to the label
+    let labels = Array.from(root.querySelectorAll('label'));
+    for (let label of labels) {
+        if (label.textContent.trim() === 'STRING_REPLACEMENT_LABEL_TEXT') {
+            let container = label.closest('.oe-input-container');
+            if (container) return container.querySelector('input');
+        }
+    }
+
+    // 2. Direct fallback using container classes
+    let el = root.querySelector('div.oe-input input');
+    if (el) return el;
+
+    // 3. Recurse down Shadow Roots
+    for (let child of root.querySelectorAll('*')) {
+        if (child.shadowRoot) {
+            let found = findInShadow(child.shadowRoot);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+return findInShadow();
+"""
+        js_script = js_script.replace("STRING_REPLACEMENT_LABEL_TEXT", label_text)
+        div_input = self.selenium_api.driver.execute_script(js_script)
+        breakpoint()
+        return div_input
+     
+
     def write_to_cache(self, lst_obj):
         """
         Write list of objects to cache

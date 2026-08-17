@@ -421,3 +421,57 @@ class SeleniumAPI:
 
         breakpoint()
         raise TimeoutError(f"Was not able to fetch from: {url}")
+    
+    def get_shadowed_element_by_css_selector(self, css_selector):
+        js_script = """
+function findInShadow(selector, root = document) {
+    // 1. Direct query on current root
+    let el = root.querySelector(selector);
+    if (el) return el;
+
+    // 2. Search through all child nodes with a shadowRoot
+    let children = root.querySelectorAll('*');
+    for (let child of children) {
+        if (child.shadowRoot) {
+            let found = findInShadow(selector, child.shadowRoot);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+// Search for the sell button by data-qt attribute or text
+let sellBtn = findInShadow('STRING_REPLACEMENT_CSS_SELECTOR');
+return sellBtn; // Returns the DOM node directly to Selenium
+"""
+
+        js_script = js_script.replace("STRING_REPLACEMENT_CSS_SELECTOR", css_selector)
+        result = self.driver.execute_script(js_script)
+        return result
+
+    def get_shadowed_element_by_text(self, tag_name, text):
+        js_script = """
+function findByText(tag_name, text, root = document) {
+        let buttons = Array.from(root.querySelectorAll(tag_name));
+        for (let btn of buttons) {
+            if (btn.textContent.trim() === text) return btn;
+        }
+        for (let child of root.querySelectorAll('*')) {
+            if (child.shadowRoot) {
+                let found = findByText(tag_name, text, child.shadowRoot);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+// Search for the sell button by data-qt attribute or text
+let sellBtn = findByText('STRING_REPLACEMENT_TAG_NAME', 'STRING_REPLACEMENT_TEXT');
+return sellBtn; // Returns the DOM node directly to Selenium
+"""
+
+        js_script = js_script.replace("STRING_REPLACEMENT_TAG_NAME", tag_name)
+        js_script = js_script.replace("STRING_REPLACEMENT_TEXT", text)
+        result = self.driver.execute_script(js_script)
+        return result
+ 
