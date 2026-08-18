@@ -1063,13 +1063,15 @@ class AlertSystem:
         """
 
         metric_filters = resource_alarms_builder.generate_cluster_metric_filters()
-        breakpoint()
 
         all_metrics = []
         for filters_req in metric_filters:
             metrics_fetched_from_aws = list(
                 self.aws_api.cloud_watch_client.yield_client_metrics(self.region,
                                                                      filters_req=filters_req))
+            # todo: debug
+            metrics_fetched_from_aws = [metric for metric in metrics_fetched_from_aws if metric["MetricName"] == "ACUUtilization"]
+
             if not metrics_fetched_from_aws:
                 logger.warning(f"Was not able to find metrics by filter {filters_req}")
                 continue
@@ -1088,6 +1090,7 @@ class AlertSystem:
 
             all_metrics += metrics_fetched_from_aws_filtered_by_request_dimensions
 
+        breakpoint()
         return self.generate_alarms_from_metrics(resource_alarms_builder, all_metrics, routing_tags,
                                                  metric_data_start_time=metric_data_start_time,
                                                  metric_data_end_time=metric_data_end_time)
