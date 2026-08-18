@@ -488,7 +488,7 @@ class AlertsAPI:
                 f"Unhandled situation when more then one metric transformation {metric_filter.metric_transformations}")
         return metric_filter
 
-    def provision_scheduled_lambda_executions_alarm(self, monitored_lambda: AWSLambda, period: int) -> CloudWatchAlarm:
+    def provision_scheduled_lambda_executions_alarm(self, monitored_lambda: AWSLambda, lambda_scheduled_period: int) -> CloudWatchAlarm:
         """
         Schedule alarm - makes sure the lambda is triggered correctly
 
@@ -498,7 +498,7 @@ class AlertsAPI:
             ]}))
 
         :param monitored_lambda:
-        :param period:
+        :param lambda_scheduled_period: in seconds. e.g. lambda running each minute - 60
         :return:
         """
 
@@ -511,7 +511,7 @@ class AlertsAPI:
                              "lambda_name": monitored_lambda.name
                             }
 
-        threshold = period*9
+        threshold = 9.0
 
         alarm = self.provision_cloudwatch_alarm(
             name=f"has3-alarm-{monitored_lambda.name}-scheduled-executions",
@@ -519,7 +519,7 @@ class AlertsAPI:
             metric_name="Invocations",
             namespace="AWS/Lambda",
             statistic="Sum",
-            period=period*10,
+            period=lambda_scheduled_period*10,
             evaluation_periods=1,
             datapoints_to_alarm=1,
             threshold=threshold,
