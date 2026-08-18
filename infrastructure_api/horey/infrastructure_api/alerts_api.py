@@ -511,6 +511,8 @@ class AlertsAPI:
                              "lambda_name": monitored_lambda.name
                             }
 
+        threshold = period*9
+
         alarm = self.provision_cloudwatch_alarm(
             name=f"has3-alarm-{monitored_lambda.name}-scheduled-executions",
             alarm_description=json.dumps(alarm_description),
@@ -520,7 +522,7 @@ class AlertsAPI:
             period=period*10,
             evaluation_periods=1,
             datapoints_to_alarm=1,
-            threshold=10.0,
+            threshold=threshold,
             comparison_operator="LessThanThreshold",
             treat_missing_data="breaching",
             dimensions=[
@@ -682,8 +684,7 @@ class AlertsAPI:
 
         self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
     
-    def provision_rds_postgres_monitoring(self, cluster_name, routing_tags,
-                                        alarm_description_base=None):
+    def provision_rds_postgres_monitoring(self, cluster_name, routing_tags):
         """
         Provision Lambda monitoring.
 
@@ -691,6 +692,7 @@ class AlertsAPI:
 
         cluster = self.db_api.get_cluster(cluster_name=cluster_name)
         add_alarms, remove_alarms = self.generate_postgres_cluster_alarms(cluster, routing_tags)
+        logger.info(f"todo: Remove alarms: {remove_alarms}")
         
         required_metric_names = ["ACUUtilization", 
         "ActiveTransactions", 
@@ -736,9 +738,8 @@ class AlertsAPI:
             added_metric_names.append(add_alarm.metric_name)
         
         logger.info(f"Added {len(added_metric_names)} alarms")
-        breakpoint() 
         if len(set(added_metric_names)) != len(required_metric_names):
-            breakpoint()
+            raise ValueError("Not all required metrics were added")
 
     def provision_self_monitoring_log_error_alarm(self):
         """
