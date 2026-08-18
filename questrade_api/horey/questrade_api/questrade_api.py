@@ -3,6 +3,7 @@ Shamelessly stolen from:
 https://questrade.com/lukecyca/pyslack
 """
 import sqlite3
+import platform
 import time
 from datetime import datetime, timezone, timedelta
 import json
@@ -13,6 +14,9 @@ from decimal import Decimal, ROUND_HALF_UP
 
 import requests
 from selenium.webdriver.common.by import By
+
+from selenium.webdriver.common.action_chains import ActionChains
+
 
 from horey.h_logger import get_logger
 from horey.selenium_api.selenium_api import SeleniumAPI
@@ -1167,12 +1171,39 @@ class QuestradeAPI:
         """
 
         self.selenium_open_symbol_page(symbol)
-        breakpoint()
         btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
         if not btn:
             btn = self.selenium_api.get_shadowed_element_by_text("button", "Sell")
         btn.click()
+        self.fill_limit_price_input(price)
+
+    def fill_limit_price_input(self, price:float):
+        """
+        Find the input and fill the price
+        """
+
         div_input = self.get_div_input_by_label("Limit Price")
+        breakpoint()
+
+        actions = ActionChains(self.selenium_api.driver)
+        actions.click(div_input)  # Focus the element
+        actions.key_down(select_all_key).send_keys("a").key_up(select_all_key)
+        actions.send_keys(Keys.BACKSPACE)
+        actions.perform()
+    
+        # Force hard clearance of value via JS to override pre-filled values/masks
+        self.selenium_api.driver.execute_script("arguments[0].value = '';", div_input)
+
+        formatted_price = f"{price:.4f}".rstrip('0').rstrip('.') if isinstance(price, float) else str(price) 
+        # 4. Input the new float price
+        div_input.send_keys(formatted_price)
+    
+        # 5. Dispatch UI events so Angular updates validation & recalculates "Estimated order total"
+        self.selenium_api.driver.execute_script("""
+            arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
+            arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+            arguments[0].dispatchEvent(new Event('blur', { bubbles: true }));
+        """, div_input)
     
     def get_div_input_by_label(self, label_text):
         js_script = """
@@ -1204,7 +1235,6 @@ return findInShadow();
 """
         js_script = js_script.replace("STRING_REPLACEMENT_LABEL_TEXT", label_text)
         div_input = self.selenium_api.driver.execute_script(js_script)
-        breakpoint()
         return div_input
      
 

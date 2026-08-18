@@ -258,6 +258,7 @@ def test_selenium_sell_symbol(questrade_api):
 
 @pytest.mark.wip
 def test_get_positions_without_sell_orders(questrade_api):
+    breakpoint()
     assert questrade_api.get_positions_without_sell_orders()
 
 @pytest.mark.wip
