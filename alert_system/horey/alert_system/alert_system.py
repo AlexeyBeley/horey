@@ -1063,6 +1063,7 @@ class AlertSystem:
         """
 
         metric_filters = resource_alarms_builder.generate_cluster_metric_filters()
+        breakpoint()
 
         all_metrics = []
         for filters_req in metric_filters:
