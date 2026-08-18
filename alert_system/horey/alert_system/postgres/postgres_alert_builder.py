@@ -480,7 +480,7 @@ class PostgresAlertBuilder:
             return ret_min, ret_max
 
         if metric_raw["MetricName"] in ["ACUUtilization"]:
-            return 30, 80
+            return 20, 80
 
         if metric_raw["MetricName"] in ["TempStorageIOPS"]:
             ret_min = min(median_min, mean_min) * min_multiplier

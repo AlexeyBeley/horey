@@ -488,7 +488,7 @@ class AlertsAPI:
                 f"Unhandled situation when more then one metric transformation {metric_filter.metric_transformations}")
         return metric_filter
 
-    def provision_scheduled_lambda_executions_alarm(self, monitored_lambda: AWSLambda, period: int) -> CloudWatchAlarm:
+    def provision_scheduled_lambda_executions_alarm(self, monitored_lambda: AWSLambda, lambda_scheduled_period: int) -> CloudWatchAlarm:
         """
         Schedule alarm - makes sure the lambda is triggered correctly
 
@@ -498,7 +498,7 @@ class AlertsAPI:
             ]}))
 
         :param monitored_lambda:
-        :param period:
+        :param lambda_scheduled_period: in seconds. e.g. lambda running each minute - 60
         :return:
         """
 
@@ -511,16 +511,18 @@ class AlertsAPI:
                              "lambda_name": monitored_lambda.name
                             }
 
+        threshold = 9.0
+
         alarm = self.provision_cloudwatch_alarm(
             name=f"has3-alarm-{monitored_lambda.name}-scheduled-executions",
             alarm_description=json.dumps(alarm_description),
             metric_name="Invocations",
             namespace="AWS/Lambda",
             statistic="Sum",
-            period=period*10,
+            period=lambda_scheduled_period*10,
             evaluation_periods=1,
             datapoints_to_alarm=1,
-            threshold=10.0,
+            threshold=threshold,
             comparison_operator="LessThanThreshold",
             treat_missing_data="breaching",
             dimensions=[
@@ -682,8 +684,7 @@ class AlertsAPI:
 
         self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
     
-    def provision_rds_postgres_monitoring(self, cluster_name, routing_tags,
-                                        alarm_description_base=None):
+    def provision_rds_postgres_monitoring(self, cluster_name, routing_tags):
         """
         Provision Lambda monitoring.
 
@@ -691,6 +692,7 @@ class AlertsAPI:
 
         cluster = self.db_api.get_cluster(cluster_name=cluster_name)
         add_alarms, remove_alarms = self.generate_postgres_cluster_alarms(cluster, routing_tags)
+        logger.info(f"todo: Remove alarms: {remove_alarms}")
         
         required_metric_names = ["ACUUtilization", 
         "ActiveTransactions", 
@@ -732,13 +734,15 @@ class AlertsAPI:
             add_alarm.desription = json.dumps(alarm_description)
             self.provision_cloudwatch_alarm_object(add_alarm)
 
-            self.environment_api.trigger_cloudwatch_alarm(add_alarm, "Explicitly changed state to ALARM")
             added_metric_names.append(add_alarm.metric_name)
         
+        # trigger only first and last alarms
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[0], "Explicitly changed state to ALARM")
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[-1], "Explicitly changed state to ALARM")
+        
         logger.info(f"Added {len(added_metric_names)} alarms")
-        breakpoint() 
         if len(set(added_metric_names)) != len(required_metric_names):
-            breakpoint()
+            raise ValueError("Not all required metrics were added")
 
     def provision_self_monitoring_log_error_alarm(self):
         """

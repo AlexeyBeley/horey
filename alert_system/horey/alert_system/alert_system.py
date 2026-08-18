@@ -1069,6 +1069,7 @@ class AlertSystem:
             metrics_fetched_from_aws = list(
                 self.aws_api.cloud_watch_client.yield_client_metrics(self.region,
                                                                      filters_req=filters_req))
+
             if not metrics_fetched_from_aws:
                 logger.warning(f"Was not able to find metrics by filter {filters_req}")
                 continue
