@@ -1090,7 +1090,6 @@ class AlertSystem:
 
             all_metrics += metrics_fetched_from_aws_filtered_by_request_dimensions
 
-        breakpoint()
         return self.generate_alarms_from_metrics(resource_alarms_builder, all_metrics, routing_tags,
                                                  metric_data_start_time=metric_data_start_time,
                                                  metric_data_end_time=metric_data_end_time)
