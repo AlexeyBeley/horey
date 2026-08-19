@@ -691,7 +691,7 @@ class AlertsAPI:
         """
 
         cluster = self.db_api.get_cluster(cluster_name=cluster_name)
-        add_alarms, remove_alarms = self.generate_postgres_cluster_alarms(cluster, routing_tags)
+        all_alarms, remove_alarms = self.generate_postgres_cluster_alarms(cluster, routing_tags)
         logger.info(f"todo: Remove alarms: {remove_alarms}")
         
         required_metric_names = ["ACUUtilization", 
@@ -723,11 +723,8 @@ class AlertsAPI:
         "WriteIOPS",
         "TotalIOPS"]
 
-        added_metric_names = []
+        add_alarms = [alarm for alarm in all_alarms if alarm.metric_name in required_metric_names]
         for add_alarm in add_alarms:
-            if add_alarm.metric_name not in required_metric_names:
-                continue
-
             alarm_description = {"routing_tags": routing_tags,
                                  "cluster_name": cluster_name}
 
