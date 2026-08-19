@@ -14,6 +14,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 import requests
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 
 from selenium.webdriver.common.action_chains import ActionChains
 
@@ -1169,8 +1170,9 @@ class QuestradeAPI:
         :param symbol_name:
         :return:
         """
-
+        
         self.selenium_open_symbol_page(symbol)
+        breakpoint()
         btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
         if not btn:
             btn = self.selenium_api.get_shadowed_element_by_text("button", "Sell")
@@ -1182,8 +1184,19 @@ class QuestradeAPI:
         Find the input and fill the price
         """
 
-        div_input = self.get_div_input_by_label("Limit Price")
+        body = self.selenium_api.driver.find_element(By.TAG_NAME, "body")
+        x_coord = 600  # pixels right from the element's top-left
+        y_coord = 300   # pixels down from the element's top-left
+
         breakpoint()
+        ActionChains(self.selenium_api.driver)\
+        .move_to_element_with_offset(body, 0, 0)\
+        .move_by_offset(x_coord, y_coord)\
+        .click()\
+        .perform()
+
+        div_input = self.get_div_input_by_label("Limit Price")
+        select_all_key = Keys.COMMAND if platform.system() == "Darwin" else Keys.CONTROL
 
         actions = ActionChains(self.selenium_api.driver)
         actions.click(div_input)  # Focus the element
@@ -1204,7 +1217,97 @@ class QuestradeAPI:
             arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
             arguments[0].dispatchEvent(new Event('blur', { bubbles: true }));
         """, div_input)
+
+        self.select_gtem()
+
+        btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="order-entry-next-button"]')
+        if not btn:
+            btn = self.selenium_api.get_shadowed_element_by_text("button", "Review Order")
+        btn.click()
+        breakpoint()
+        #btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="order-entry-sm-screen-sell-button"]')
+        #if not btn:
+        btn = self.selenium_api.get_shadowed_element_by_text("button", "Send order")
+        btn.click()
     
+    def select_gtem(self):
+        self.selenium_api.driver.execute_script("""
+function clickChip(root) {
+    if (!root) return false;
+    
+    // Look for q-chip or label containing "Day"
+    const labels = Array.from(root.querySelectorAll('q-chip, label, .q-chip-label'));
+    for (let el of labels) {
+        if (el.textContent && el.textContent.trim() === 'Day') {
+            const chip = el.closest('q-chip') || el;
+            chip.click();
+            return true;
+        }
+    }
+    
+    // Search inside shadow roots
+    for (let child of root.querySelectorAll('*')) {
+        if (child.shadowRoot) {
+            if (clickChip(child.shadowRoot)) return true;
+        }
+    }
+    return false;
+}
+return clickChip(document);
+""")
+
+        self.selenium_api.driver.execute_script("""
+function selectGTEMOption(root) {
+    if (!root) return false;
+    
+    // Find all elements containing GTEM text
+    const allNodes = Array.from(root.querySelectorAll('*'));
+    for (let el of allNodes) {
+        if (el.children.length === 0 && el.textContent && el.textContent.includes('GTEM')) {
+            
+            // Walk up the DOM to find the clickable list item wrapper
+            let target = el;
+            while (target && target !== document.body) {
+                // Look for common Angular dropdown item roles or classes
+                if (target.getAttribute('role') === 'option' || 
+                    target.classList.contains('q-dropmenu-item') || 
+                    target.tagName.toLowerCase().includes('item') ||
+                    target.tagName.toLowerCase().includes('option')) {
+                    break;
+                }
+                target = target.parentElement;
+            }
+            
+            // If no wrapper found, fallback to element 3 levels up
+            if (!target || target === document.body) {
+                target = el.parentElement?.parentElement || el;
+            }
+
+            // Fire full event chain so Angular registers the click
+            ['pointerdown', 'mousedown', 'mouseup', 'click'].forEach(eventType => {
+                target.dispatchEvent(new MouseEvent(eventType, {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                }));
+            });
+
+            return true;
+        }
+    }
+    
+    // Pierce Shadow DOM
+    for (let child of root.querySelectorAll('*')) {
+        if (child.shadowRoot) {
+            if (selectGTEMOption(child.shadowRoot)) return true;
+        }
+    }
+    return false;
+}
+
+return selectGTEMOption(document);
+""")
+
     def get_div_input_by_label(self, label_text):
         js_script = """
 function findInShadow(root = document) {
