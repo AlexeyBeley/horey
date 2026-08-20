@@ -15,6 +15,7 @@ from horey.alert_system.notification_channels.notification_channel_slack import 
 from horey.alert_system.lambda_package.notification import Notification
 from horey.alert_system.postgres.postgres_alert_builder import \
     PostgresAlertBuilder
+from horey.alert_system.mysql.mysql_alert_builder import MysqlAlertBuilder
 from horey.alert_system.elb_alert_builder import ELBAlertBuilder
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
@@ -243,6 +244,23 @@ class AlertsAPI:
         return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
                                                           metric_name=metric_name)
 
+    def generate_mysql_cluster_alarms(self, cluster, routing_tags,
+                                         metric_name=None):
+        """
+        Generate alerts per resource: RDS Mysql Cluster
+
+        :param metric_name:
+        :param metric_data_end_time:
+        :param metric_data_start_time:
+        :param cluster_id:
+        :return:
+        """
+
+        alerts_builder = MysqlAlertBuilder(cluster=cluster)
+        return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
+                                                          metric_name=metric_name)
+
+        
     def generate_alb_alarms(self, alb_name):
         """
         Generate alerts per resource: Elastic load balancer
@@ -686,12 +704,70 @@ class AlertsAPI:
 
     def provision_rds_postgres_monitoring(self, cluster_name, routing_tags):
         """
-        Provision Lambda monitoring.
+        Provision rds postgres monitoring.
 
         """
 
         cluster = self.db_api.get_cluster(cluster_name=cluster_name)
         all_alarms, remove_alarms = self.generate_postgres_cluster_alarms(cluster, routing_tags)
+        logger.info(f"todo: Remove alarms: {remove_alarms}")
+
+        required_metric_names = ["ACUUtilization",
+        "ActiveTransactions",
+        "ConnectionAttempts",
+        "CommitLatency",
+        "CommitThroughput",
+        "DatabaseConnections",
+        "CPUUtilization",
+        "InsertLatency",
+        "InsertThroughput",
+        "SelectLatency",
+        "SelectThroughput",
+        "NetworkReceiveThroughput",
+        "NetworkTransmitThroughput",
+        "NetworkThroughput",
+        "StorageNetworkReceiveThroughput",
+        "StorageNetworkTransmitThroughput",
+        "StorageNetworkThroughput",
+        "Queries",
+        "FreeableMemory",
+        "SwapUsage",
+        "TempStorageIOPS",
+        "UpdateLatency",
+        "WriteLatency",
+        "ReadLatency",
+        "UpdateThroughput",
+        "WriteThroughput",
+        "WriteIOPS",
+        "TotalIOPS"]
+
+        add_alarms = [alarm for alarm in all_alarms if alarm.metric_name in required_metric_names]
+        for add_alarm in add_alarms:
+            alarm_description = {"routing_tags": routing_tags,
+                                 "cluster_name": cluster_name}
+
+            add_alarm.desription = json.dumps(alarm_description)
+            self.provision_cloudwatch_alarm_object(add_alarm)
+
+        logger.info(f"Added {len(add_alarms)} alarms")
+        # trigger only first and last alarms
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[0], "Explicitly changed state to ALARM")
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[-1], "Explicitly changed state to ALARM")
+
+        added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
+        if len(added_metric_names) != len(required_metric_names):
+            raise ValueError("Not all required metrics were added")
+        return True
+
+    def provision_rds_postgres_monitoring(self, cluster_name, routing_tags):
+        """
+        Provision rds mysql monitoring.
+
+        """
+
+        cluster = self.db_api.get_cluster(cluster_name=cluster_name)
+        breakpoint()
+        all_alarms, remove_alarms = self.generate_mysql_cluster_alarms(cluster, routing_tags)
         logger.info(f"todo: Remove alarms: {remove_alarms}")
 
         required_metric_names = ["ACUUtilization",
