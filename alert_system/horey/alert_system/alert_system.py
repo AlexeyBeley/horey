@@ -1084,7 +1084,7 @@ class AlertSystem:
             if metric_names:
                 metrics_fetched_from_aws_filtered_by_request_dimensions = [metric_raw for metric_raw in
                                                                            metrics_fetched_from_aws_filtered_by_request_dimensions \
-                                                                           if metric_raw["MetricName"] in metric_name]
+                                                                           if metric_raw["MetricName"] in metric_names]
 
             all_metrics += metrics_fetched_from_aws_filtered_by_request_dimensions
         breakpoint()
