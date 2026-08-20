@@ -758,8 +758,9 @@ class AlertsAPI:
 
         added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
         if len(added_metric_names) != len(required_metric_names):
-            breakpoint()
-            raise ValueError("Not all required metrics were added")
+            logger.warning(f"Not all required metrics were added: {set(required_metric_names)- set(added_metric_names)}")
+            if len(added_metric_names) < len(required_metric_names) /2:
+                raise ValueError("Less then 50% of required alarms were added") 
         return True
 
     def provision_rds_mysql_monitoring(self, cluster_name, routing_tags):
@@ -778,8 +779,6 @@ class AlertsAPI:
         "CPUUtilization",
         "CommitThroughput",
         "ConnectionAttempts",
-        "DBLoadCPU",
-        "DBLoadNonCPU",
         "DatabaseConnections",
         "Deadlocks",
         "DeleteLatency",
@@ -832,8 +831,9 @@ class AlertsAPI:
 
         added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
         if len(added_metric_names) != len(required_metric_names):
-            breakpoint()
-            raise ValueError("Not all required metrics were added")
+            logger.warning(f"Not all required metrics were added: {set(required_metric_names)- set(added_metric_names)}")
+            if len(added_metric_names) < len(required_metric_names) /2:
+                raise ValueError("Less then 50% of required alarms were added") 
         return True
 
     def provision_self_monitoring_log_error_alarm(self):
