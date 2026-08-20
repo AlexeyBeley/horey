@@ -759,7 +759,7 @@ class AlertsAPI:
             raise ValueError("Not all required metrics were added")
         return True
 
-    def provision_rds_postgres_monitoring(self, cluster_name, routing_tags):
+    def provision_rds_mysql_monitoring(self, cluster_name, routing_tags):
         """
         Provision rds mysql monitoring.
 
