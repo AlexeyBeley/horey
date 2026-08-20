@@ -17,8 +17,9 @@ class MysqlAlertBuilder:
     """
 
     # pylint: disable = too-many-arguments
-    def __init__(self, cluster=None):
+    def __init__(self, aws_api, cluster=None):
         self.cluster = cluster
+        self.aws_api = aws_api
         self.camel_case_to_snake_case = {
                                          }
 
@@ -540,9 +541,6 @@ class MysqlAlertBuilder:
         if not prefix:
             raise NotImplementedError(f"Can not generate unique slug for metric: {metric_raw}")
 
-        try:
-            snake_case = self.camel_case_to_snake_case[metric_raw["MetricName"]]
-        except KeyError:
-            snake_case = CommonUtils.camel_case_to_snake_case(metric_raw["MetricName"])
+        snake_case = CommonUtils.camel_case_to_snake_case(metric_raw["MetricName"])
 
         return prefix + snake_case 

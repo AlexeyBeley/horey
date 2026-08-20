@@ -1079,7 +1079,7 @@ class AlertSystem:
                                                                        {dim["Name"]: dim["Value"] for dim in
                                                                         result["Dimensions"]} == filter_dimensions]
             if not metrics_fetched_from_aws_filtered_by_request_dimensions:
-                raise RuntimeError(f"Was not able to find metrics: {filters_req}")
+                raise RuntimeError(f"Was not able to find metrics with dimetions: {filters_req}")
 
             if metric_name:
                 metrics_fetched_from_aws_filtered_by_request_dimensions = [metric_raw for metric_raw in

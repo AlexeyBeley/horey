@@ -256,7 +256,7 @@ class AlertsAPI:
         :return:
         """
 
-        alerts_builder = MysqlAlertBuilder(cluster=cluster)
+        alerts_builder = MysqlAlertBuilder(self.environment_api.aws_api, cluster=cluster)
         return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
                                                           metric_name=metric_name)
 
@@ -756,6 +756,7 @@ class AlertsAPI:
 
         added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
         if len(added_metric_names) != len(required_metric_names):
+            breakpoint()
             raise ValueError("Not all required metrics were added")
         return True
 
@@ -814,6 +815,7 @@ class AlertsAPI:
 
         added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
         if len(added_metric_names) != len(required_metric_names):
+            breakpoint()
             raise ValueError("Not all required metrics were added")
         return True
 
