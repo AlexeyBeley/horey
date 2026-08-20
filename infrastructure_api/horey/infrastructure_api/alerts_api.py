@@ -229,11 +229,11 @@ class AlertsAPI:
         return self.aws_lambda_api.update_docker_lambda()
 
     def generate_postgres_cluster_alarms(self, cluster, routing_tags,
-                                         metric_name=None):
+                                         metric_names=None):
         """
         Generate alerts per resource: RDS Postgres Cluster
 
-        :param metric_name:
+        :param metric_names:
         :param metric_data_end_time:
         :param metric_data_start_time:
         :param cluster_id:
@@ -242,14 +242,14 @@ class AlertsAPI:
 
         alerts_builder = PostgresAlertBuilder(cluster=cluster)
         return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
-                                                          metric_name=metric_name)
+                                                          metric_names=metric_names)
 
     def generate_mysql_cluster_alarms(self, cluster, routing_tags,
-                                         metric_name=None):
+                                        metric_names=None):
         """
         Generate alerts per resource: RDS Mysql Cluster
 
-        :param metric_name:
+        :param metric_nams:
         :param metric_data_end_time:
         :param metric_data_start_time:
         :param cluster_id:
@@ -258,7 +258,7 @@ class AlertsAPI:
 
         alerts_builder = MysqlAlertBuilder(self.environment_api.aws_api, cluster=cluster)
         return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
-                                                          metric_name=metric_name)
+                                                          metric_names=metric_names)
 
         
     def generate_alb_alarms(self, alb_name):
@@ -708,10 +708,6 @@ class AlertsAPI:
 
         """
 
-        cluster = self.db_api.get_cluster(cluster_name=cluster_name)
-        all_alarms, remove_alarms = self.generate_postgres_cluster_alarms(cluster, routing_tags)
-        logger.info(f"todo: Remove alarms: {remove_alarms}")
-
         required_metric_names = ["ACUUtilization",
         "ActiveTransactions",
         "ConnectionAttempts",
@@ -740,6 +736,10 @@ class AlertsAPI:
         "WriteThroughput",
         "WriteIOPS",
         "TotalIOPS"]
+        cluster = self.db_api.get_cluster(cluster_name=cluster_name)
+        all_alarms, remove_alarms = self.generate_postgres_cluster_alarms(cluster, routing_tags, metric_names=required_metric_names)
+        logger.info(f"todo: Remove alarms: {remove_alarms}")
+
 
         add_alarms = [alarm for alarm in all_alarms if alarm.metric_name in required_metric_names]
         for add_alarm in add_alarms:
@@ -767,9 +767,6 @@ class AlertsAPI:
         """
 
         cluster = self.db_api.get_cluster(cluster_name=cluster_name)
-        breakpoint()
-        all_alarms, remove_alarms = self.generate_mysql_cluster_alarms(cluster, routing_tags)
-        logger.info(f"todo: Remove alarms: {remove_alarms}")
 
         required_metric_names = ["ACUUtilization",
         "ActiveTransactions",
@@ -800,7 +797,10 @@ class AlertsAPI:
         "WriteIOPS",
         "TotalIOPS"]
 
-        add_alarms = [alarm for alarm in all_alarms if alarm.metric_name in required_metric_names]
+        add_alarms, remove_alarms = self.generate_mysql_cluster_alarms(cluster, routing_tags, metric_names=required_metric_names)
+        logger.info(f"todo: Remove alarms: {remove_alarms}")
+        breakpoint()
+
         for add_alarm in add_alarms:
             alarm_description = {"routing_tags": routing_tags,
                                  "cluster_name": cluster_name}

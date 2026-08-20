@@ -1051,11 +1051,11 @@ class AlertSystem:
                                  routing_tags,
                                  metric_data_start_time=None,
                                  metric_data_end_time=None,
-                                 metric_name=None):
+                                 metric_names=None):
         """
         Generate alarms based on 2 weeks data
 
-        :param metric_name:
+        :param metric_names:
         :param metric_data_end_time:
         :param metric_data_start_time:
         :param resource_alarms_builder:
@@ -1081,13 +1081,13 @@ class AlertSystem:
             if not metrics_fetched_from_aws_filtered_by_request_dimensions:
                 raise RuntimeError(f"Was not able to find metrics with dimetions: {filters_req}")
 
-            if metric_name:
+            if metric_names:
                 metrics_fetched_from_aws_filtered_by_request_dimensions = [metric_raw for metric_raw in
                                                                            metrics_fetched_from_aws_filtered_by_request_dimensions \
-                                                                           if metric_raw["MetricName"] == metric_name]
+                                                                           if metric_raw["MetricName"] in metric_name]
 
             all_metrics += metrics_fetched_from_aws_filtered_by_request_dimensions
-
+        breakpoint()
         return self.generate_alarms_from_metrics(resource_alarms_builder, all_metrics, routing_tags,
                                                  metric_data_start_time=metric_data_start_time,
                                                  metric_data_end_time=metric_data_end_time)
