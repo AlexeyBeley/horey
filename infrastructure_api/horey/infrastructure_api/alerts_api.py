@@ -815,7 +815,6 @@ class AlertsAPI:
 
         add_alarms, remove_alarms = self.generate_mysql_cluster_alarms(cluster, routing_tags, metric_names=required_metric_names)
         logger.info(f"todo: Remove alarms: {remove_alarms}")
-        breakpoint()
 
         for add_alarm in add_alarms:
             alarm_description = {"routing_tags": routing_tags,
