@@ -254,7 +254,18 @@ def test_selenium_open_symbol_page(questrade_api):
 @pytest.mark.unit
 def test_selenium_sell_symbol(questrade_api):
     questrade_api.selenium_login()
-    assert questrade_api.selenium_sell_symbol("MGIH", 1.63)
+    try:
+        assert questrade_api.selenium_sell_symbol("MGIH", 1.63)
+    finally:
+        questrade_api.selenium_api.disconnect()
+
+@pytest.mark.unit
+def test_run_selenium_sell_routine(questrade_api):
+    questrade_api.selenium_login()
+    try:
+        assert questrade_api.run_selenium_sell_routine()
+    finally:
+        questrade_api.selenium_api.disconnect()
 
 @pytest.mark.wip
 def test_get_positions_without_sell_orders(questrade_api):
@@ -263,6 +274,7 @@ def test_get_positions_without_sell_orders(questrade_api):
 
 @pytest.mark.wip
 def test_update_cheap_candles_with_today_data(questrade_api):
+
     assert questrade_api.update_cheap_candles_with_today_data()
 
 @pytest.mark.wip

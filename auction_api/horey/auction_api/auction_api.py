@@ -445,13 +445,22 @@ class AuctionAPI:
             report.auction_event = by_date[auction_event_date]
             report.provider = providers_by_id[report.auction_event.provider_id]
             reports.append(report)
+            try:
+                assert report.timestamp_text
+            except Exception:
+                breakpoint()
 
         known_provider_ids = {report.provider.id for report in reports}
         for provider in self.providers:
             if provider.id not in known_provider_ids:
+                # Adding report for provider without events
                 report = AuctionEventReport()
                 report.provider = provider
                 reports.append(report)
+                try:
+                    assert report.timestamp_text
+                except Exception:
+                    breakpoint()
 
         return reports
 

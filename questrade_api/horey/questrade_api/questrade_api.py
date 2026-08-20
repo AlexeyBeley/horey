@@ -15,7 +15,7 @@ from decimal import Decimal, ROUND_HALF_UP
 import requests
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-
+from selenium.common.exceptions import  StaleElementReferenceException, JavascriptException
 from selenium.webdriver.common.action_chains import ActionChains
 
 
@@ -42,6 +42,7 @@ class QuestradeAPI:
         self._db_connection = None
         self._db_cursor = None
         self._selenium_api = None
+        self.skip_symbols = []
 
     @property
     def selenium_api(self):
@@ -1020,15 +1021,10 @@ class QuestradeAPI:
         #executed_sell_orders = [order for order in closed_orders if order.side == "Sell" and order.state == "Executed"]
         #ret = self.db_get_symbol(63320693)
 
-
-        # todo: ignore
-        skip_symbols = []
-
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
         for position in positions:
-            if position.symbol in skip_symbols:
+            if position.symbol in self.skip_symbols:
                 continue
-
 
             if position.symbol_id not in order_by_symbol_id:
                 ret.append(position)
@@ -1172,14 +1168,44 @@ class QuestradeAPI:
         """
         
         self.selenium_open_symbol_page(symbol)
-        breakpoint()
-        btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
-        if not btn:
-            btn = self.selenium_api.get_shadowed_element_by_text("button", "Sell")
-        btn.click()
-        self.fill_limit_price_input(price)
+        for i in range(5*10):
+            time.sleep(0.1)
+            btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
+            #if not btn:
+            #    btn = self.selenium_api.get_shadowed_element_by_text("button", "Sell")
+            if not btn:
+                continue
+            
+            try:        
+                btn.click()
+            except StaleElementReferenceException:
+                continue
+                    
+            try:
+                self.selenium_fill_limit_price_input(price)
+            except TimeoutError as inst_err:
+                if "Limit Price" not in repr(inst_err):
+                    raise
+                continue
 
-    def fill_limit_price_input(self, price:float):
+            break
+            
+        else:
+            raise TimeoutError(f"Reached timeout waiting for 'Sell' button to appear")
+
+        self.select_gtem()
+        
+        btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="order-entry-next-button"]')
+        if not btn:
+            btn = self.selenium_api.get_shadowed_element_by_text("button", "Review Order")
+        btn.click()
+        breakpoint()
+        #btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="order-entry-sm-screen-sell-button"]')
+        #if not btn:
+        btn = self.selenium_api.get_shadowed_element_by_text("button", "Send order")
+        btn.click()
+
+    def selenium_fill_limit_price_input(self, price:float):
         """
         Find the input and fill the price
         """
@@ -1188,14 +1214,20 @@ class QuestradeAPI:
         x_coord = 600  # pixels right from the element's top-left
         y_coord = 300   # pixels down from the element's top-left
 
-        breakpoint()
         ActionChains(self.selenium_api.driver)\
         .move_to_element_with_offset(body, 0, 0)\
         .move_by_offset(x_coord, y_coord)\
         .click()\
         .perform()
 
-        div_input = self.get_div_input_by_label("Limit Price")
+        for i in range(50):
+            div_input = self.get_div_input_by_label("Limit Price")
+            if div_input:
+                break
+            time.sleep(0.1)
+        else:
+            raise TimeoutError("Reached timeout waiting for 'Limit Price' input element")
+
         select_all_key = Keys.COMMAND if platform.system() == "Darwin" else Keys.CONTROL
 
         actions = ActionChains(self.selenium_api.driver)
@@ -1205,7 +1237,14 @@ class QuestradeAPI:
         actions.perform()
     
         # Force hard clearance of value via JS to override pre-filled values/masks
-        self.selenium_api.driver.execute_script("arguments[0].value = '';", div_input)
+        for i in range(50):
+            try:
+                self.selenium_api.driver.execute_script("arguments[0].value = '';", div_input)
+                break
+            except JavascriptException:
+                time.sleep(0.1)
+        else:
+            logger.warning("Was not able to hard delete contents of input")
 
         formatted_price = f"{price:.4f}".rstrip('0').rstrip('.') if isinstance(price, float) else str(price) 
         # 4. Input the new float price
@@ -1217,18 +1256,6 @@ class QuestradeAPI:
             arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
             arguments[0].dispatchEvent(new Event('blur', { bubbles: true }));
         """, div_input)
-
-        self.select_gtem()
-
-        btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="order-entry-next-button"]')
-        if not btn:
-            btn = self.selenium_api.get_shadowed_element_by_text("button", "Review Order")
-        btn.click()
-        breakpoint()
-        #btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="order-entry-sm-screen-sell-button"]')
-        #if not btn:
-        btn = self.selenium_api.get_shadowed_element_by_text("button", "Send order")
-        btn.click()
     
     def select_gtem(self):
         self.selenium_api.driver.execute_script("""
@@ -1451,3 +1478,6 @@ return findInShadow();
             if position.average_entry_price*0.6 > position.current_price:
                 print(position.symbol, position.average_entry_price, position.current_price)
         return True
+
+    def run_selenium_sell_routine():
+        self.purchase_plan
