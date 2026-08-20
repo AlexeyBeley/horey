@@ -768,13 +768,24 @@ class AlertsAPI:
 
         cluster = self.db_api.get_cluster(cluster_name=cluster_name)
 
-        required_metric_names = ["ACUUtilization",
+        required_metric_names = [
+        "ACUUtilization",
         "ActiveTransactions",
-        "ConnectionAttempts",
+        "AbortedClients",
         "CommitLatency",
-        "CommitThroughput",
-        "DatabaseConnections",
         "CPUUtilization",
+        "CommitThroughput",
+        "ConnectionAttempts",
+        "DBLoadCPU",
+        "DBLoadNonCPU",
+        "DatabaseConnections",
+        "Deadlocks",
+        "DeleteLatency",
+        "DeleteThroughput",
+        "DiskQueueDepth",
+        "DMLLatency",
+        "DMLThroughput",
+
         "InsertLatency",
         "InsertThroughput",
         "SelectLatency",
