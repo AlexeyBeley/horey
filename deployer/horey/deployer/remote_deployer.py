@@ -513,7 +513,6 @@ class RemoteDeployer:
             stdin = stdin or channel.makefile("wb")
 
         logger.info(f"[{remote_address} REMOTE->] ({timeout=}, {retries=}) {cmd}")
-        end_time = datetime.datetime.now() + datetime.timedelta(seconds=timeout)
 
         cmd = cmd.strip('\n')
         finish = "eNdofstdOUTbuffer. exit status"
@@ -524,6 +523,7 @@ class RemoteDeployer:
             try:
                 stdin.write(f"{cmd} ; {echo_cmd}\n")
                 stdin.flush()
+                end_time = datetime.datetime.now() + datetime.timedelta(seconds=timeout)
                 shout, exit_code = RemoteDeployer.fetch_remote_shell_output(channel, cmd, echo_cmd, finish, end_time, remote_address)
                 return stdin, shout, [], exit_code
             except TimeoutError:
@@ -558,7 +558,9 @@ class RemoteDeployer:
 
         shell_output = []
         data_chunk_aggregator = bytes()
-        while datetime.datetime.now() < end_time:
+        now_time = datetime.datetime.now()
+        logger.info(f"Waiting for response from server {remote_address}, {now_time=}, {end_time=}")
+        while now_time < end_time:
             if not channel.recv_ready():
                 time.sleep(0.01)
                 continue
