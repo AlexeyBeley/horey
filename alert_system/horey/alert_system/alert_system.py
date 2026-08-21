@@ -273,7 +273,7 @@ class AlertSystem:
         """
 
         alarm = CloudWatchAlarm({})
-        alarm.name = f"has2-{self.configuration.lambda_name}-eventbridge-successful-invocations"
+        alarm.name = f"has3-{self.configuration.lambda_name}-eventbridge-successful-invocations"
         alarm.actions_enabled = True
         alarm.insufficient_data_actions = []
         alarm.metric_name = "Invocations"
@@ -709,7 +709,7 @@ class AlertSystem:
 
         alarm = CloudWatchAlarm({})
         alarm.region = self.region
-        alarm.name = f"has2-alarm-{log_group_name}-{metric_uid}"
+        alarm.name = f"has3-alarm-{log_group_name}-{metric_uid}"
         alarm.actions_enabled = True
         alarm.alarm_description = json.dumps(alarm_description)
         alarm.metric_name = metric_filter.name
@@ -739,7 +739,7 @@ class AlertSystem:
 
         metric_filter = CloudWatchLogGroupMetricFilter({})
         metric_filter.log_group_name = log_group_name
-        metric_filter.name = f"has2-metric-filter-{log_group_name}-{metric_uid}"
+        metric_filter.name = f"has3-metric-filter-{log_group_name}-{metric_uid}"
         metric_filter.filter_pattern = filter_text
         metric_filter.metric_transformations = [
             {
@@ -767,7 +767,7 @@ class AlertSystem:
         alarm = CloudWatchAlarm({})
         alarm.region = self.region
         alarm.name = (
-            f"has2_alarm-{sqs_queue_name}-ApproximateNumberOfMessagesVisible"
+            f"has3_alarm-{sqs_queue_name}-ApproximateNumberOfMessagesVisible"
         )
         alarm.actions_enabled = True
         if "queue_name" not in message_data:
