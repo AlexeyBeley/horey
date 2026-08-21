@@ -460,7 +460,7 @@ class AuctionAPI:
                 try:
                     assert report.timestamp_text
                 except Exception:
-                    breakpoint()
+                    report.timestamp_text = "01/01/1987 00:00"
 
         return reports
 
@@ -856,6 +856,7 @@ class AuctionEventReport:
     def __init__(self):
         self.provider = None
         self.auction_event = None
+        self._timestamp_text = None
 
     @property
     def load_data_button_text(self):
@@ -866,9 +867,16 @@ class AuctionEventReport:
 
     @property
     def timestamp_text(self):
+        if self._timestamp_text:
+            return self._timestamp_text
+
         if self.auction_event.end_time:
             return self.auction_event.end_time.strftime("%d/%m/%Y %H:%M")
         return self.auction_event.start_time.strftime("%d/%m/%Y %H:%M")
+    
+    @timestamp_text.setter
+    def timestamp_text(self, value):
+        self._timestamp_text = value
 
     @property
     def provider_name(self):
