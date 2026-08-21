@@ -121,7 +121,6 @@ class AWSLambdaAPI:
             try:
                 lambda_role_name = self.configuration.lambda_role_name
             except self.aws_iam_api.configuration.UndefinedValueError:
-                breakpoint()
                 clean_lambda_name = self.configuration.lambda_name.replace(self.environment_api.configuration.environment_level, "")
 
                 for to_clean in ["-_", "_-", "__", "--"]:
@@ -130,8 +129,8 @@ class AWSLambdaAPI:
                 clean_lambda_name = clean_lambda_name.strip("-").strip("_")
 
                 if self.environment_api.configuration.environment_level == self.environment_api.configuration.EnvironmentLevel.PRODUCTION.value:
-                    lambda_role_name = f"role_{self.environment_api.configuration.environment_level}-\
-                    {self.environment_api.configuration.region}-{clean_lambda_name}"
+                    lambda_role_name = f"role_{self.environment_api.configuration.environment_level}-" + \
+                    f"{self.environment_api.configuration.region}-{clean_lambda_name}"
                 else:
                     lambda_role_name = f"role_{self.environment_api.configuration.environment_level}-{clean_lambda_name}"
             breakpoint()
