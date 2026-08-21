@@ -1479,5 +1479,51 @@ return findInShadow();
                 print(position.symbol, position.average_entry_price, position.current_price)
         return True
 
+    @connected
     def run_selenium_sell_routine():
-        self.purchase_plan
+        """
+        Perform automatic acquiring
+        """
+        ret = []
+        lines = []
+
+        positions = self.get_positions()
+        orders = self.api_get_orders()
+
+
+        order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
+        for position in positions:
+            if position.symbol in self.skip_symbols:
+                continue
+
+            if position.symbol_id not in order_by_symbol_id:
+                ret.append(position)
+                if position.average_entry_price is None:
+                    lines.append(f">Time to sell! {position.symbol} {position.open_quantity} {position.average_entry_price}")
+                    continue
+                sell_calculated = position.average_entry_price * 1.05
+                sell_calculated = Decimal(str(sell_calculated))
+
+                # Round to 2 decimal places
+                sell_calculated_round = sell_calculated.quantize(Decimal("0.00"), rounding=ROUND_HALF_UP)
+
+                if sell_calculated_round < sell_calculated:
+                    sell_calculated_round += Decimal("0.01")
+
+                symbol = self.db_get_symbol(symbol_symbol =position.symbol)
+                if symbol is not None:
+                    symbol.candles = self.db_get_today_candles(symbol)
+                    if symbol.candles:
+                        today_max = max([candle.high for candle in symbol.candles])
+                    else:
+                        today_max = "no_trades_yet"
+                else:
+                    today_max = "todo"
+
+                lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculated_round}, today_max={today_max} revenue={int(sell_calculated/( Decimal(str(position.average_entry_price))/100))}%")
+        if lines:
+            lines = (["#################################","#################################"] + lines +
+                     ["#################################", "#################################"])
+        for line in lines:
+            logger.info(line)
+        return True
