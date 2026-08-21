@@ -133,7 +133,7 @@ class AWSLambdaAPI:
                     f"{self.environment_api.configuration.region}-{clean_lambda_name}"
                 else:
                     lambda_role_name = f"role_{self.environment_api.configuration.environment_level}-{clean_lambda_name}"
-            breakpoint()
+
             self.aws_iam_api.configuration.role_name = lambda_role_name
 
         try:
