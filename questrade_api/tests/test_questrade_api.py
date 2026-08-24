@@ -259,29 +259,30 @@ def test_selenium_sell_symbol(questrade_api):
     finally:
         questrade_api.selenium_api.disconnect()
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_run_selenium_sell_routine(questrade_api):
-    questrade_api.selenium_login()
     try:
+        # todo:
+        #questrade_api.selenium_login()
         assert questrade_api.run_selenium_sell_routine()
     finally:
         questrade_api.selenium_api.disconnect()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_get_positions_without_sell_orders(questrade_api):
     breakpoint()
     assert questrade_api.get_positions_without_sell_orders()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_update_cheap_candles_with_today_data(questrade_api):
 
     assert questrade_api.update_cheap_candles_with_today_data()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_make_purchase_plan(questrade_api):
     assert questrade_api.make_purchase_plan()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_get_positions_without_sell_orders_loop(questrade_api):
     for _ in range(60*2):
         assert questrade_api.get_positions_without_sell_orders()

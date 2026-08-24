@@ -103,7 +103,7 @@ class QuestradeAPI:
         except Exception as inst:
             if "401" not in repr(inst):
                 raise
-            self.connect(reconnect=True)
+            self.connect_api(reconnect=True)
             return self._get(request_path, params=params)
 
     def post(self, request_path, data):
@@ -156,7 +156,7 @@ class QuestradeAPI:
         response = requests.put(request, data=json.dumps(data), headers=headers)
         response.raise_for_status()
 
-    def connect(self, reconnect=False):
+    def connect_api(self, reconnect=False):
         """
         Connect to the api
 
@@ -176,7 +176,9 @@ class QuestradeAPI:
                 "refresh_token": self.configuration.token
             }
 
-            response = requests.get(base_url, params=params).json()
+            response = requests.get(base_url, params=params)
+            response.raise_for_status()
+            response = response.json()
 
         response["expires_at"] = (datetime.now(tz=timezone.utc) + timedelta(seconds=response["expires_in"])).timestamp()
 
@@ -784,7 +786,7 @@ class QuestradeAPI:
             today -= timedelta(days=1)
         
         # todo:
-        #today -= timedelta(days=2)
+        today -= timedelta(days=2)
         
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
@@ -826,14 +828,14 @@ class QuestradeAPI:
         error_counter = 0
         cheapest_stocks = self.sort_and_print_cheapest_by_price()
         symbol_ids = [symbol[1] for symbol in cheapest_stocks if (symbol_name is None) or (symbol[0] == symbol_name)]
-        self.connect()
+        self.connect_api()
         for i, symbol_id in enumerate(symbol_ids):
             symbol = self.db_get_symbol(symbol_id)
             try:
                 logger.info(f"Updating Symbol {i}/{len(symbol_ids)} {symbol.symbol}")
                 self.update_symbol_today_candles(symbol)
             except Exception:
-                self.connect(reconnect =True)
+                self.connect_api(reconnect =True)
                 error_counter += 1
         if error_counter > len(symbol_ids)/2:
             raise ValueError(f"Too many errors {error_counter} out of {len(symbol_ids)}")
@@ -955,7 +957,7 @@ class QuestradeAPI:
     @staticmethod
     def connected(func):
         def wrapper(self, *args, **kwargs):
-            self.connect()
+            self.connect_api()
             return func(self, *args, **kwargs)
         return wrapper
 
@@ -1480,7 +1482,7 @@ return findInShadow();
         return True
 
     @connected
-    def run_selenium_sell_routine():
+    def run_selenium_sell_routine(self):
         """
         Perform automatic acquiring
         """
@@ -1488,18 +1490,20 @@ return findInShadow();
         lines = []
 
         positions = self.get_positions()
-        orders = self.api_get_orders()
+        existing_orders = self.api_get_orders()
+        orders_to_place = []
 
-
-        order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
+        sell_order_by_symbol_id = {order.symbol_id: order for order in existing_orders if order.side == "Sell"}
         for position in positions:
             if position.symbol in self.skip_symbols:
                 continue
 
-            if position.symbol_id not in order_by_symbol_id:
+            if position.symbol_id not in sell_order_by_symbol_id:
                 ret.append(position)
+                order = Order({})
+                orders_to_place
                 if position.average_entry_price is None:
-                    lines.append(f">Time to sell! {position.symbol} {position.open_quantity} {position.average_entry_price}")
+                    lines.append(f">Time to sell! {position.symbol} {position.open_quantity} {position.average_entry_price=}")
                     continue
                 sell_calculated = position.average_entry_price * 1.05
                 sell_calculated = Decimal(str(sell_calculated))

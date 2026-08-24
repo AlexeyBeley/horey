@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from horey.common_utils.common_utils import CommonUtils
 
 class Base:
     def __init__(self, dict_src):
@@ -171,7 +172,38 @@ class Order(Base):
 
         :param dict_src:
         """
+        
         super().__init__(dict_src)
+        self._order_id = None 
+        self._symbol_id = None
+        self._total_quantity = None
+        self._open_quantity = None
+        self._filled_quantity = None
+        self._canceled_quantity = None
+        self._side = None
+        self._order_type = None
+        self._limit_price = None
+        self._state = None
+        self._creation_time = None
+        self._update_time = None
+        self._notes = None
+        self._exchange_order_id = None
+        self._is_limit_offset_in_dollar = None
+        self._legs = None
+        self._strategy_type = None
+        self._order_class = None
+        self._is_cross_zero = None
+        self._commission_charged = None
+        self._placement_commission = None 
+        self._stop_price = None 
+        self._avg_exec_price = None 
+
+        breakpoint()
+        if not CommonUtils.init_from_api_dict(self, dict_src):
+            breakpoint()
+            logger.info("todo:")
+
+        breakpoint()
         self.order_id = dict_src["id"]
         self.symbol_id = dict_src["symbolId"]
         self.total_quantity = dict_src["totalQuantity"]
