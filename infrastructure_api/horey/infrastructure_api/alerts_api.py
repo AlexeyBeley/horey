@@ -1016,6 +1016,9 @@ class AlertsAPI:
 
         """
 
-        request_dict = {self.alert_system.configuration.ALERT_SYSTEM_RAW_MESSAGE_KEY: True}
+        payload_dict = {self.alert_system.configuration.ALERT_SYSTEM_RAW_MESSAGE_KEY: True}
         breakpoint()
+        request_dict= {"FunctionName": self.configuration.lambda_name,
+        "InvocationType": "RequestResponse",
+        "Payload": payload_dict}
         return self.environment_api.aws_api.lambda_client.invoke_raw(self.environment_api.region, request_dict)
