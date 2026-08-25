@@ -43,6 +43,7 @@ class QuestradeAPI:
         self._db_cursor = None
         self._selenium_api = None
         self.skip_symbols = []
+        self.clicked_on_ignore_night_sales = False
 
     @property
     def selenium_api(self):
@@ -1170,6 +1171,7 @@ class QuestradeAPI:
         """
         
         self.selenium_open_symbol_page(symbol)
+        breakpoint()
         for i in range(5*10):
             time.sleep(0.1)
             btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
@@ -1182,9 +1184,30 @@ class QuestradeAPI:
                 btn.click()
             except StaleElementReferenceException:
                 continue
-                    
+            
+
+            div_input = self.get_limit_price_input_div()
+            if not div_input:
+                if self.clicked_on_ignore_night_sales:
+                    raise RuntimeError("Can not find div limit price input but the ignore night popup was pressed.")
+                breakpoint()
+                body = self.selenium_api.driver.find_element(By.TAG_NAME, "body")
+                x_coord = 600  # pixels right from the element's top-left
+                y_coord = 300   # pixels down from the element's top-left
+
+                ActionChains(self.selenium_api.driver)\
+                .move_to_element_with_offset(body, 0, 0)\
+                .move_by_offset(x_coord, y_coord)\
+                .click()\
+                .perform()
+
+                self.clicked_on_ignore_night_sales = True
+                div_input = self.get_limit_price_input_div()
+                if not div_input:
+                    raise RuntimeError("Can not find div input")
+            
             try:
-                self.selenium_fill_limit_price_input(price)
+                self.selenium_fill_limit_price_input(div_input, price)
             except TimeoutError as inst_err:
                 if "Limit Price" not in repr(inst_err):
                     raise
@@ -1206,29 +1229,24 @@ class QuestradeAPI:
         #if not btn:
         btn = self.selenium_api.get_shadowed_element_by_text("button", "Send order")
         btn.click()
-
-    def selenium_fill_limit_price_input(self, price:float):
+    
+    def get_limit_price_input_div(self):
         """
-        Find the input and fill the price
+        Get div input
         """
-
-        body = self.selenium_api.driver.find_element(By.TAG_NAME, "body")
-        x_coord = 600  # pixels right from the element's top-left
-        y_coord = 300   # pixels down from the element's top-left
-
-        ActionChains(self.selenium_api.driver)\
-        .move_to_element_with_offset(body, 0, 0)\
-        .move_by_offset(x_coord, y_coord)\
-        .click()\
-        .perform()
 
         for i in range(50):
             div_input = self.get_div_input_by_label("Limit Price")
             if div_input:
-                break
+                return div_input
             time.sleep(0.1)
-        else:
-            raise TimeoutError("Reached timeout waiting for 'Limit Price' input element")
+        return None
+
+
+    def selenium_fill_limit_price_input(self, div_input, price:float):
+        """
+        Find the input and fill the price
+        """
 
         select_all_key = Keys.COMMAND if platform.system() == "Darwin" else Keys.CONTROL
 
@@ -1500,8 +1518,7 @@ return findInShadow();
 
             if position.symbol_id not in sell_order_by_symbol_id:
                 ret.append(position)
-                order = Order({})
-                orders_to_place
+
                 if position.average_entry_price is None:
                     lines.append(f">Time to sell! {position.symbol} {position.open_quantity} {position.average_entry_price=}")
                     continue
@@ -1523,11 +1540,17 @@ return findInShadow();
                         today_max = "no_trades_yet"
                 else:
                     today_max = "todo"
-
+                
+                order = Order({})
+                order.symbol = position.symbol 
+                order.symbol_id = position.symbol_id
+                order.limit_price = sell_calculated_round 
+                orders_to_place.append(order)
                 lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculated_round}, today_max={today_max} revenue={int(sell_calculated/( Decimal(str(position.average_entry_price))/100))}%")
-        if lines:
-            lines = (["#################################","#################################"] + lines +
-                     ["#################################", "#################################"])
-        for line in lines:
-            logger.info(line)
+
+        for order_to_place in orders_to_place:
+            # https://www.questrade.com/api/documentation/rest-operations/market-calls/markets-quotes-options
+            breakpoint()
+            self.selenium_sell_symbol(order_to_place.symbol, order_to_place.limit_price)
+
         return True

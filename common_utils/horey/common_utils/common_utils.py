@@ -140,7 +140,7 @@ class CommonUtils:
         for bound_method in dir(obj_dst):
             if f"_{bound_method}" in known_attributes:
                 known_attributes.append(bound_method)
-
+        
         unknown_attributes = []
         for key_src, value in dict_src.items():
             attribute_new_name = CommonUtils.camel_case_to_snake_case(key_src)
@@ -151,8 +151,18 @@ class CommonUtils:
                 setattr(obj_dst, attribute_new_name, custom_types[key_src](value))
             else:
                 setattr(obj_dst, attribute_new_name, value)
-
         if unknown_attributes:
+            for attr in unknown_attributes:
+                
+                print(f"\
+    @property\n\
+    def {attr}(self):\n\
+        return self._{attr}\n\
+\n\
+    @{attr}.setter\n\
+    def {attr}(self, value):\n\
+        self._{attr} = value")
+
             composed_errors = [f"self.{CommonUtils.camel_case_to_snake_case(key_src)} = None" for key_src in unknown_attributes]
             print("\n".join(composed_errors))
             if validate_attributes:
@@ -379,3 +389,4 @@ class CommonUtils:
             yield
         finally:
             os.chdir(_old_cwd)
+    

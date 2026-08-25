@@ -262,8 +262,7 @@ def test_selenium_sell_symbol(questrade_api):
 @pytest.mark.wip
 def test_run_selenium_sell_routine(questrade_api):
     try:
-        # todo:
-        #questrade_api.selenium_login()
+        questrade_api.selenium_login()
         assert questrade_api.run_selenium_sell_routine()
     finally:
         questrade_api.selenium_api.disconnect()

@@ -197,37 +197,380 @@ class Order(Base):
         self._placement_commission = None 
         self._stop_price = None 
         self._avg_exec_price = None 
+        self._symbol = None
+        self._is_all_or_none = None
+        self._is_anonymous = None
+        self._iceberg_quantity = None
+        self._min_quantity = None
+        self._last_exec_price = None
+        self._source = None
+        self._time_in_force = None
+        self._gtd_date = None
+        self._rejection_reason = None
+        self._chain_id = None
+        self._primary_route = None
+        self._secondary_route = None
+        self._order_route = None
+        self._venue_holding_order = None
+        self._comission_charged = None
+        self._is_significant_share_holder = None
+        self._is_insider = None
+        self._user_id = None
+        self._trigger_stop_price = None
+        self._order_group_id = None        
 
-        breakpoint()
         if not CommonUtils.init_from_api_dict(self, dict_src):
             breakpoint()
             logger.info("todo:")
 
-        breakpoint()
-        self.order_id = dict_src["id"]
-        self.symbol_id = dict_src["symbolId"]
-        self.total_quantity = dict_src["totalQuantity"]
-        self.open_quantity = dict_src["openQuantity"]
-        self.filled_quantity = dict_src["filledQuantity"]
-        self.canceled_quantity = dict_src["canceledQuantity"]
-        self.side = dict_src["side"]
-        self.order_type = dict_src["orderType"]
-        self.limit_price = dict_src["limitPrice"]
-        self.state = dict_src["state"]
-        self.creation_time = dict_src["creationTime"]
-        self.update_time = dict_src["updateTime"]
-        self.notes = dict_src["notes"]
-        self.exchange_order_id = dict_src["exchangeOrderId"]
-        self.is_limit_offset_in_dollar = dict_src["isLimitOffsetInDollar"]
-        self.legs = dict_src["legs"]
-        self.strategy_type = dict_src["strategyType"]
-        self.order_class = dict_src["orderClass"]
-        self.is_cross_zero = dict_src["isCrossZero"]
-        if "comissionCharged" in dict_src:
-            self.commission_charged = dict_src["comissionCharged"]
-        if "placementCommission" in dict_src:
-            self.placement_commission = dict_src["placementCommission"]
-        if "stopPrice" in dict_src:
-            self.stop_price = dict_src["stopPrice"]
-        if "avgExecPrice" in dict_src:
-            self.avg_exec_price = dict_src["avgExecPrice"]
+    @property
+    def order_id(self):
+        return self._order_id
+
+    @order_id.setter
+    def order_id(self, value):
+        self._order_id = value
+
+    @property
+    def symbol_id(self):
+        return self._symbol_id
+
+    @symbol_id.setter
+    def symbol_id(self, value):
+        self._symbol_id = value
+
+    @property
+    def total_quantity(self):
+        return self._total_quantity
+
+    @total_quantity.setter
+    def total_quantity(self, value):
+        self._total_quantity = value
+
+    @property
+    def open_quantity(self):
+        return self._open_quantity
+
+    @open_quantity.setter
+    def open_quantity(self, value):
+        self._open_quantity = value
+
+    @property
+    def filled_quantity(self):
+        return self._filled_quantity
+
+    @filled_quantity.setter
+    def filled_quantity(self, value):
+        self._filled_quantity = value
+
+    @property
+    def canceled_quantity(self):
+        return self._canceled_quantity
+
+    @canceled_quantity.setter
+    def canceled_quantity(self, value):
+        self._canceled_quantity = value
+
+    @property
+    def side(self):
+        return self._side
+
+    @side.setter
+    def side(self, value):
+        self._side = value
+
+    @property
+    def order_type(self):
+        return self._order_type
+
+    @order_type.setter
+    def order_type(self, value):
+        self._order_type = value
+
+    @property
+    def limit_price(self):
+        return self._limit_price
+
+    @limit_price.setter
+    def limit_price(self, value):
+        self._limit_price = value
+
+    @property
+    def state(self):
+        return self._state
+
+    @state.setter
+    def state(self, value):
+        self._state = value
+
+    @property
+    def creation_time(self):
+        return self._creation_time
+
+    @creation_time.setter
+    def creation_time(self, value):
+        self._creation_time = value
+
+    @property
+    def update_time(self):
+        return self._update_time
+
+    @update_time.setter
+    def update_time(self, value):
+        self._update_time = value
+
+    @property
+    def notes(self):
+        return self._notes
+
+    @notes.setter
+    def notes(self, value):
+        self._notes = value
+
+    @property
+    def exchange_order_id(self):
+        return self._exchange_order_id
+
+    @exchange_order_id.setter
+    def exchange_order_id(self, value):
+        self._exchange_order_id = value
+
+    @property
+    def is_limit_offset_in_dollar(self):
+        return self._is_limit_offset_in_dollar
+
+    @is_limit_offset_in_dollar.setter
+    def is_limit_offset_in_dollar(self, value):
+        self._is_limit_offset_in_dollar = value
+
+    @property
+    def legs(self):
+        return self._legs
+
+    @legs.setter
+    def legs(self, value):
+        self._legs = value
+
+    @property
+    def strategy_type(self):
+        return self._strategy_type
+
+    @strategy_type.setter
+    def strategy_type(self, value):
+        self._strategy_type = value
+
+    @property
+    def order_class(self):
+        return self._order_class
+
+    @order_class.setter
+    def order_class(self, value):
+        self._order_class = value
+
+    @property
+    def is_cross_zero(self):
+        return self._is_cross_zero
+
+    @is_cross_zero.setter
+    def is_cross_zero(self, value):
+        self._is_cross_zero = value
+
+    @property
+    def commission_charged(self):
+        return self._commission_charged
+
+    @commission_charged.setter
+    def commission_charged(self, value):
+        self._commission_charged = value
+
+    @property
+    def placement_commission(self):
+        return self._placement_commission
+
+    @placement_commission.setter
+    def placement_commission(self, value):
+        self._placement_commission = value
+
+    @property
+    def stop_price(self):
+        return self._stop_price
+
+    @stop_price.setter
+    def stop_price(self, value):
+        self._stop_price = value
+
+    @property
+    def avg_exec_price(self):
+        return self._avg_exec_price
+
+    @avg_exec_price.setter
+    def avg_exec_price(self, value):
+        self._avg_exec_price = value
+    
+    @property
+    def symbol(self):
+        return self._symbol
+
+    @symbol.setter
+    def symbol(self, value):
+        self._symbol = value
+
+    @property
+    def is_all_or_none(self):
+        return self._is_all_or_none
+
+    @is_all_or_none.setter
+    def is_all_or_none(self, value):
+        self._is_all_or_none = value
+
+    @property
+    def is_anonymous(self):
+        return self._is_anonymous
+
+    @is_anonymous.setter
+    def is_anonymous(self, value):
+        self._is_anonymous = value
+
+    @property
+    def iceberg_quantity(self):
+        return self._iceberg_quantity
+
+    @iceberg_quantity.setter
+    def iceberg_quantity(self, value):
+        self._iceberg_quantity = value
+
+    @property
+    def min_quantity(self):
+        return self._min_quantity
+
+    @min_quantity.setter
+    def min_quantity(self, value):
+        self._min_quantity = value
+
+    @property
+    def last_exec_price(self):
+        return self._last_exec_price
+
+    @last_exec_price.setter
+    def last_exec_price(self, value):
+        self._last_exec_price = value
+
+    @property
+    def source(self):
+        return self._source
+
+    @source.setter
+    def source(self, value):
+        self._source = value
+
+    @property
+    def time_in_force(self):
+        return self._time_in_force
+
+    @time_in_force.setter
+    def time_in_force(self, value):
+        self._time_in_force = value
+
+    @property
+    def gtd_date(self):
+        return self._gtd_date
+
+    @gtd_date.setter
+    def gtd_date(self, value):
+        self._gtd_date = value
+
+    @property
+    def rejection_reason(self):
+        return self._rejection_reason
+
+    @rejection_reason.setter
+    def rejection_reason(self, value):
+        self._rejection_reason = value
+
+    @property
+    def chain_id(self):
+        return self._chain_id
+
+    @chain_id.setter
+    def chain_id(self, value):
+        self._chain_id = value
+
+    @property
+    def primary_route(self):
+        return self._primary_route
+
+    @primary_route.setter
+    def primary_route(self, value):
+        self._primary_route = value
+
+    @property
+    def secondary_route(self):
+        return self._secondary_route
+
+    @secondary_route.setter
+    def secondary_route(self, value):
+        self._secondary_route = value
+
+    @property
+    def order_route(self):
+        return self._order_route
+
+    @order_route.setter
+    def order_route(self, value):
+        self._order_route = value
+
+    @property
+    def venue_holding_order(self):
+        return self._venue_holding_order
+
+    @venue_holding_order.setter
+    def venue_holding_order(self, value):
+        self._venue_holding_order = value
+
+    @property
+    def comission_charged(self):
+        return self._comission_charged
+
+    @comission_charged.setter
+    def comission_charged(self, value):
+        self._comission_charged = value
+
+    @property
+    def is_significant_share_holder(self):
+        return self._is_significant_share_holder
+
+    @is_significant_share_holder.setter
+    def is_significant_share_holder(self, value):
+        self._is_significant_share_holder = value
+
+    @property
+    def is_insider(self):
+        return self._is_insider
+
+    @is_insider.setter
+    def is_insider(self, value):
+        self._is_insider = value
+
+    @property
+    def user_id(self):
+        return self._user_id
+
+    @user_id.setter
+    def user_id(self, value):
+        self._user_id = value
+
+    @property
+    def trigger_stop_price(self):
+        return self._trigger_stop_price
+
+    @trigger_stop_price.setter
+    def trigger_stop_price(self, value):
+        self._trigger_stop_price = value
+
+    @property
+    def order_group_id(self):
+        return self._order_group_id
+
+    @order_group_id.setter
+    def order_group_id(self, value):
+        self._order_group_id = value
