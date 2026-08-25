@@ -62,6 +62,20 @@ class QuestradeAPI:
             self._selenium_api.connect()
         return self._selenium_api
 
+    @staticmethod
+    def connected(func):
+        """
+        Connected to DB decorator.
+        """
+
+        def wrapper(self, *args, **kwargs):
+            """
+            Wrapper for underlying function.
+            """
+            self.connect_api()
+            return func(self, *args, **kwargs)
+        return wrapper
+
     def create_request(self, request: str):
         """
         Construct request.
@@ -546,21 +560,20 @@ class QuestradeAPI:
                   candle.volume,
                   candle.vwap))
 
-        logger.info(f"Candle for symbol {symbol_id} upserted into {self.configuration.db_file_path}' database")
         return True
 
-    def db_get_symbol(self, symbol_id=None, cursor=None, symbol_symbol=None):
+    def db_get_symbol(self, symbol_id=None, db_cursor=None, symbol_symbol=None):
         """
         Get symbol from DB
-        :param cursor:
+        :param db_cursor:
         :param symbol_id:
         :return:
         """
 
-        logger.info(f"Fetching symbol {symbol_id} from {self.configuration.db_file_path}' database")
-        cursor = cursor or self.db_cursor
+        logger.debug(f"Fetching symbol {symbol_id} from {self.configuration.db_file_path}' database")
+        db_cursor = db_cursor or self.db_cursor
 
-        return self.db_get_symbol_raw(symbol_id, cursor, symbol_symbol=symbol_symbol)
+        return self.db_get_symbol_raw(symbol_id, db_cursor, symbol_symbol=symbol_symbol)
 
     def db_get_symbol_raw(self, symbol_id, cursor, symbol_symbol=None):
         """
@@ -673,10 +686,14 @@ class QuestradeAPI:
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
 
         candles = self.api_get_symbol_candles(symbol, utc_today_3am, utc_today_8pm)
+        upserted = 0
         for candle in candles:
             if (candle.float_start, candle.float_end) in existing_pairs:
                 continue
+            upserted += 1 
             self.db_upsert_candle(symbol.symbol_id, candle, db_cursor=db_cursor)
+        
+        logger.debug(f"Sybol {symbol.symbol_id} {upserted} candles updated")
         return candles
 
     def db_get_today_candles(self, symbol:Symbol, db_cursor=None) -> List[Candle]:
@@ -716,13 +733,13 @@ class QuestradeAPI:
         start_time = self.convert_time_to_request_format(start_time)
         end_time = self.convert_time_to_request_format(end_time)
 
-        logger.info("Fetching Symbol's candles from API")
+        logger.debug("Fetching Symbol's candles from API")
         try:
             position_candles = self.get(
             f"v1/markets/candles/{symbol.symbol_id}?startTime={start_time}&endTime={end_time}&interval=OneMinute")
         except Exception as inst:
-            logger.exception(inst)
             if "Not Found for url" in repr(inst):
+                logger.error(f"Failed to fetch candles for symbol {symbol.symbol}")
                 return []
             raise
 
@@ -741,9 +758,9 @@ class QuestradeAPI:
         cheapest_stocks = self.sort_cheapest_by_price()
         symbol_ids = [symbol[1] for symbol in cheapest_stocks if (symbol_name is None) or (symbol[0] == symbol_name)]
         for i, symbol_id in enumerate(symbol_ids):
-            symbol = self.db_get_symbol(symbol_id, cursor=db_cursor)
+            symbol = self.db_get_symbol(symbol_id, db_cursor=db_cursor)
             try:
-                logger.info(f"Updating Symbol {i}/{len(symbol_ids)} {symbol.symbol}")
+                logger.debug(f"Updating Symbol {i}/{len(symbol_ids)} {symbol.symbol}")
                 self.update_symbol_today_candles(symbol, db_cursor=db_cursor)
             except Exception:
                 self.connect_api(reconnect =True)
@@ -759,6 +776,8 @@ class QuestradeAPI:
 
         :return:
         """
+        
+        logger.info("Making new purchase plan")
 
         db_cursor = db_cursor or self.db_cursor
         position_symbol_ids = [position.symbol_id for position in self.get_positions()]
@@ -774,9 +793,9 @@ class QuestradeAPI:
 
         len_symbol_ids = len(symbol_ids)
         for i, symbol_id in enumerate(symbol_ids):
-            logger.info(f"Fetching {i}/{len_symbol_ids}")
+            logger.debug(f"Fetching {i}/{len_symbol_ids}")
 
-            symbol = self.db_get_symbol(symbol_id)
+            symbol = self.db_get_symbol(symbol_id, db_cursor=db_cursor)
             symbol.candles = self.db_get_today_candles(symbol, db_cursor=db_cursor)
             if not symbol.candles:
                 continue
@@ -868,20 +887,6 @@ class QuestradeAPI:
             pass
         return slope
 
-    @staticmethod
-    def connected(func):
-        """
-        Connected to DB decorator.
-        """
-
-        def wrapper(self, *args, **kwargs):
-            """
-            Wrapper for underlying function.
-            """
-            self.connect_api()
-            return func(self, *args, **kwargs)
-        return wrapper
-
     @connected
     def get_positions(self):
         """
@@ -963,7 +968,7 @@ class QuestradeAPI:
                 if sell_calculated_round < sell_calculated:
                     sell_calculated_round += Decimal("0.01")
 
-                symbol = self.db_get_symbol(symbol_symbol =position.symbol)
+                symbol = self.db_get_symbol(symbol_symbol=position.symbol)
                 if symbol is not None:
                     symbol.candles = self.db_get_today_candles(symbol)
                     if symbol.candles:
@@ -1462,7 +1467,7 @@ return findInShadow();
                 if sell_calculated_round < sell_calculated:
                     sell_calculated_round += Decimal("0.01")
 
-                symbol = self.db_get_symbol(symbol_symbol =position.symbol)
+                symbol = self.db_get_symbol(symbol_symbol=position.symbol)
                 if symbol is not None:
                     symbol.candles = self.db_get_today_candles(symbol)
                     today_max = max(candle.high for candle in symbol.candles) if symbol.candles else "no_trades_yet"
@@ -1489,7 +1494,7 @@ return findInShadow();
         Run the main loop
         """
 
-        sleep_time = 10
+        sleep_time = 30
         refresh_time = 5*60
 
         for _ in range(int(60*60*4 / refresh_time)):
@@ -1500,6 +1505,7 @@ return findInShadow();
                 logger.info(f"Sleeping {sleep_time} seconds...")
                 time.sleep(sleep_time)
 
+    @connected
     def async_make_purchase_plan(self):
         """
         Run the purchase plan async
@@ -1510,9 +1516,12 @@ return findInShadow();
             Thread task
             """
 
-            cursor = sqlite3.connect(self.configuration.db_file_path).cursor()
+            connection = sqlite3.connect(self.configuration.db_file_path)
+            cursor = connection.cursor()
             self.update_cheap_candles_with_today_data(db_cursor=cursor)
             self.make_purchase_plan(db_cursor=cursor)
-        breakpoint()
+            cursor.close()
+            connection.close()
+
         thread = threading.Thread(target=async_make_purchase_plan_helper)
         thread.start()
