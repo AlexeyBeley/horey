@@ -2,15 +2,19 @@
 Shamelessly stolen from:
 https://questrade.com/lukecyca/pyslack
 """
+
+# pylint: disable = too-many-lines
+
 import sqlite3
 import platform
 import time
+import threading
 from datetime import datetime, timezone, timedelta
 import json
 from pathlib import Path
 from typing import List
-from scipy import stats
 from decimal import Decimal, ROUND_HALF_UP
+from scipy import stats
 
 import requests
 from selenium.webdriver.common.by import By
@@ -83,7 +87,7 @@ class QuestradeAPI:
         request = self.create_request(request_path)
 
         headers = {"Authorization": f"Bearer {self.access_token}"}
-        response = requests.get(request, headers=headers, params=params)
+        response = requests.get(request, headers=headers, params=params, timeout=60)
 
         response.raise_for_status()
 
@@ -132,7 +136,7 @@ class QuestradeAPI:
                    "Content-Type": "application/vnd.questrade+json",
                    "Accept": "application/vnd.questrade+json"}
 
-        response = requests.post(request, data=json.dumps(data), headers=headers)
+        response = requests.post(request, data=json.dumps(data), headers=headers, timeout=60)
 
         if response.status_code not in [200, 201]:
             raise RuntimeError(
@@ -154,7 +158,7 @@ class QuestradeAPI:
                    "Content-Type": "application/vnd.questrade+json",
                    "Accept": "application/vnd.questrade+json"}
 
-        response = requests.put(request, data=json.dumps(data), headers=headers)
+        response = requests.put(request, data=json.dumps(data), headers=headers, timeout=60)
         response.raise_for_status()
 
     def connect_api(self, reconnect=False):
@@ -177,7 +181,7 @@ class QuestradeAPI:
                 "refresh_token": self.configuration.token
             }
 
-            response = requests.get(base_url, params=params)
+            response = requests.get(base_url, params=params, timeout=60)
             response.raise_for_status()
             response = response.json()
 
@@ -211,7 +215,7 @@ class QuestradeAPI:
         response_file_path.unlink()
         refresh_token = response["refresh_token"]
         auth_url = f"https://login.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token={refresh_token}"
-        response = requests.get(auth_url).json()
+        response = requests.get(auth_url, timeout=60).json()
         return response
 
     def get_accounts(self):
@@ -221,7 +225,7 @@ class QuestradeAPI:
         :return:
         """
 
-        accounts = self.get(f"v1/accounts")
+        accounts = self.get("v1/accounts")
         return accounts
 
     def get_position_history(self, position_id, time_start, time_end, output_file=None):
@@ -327,98 +331,6 @@ class QuestradeAPI:
 
         return ret
 
-    def get_all_stocks_daily_history(self):
-        """
-        Get all stocks history.
-        :return:
-        """
-        raise NotImplementedError("This is a heavy operation, use with care")
-        start_time = datetime(year=2026, month=4, day=13, hour=3, minute=0, second=0, tzinfo=timezone.utc)
-        end_time = datetime(year=2026, month=4, day=13, hour=21, minute=2, second=0, tzinfo=timezone.utc)
-        data_directory = self.configuration.data_directory / "daily_history_data" / f"{end_time.year}_{end_time.month}_{end_time.day}"
-        data_directory.mkdir(parents=True, exist_ok=True)
-        stocks_data = []
-
-        files = data_directory.glob("stocks_history_*.json")
-        known_symbol_ids = []
-        file_counter = 0
-        with sqlite3.connect(self.configuration.db_file_path) as conn:
-            cursor = conn.cursor()
-            for file in files:
-                file_counter = max(file_counter, int(file.name.replace("stocks_history_", "").replace(".json", "")))
-                with open(file, encoding="utf-8") as file_handler:
-                    stocks_data = json.load(file_handler)
-                for dict_src in stocks_data:
-                    for candle_dict in dict_src["candles"]:
-                        self.db_upsert_candle(Symbol(dict_src["symbol"]).symbol_id, Candle(candle_dict), cursor=cursor)
-        breakpoint()
-        output_file_path = data_directory / f"stocks_history_{file_counter}.json"
-
-        stocks = self.get_tradable_stocks()
-
-        stocks = [stock for stock in stocks if stock["symbolId"] not in known_symbol_ids]
-
-        for i, stock in enumerate(stocks):
-            if len(stocks_data) > 1000:
-                file_counter += 1
-                output_file_path = data_directory / f"stocks_history_{file_counter}.json"
-                stocks_data = []
-                logger.info(f"Opening new file: {output_file_path}")
-
-            logger.info(f"Fetching stock history {i}/{len(stocks)} id:{stock['symbolId']} Symbol:{stock['symbol']}")
-            res = self.get_position_history(stock["symbolId"], start_time,
-                                            end_time)
-            res["symbol"] = stock
-            stocks_data.append(res)
-
-            with open(output_file_path, "w", encoding="utf-8") as file_handler:
-                json.dump(stocks_data, file_handler, indent=2)
-        return True
-
-    def check_strategy_one_persent_below_current(self, symbol_id):
-        """
-        Check dispersion.
-        candle = {'start': '2026-04-16T16:06:00.000000-04:00',
-        'end': '2026-04-16T16:07:00.000000-04:00',
-        'low': 3.1501,
-        'high': 3.1501,
-        'open': 3.1501,
-        'close': 3.1501,
-        'volume': 193,
-        'VWAP': 3.402387}
-
-        :param symbol_id:
-        :return:
-        """
-
-        percent = 1.0
-        symbol = self.db_get_symbol(symbol_id)
-        if symbol is None:
-            raise NotImplementedError(f"Symbol {symbol_id} not found")
-        candles = self.db_get_symbol_candles(symbol_id)
-        breakpoint()
-        averages = [(candle["high"] + candle["low"]) / 2 for candle in symbol_data["candles"]]
-
-        success_sells = []
-        for current_price_index, current_price in enumerate(averages):
-            buy_price_limit = current_price * (100 - percent) / 100
-            sell_price_limit = current_price * (100 + percent) / 100
-            sell_price_limit = current_price
-            for buy_price_index, buy_price in enumerate(averages[current_price_index + 1:]):
-                if buy_price > buy_price_limit:
-                    continue
-
-                for sell_price_index, sell_price in enumerate(averages[current_price_index + 1:]):
-                    if sell_price >= sell_price_limit:
-                        success_sells.append(buy_price)
-                        break
-                else:
-                    continue
-                break
-        print(f"{len(success_sells)=} out of {len(averages)}")
-
-        return True
-
     def fetch_symbols_by_price_range(self, min_price, max_price):
         """
         Sort symbols by transactions count.
@@ -442,10 +354,7 @@ class QuestradeAPI:
             if not symbol:
                 logger.error(f"Symbol {line[0]} not found in DB")
                 continue
-            try:
-                symbol.candles = self.db_get_symbol_candles(symbol.symbol_id)
-            except Exception as ex:
-                raise
+            symbol.candles = self.db_get_symbol_candles(symbol.symbol_id)
             if len(symbol.candles) < 5:
                 continue
             symbols.append(symbol)
@@ -457,7 +366,7 @@ class QuestradeAPI:
             json.dump(ret, file_handler, indent=2)
         return True
 
-    def sort_and_print_cheapest_by_price(self):
+    def sort_cheapest_by_price(self):
         """
         Sort symbols by price.
         :return:
@@ -467,8 +376,6 @@ class QuestradeAPI:
             ret = json.load(file_handler)
 
         ret.sort(key=lambda val: val[3])
-        for x in ret:
-            print(x)
         return ret
 
     def load_symbols_history_data(self, max_price=None):
@@ -478,6 +385,7 @@ class QuestradeAPI:
         :return:
         """
 
+        where_string = ""
         if max_price:
             where_string = f" WHERE high<={max_price}"
 
@@ -514,10 +422,10 @@ class QuestradeAPI:
                     id INTEGER PRIMARY KEY,
                     symbol_id INTEGER NOT NULL UNIQUE,
                     symbol TEXT NOT NULL UNIQUE,
-                    description TEXT, 
+                    description TEXT,
                     security_type TEXT,
                     listing_exchange TEXT,
-                    is_tradable BOOLEAN, 
+                    is_tradable BOOLEAN,
                     is_quotable BOOLEAN,
                     currency TEXT
                 )
@@ -615,7 +523,7 @@ class QuestradeAPI:
             self._db_cursor = self.db_connection.cursor()
         return self._db_cursor
 
-    def db_upsert_candle(self, symbol_id, candle: Candle, cursor=None):
+    def db_upsert_candle(self, symbol_id, candle: Candle, db_cursor=None):
         """
         Update or insert candle into DB
         :param cursor:
@@ -624,14 +532,14 @@ class QuestradeAPI:
         :return:
         """
 
-        if not cursor:
+        if not db_cursor:
             self.db_execute('''
                     INSERT OR REPLACE INTO candles (symbol_id, start, end, low, high, open, close, volume, vwap)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''', (symbol_id, candle.float_start, candle.float_end, candle.low, candle.high, candle.open,
                           candle.close, candle.volume, candle.vwap))
         else:
-            cursor.execute('''
+            db_cursor.execute('''
                 INSERT OR REPLACE INTO candles (symbol_id, start, end, low, high, open, close, volume, vwap)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (symbol_id, candle.float_start, candle.float_end, candle.low, candle.high, candle.open, candle.close,
@@ -650,11 +558,9 @@ class QuestradeAPI:
         """
 
         logger.info(f"Fetching symbol {symbol_id} from {self.configuration.db_file_path}' database")
+        cursor = cursor or self.db_cursor
 
-        if cursor:
-            return self.db_get_symbol_raw(symbol_id, cursor, symbol_symbol=symbol_symbol)
-
-        return self.db_get_symbol_raw(symbol_id, self.db_cursor, symbol_symbol=symbol_symbol)
+        return self.db_get_symbol_raw(symbol_id, cursor, symbol_symbol=symbol_symbol)
 
     def db_get_symbol_raw(self, symbol_id, cursor, symbol_symbol=None):
         """
@@ -687,7 +593,7 @@ class QuestradeAPI:
             "currency": row[8]
         })
 
-    def db_get_symbol_candles(self, symbol_id, limit=None, cursor=None, start_time:datetime=None, end_time:datetime=None):
+    def db_get_symbol_candles(self, symbol_id, limit=None, start_time:datetime=None, end_time:datetime=None, db_cursor=None):
         """
         Get symbol candles from DB
 
@@ -699,14 +605,13 @@ class QuestradeAPI:
         :return:
         """
 
+        db_cursor = db_cursor or self.db_cursor
 
         end_timestamp = end_time.timestamp() if end_time else None
 
         start_timestamp = start_time.timestamp() if start_time else None
-        if cursor:
-            return self.db_get_symbol_candles_raw(symbol_id, cursor, limit=limit, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
 
-        return self.db_get_symbol_candles_raw(symbol_id, self.db_cursor, limit=limit, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
+        return self.db_get_symbol_candles_raw(symbol_id, db_cursor, limit=limit, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
 
     def db_get_symbol_candles_raw(self, symbol_id, cursor, limit=None, start_timestamp:float=None, end_timestamp:float=None):
         """
@@ -749,14 +654,16 @@ class QuestradeAPI:
             }))
         return ret
 
-    def update_symbol_today_candles(self, symbol: Symbol):
+    def update_symbol_today_candles(self, symbol: Symbol, db_cursor=None):
         """
         Update symbols today candles
         :param symbol:
         :return:
         """
 
-        existing_candles = self.db_get_today_candles(symbol)
+        db_cursor = db_cursor or self.db_cursor
+
+        existing_candles = self.db_get_today_candles(symbol, db_cursor=db_cursor)
         existing_pairs = [(candle.float_start, candle.float_end) for candle in existing_candles]
         today = datetime.now(timezone.utc)
         if today.hour < 3:
@@ -765,15 +672,14 @@ class QuestradeAPI:
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
 
-
-        candles = self.get_symbol_candles(symbol, utc_today_3am, utc_today_8pm)
+        candles = self.api_get_symbol_candles(symbol, utc_today_3am, utc_today_8pm)
         for candle in candles:
             if (candle.float_start, candle.float_end) in existing_pairs:
                 continue
-            self.db_upsert_candle(symbol.symbol_id, candle)
+            self.db_upsert_candle(symbol.symbol_id, candle, db_cursor=db_cursor)
         return candles
 
-    def db_get_today_candles(self, symbol:Symbol) -> List[Candle]:
+    def db_get_today_candles(self, symbol:Symbol, db_cursor=None) -> List[Candle]:
         """
         Fetch from DB
 
@@ -781,22 +687,23 @@ class QuestradeAPI:
         :return:
         """
 
+        db_cursor = db_cursor or self.db_cursor
         today = datetime.now(timezone.utc)
 
         if today.hour < 5:
             today -= timedelta(days=1)
-        
+
         # todo:
-        today -= timedelta(days=2)
-        
+        #today -= timedelta(days=2)
+
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
 
 
-        candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=utc_today_8pm)
+        candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=utc_today_8pm, db_cursor=db_cursor)
         return candles
 
-    def get_symbol_candles(self, symbol: Symbol, start_time: datetime, end_time: datetime):
+    def api_get_symbol_candles(self, symbol: Symbol, start_time: datetime, end_time: datetime):
         """
         Get symbols candles
         :param symbol:
@@ -821,20 +728,23 @@ class QuestradeAPI:
 
         return [Candle(dict_src) for dict_src in position_candles["candles"]]
 
-    def update_cheap_candles_with_today_data(self, symbol_name=None):
+    @connected
+    def update_cheap_candles_with_today_data(self, symbol_name=None, db_cursor=None):
         """
         Update cheap symbols with today data
         :return:
         """
+
+        db_cursor = db_cursor or self.db_cursor
+
         error_counter = 0
-        cheapest_stocks = self.sort_and_print_cheapest_by_price()
+        cheapest_stocks = self.sort_cheapest_by_price()
         symbol_ids = [symbol[1] for symbol in cheapest_stocks if (symbol_name is None) or (symbol[0] == symbol_name)]
-        self.connect_api()
         for i, symbol_id in enumerate(symbol_ids):
-            symbol = self.db_get_symbol(symbol_id)
+            symbol = self.db_get_symbol(symbol_id, cursor=db_cursor)
             try:
                 logger.info(f"Updating Symbol {i}/{len(symbol_ids)} {symbol.symbol}")
-                self.update_symbol_today_candles(symbol)
+                self.update_symbol_today_candles(symbol, db_cursor=db_cursor)
             except Exception:
                 self.connect_api(reconnect =True)
                 error_counter += 1
@@ -842,16 +752,18 @@ class QuestradeAPI:
             raise ValueError(f"Too many errors {error_counter} out of {len(symbol_ids)}")
         return True
 
-    def make_purchase_plan(self, symbol_name=None):
+    # pylint: disable = too-many-locals
+    def make_purchase_plan(self, symbol_name=None, db_cursor=None):
         """
         Plan purchase
 
         :return:
         """
 
+        db_cursor = db_cursor or self.db_cursor
         position_symbol_ids = [position.symbol_id for position in self.get_positions()]
 
-        cheapest_stocks = self.sort_and_print_cheapest_by_price()
+        cheapest_stocks = self.sort_cheapest_by_price()
         symbol_ids = [symbol[1] for symbol in cheapest_stocks if symbol[1] not in position_symbol_ids and
                       ((symbol_name is None) or (symbol[0] == symbol_name))]
         orders = self.api_get_orders()
@@ -865,7 +777,7 @@ class QuestradeAPI:
             logger.info(f"Fetching {i}/{len_symbol_ids}")
 
             symbol = self.db_get_symbol(symbol_id)
-            symbol.candles = self.db_get_today_candles(symbol)
+            symbol.candles = self.db_get_today_candles(symbol, db_cursor=db_cursor)
             if not symbol.candles:
                 continue
             symbols.append(symbol)
@@ -878,14 +790,13 @@ class QuestradeAPI:
             symbol.slope = self.calculate_price_slope(symbol.candles, lambda x: x.low)
 
 
-            symbol.absolute_low = min([candle.low for candle in symbol.candles])
-            symbol.absolute_high = max([candle.high for candle in symbol.candles])
+            symbol.absolute_low = min(candle.low for candle in symbol.candles)
+            symbol.absolute_high = max(candle.high for candle in symbol.candles)
             if symbol.price_change <= 0:
                 continue
             if len(symbol.candles) < 10:
                 continue
             filtered_symbols.append(symbol)
-
 
         str_ret = ""
         # todo: old
@@ -893,7 +804,7 @@ class QuestradeAPI:
         for i, symbol in enumerate(sorted(filtered_symbols, key=lambda x: abs(x.slope), reverse=True)):
             str_ret += f"[{i+1}] {symbol.symbol}, abs_low={symbol.absolute_low}, price_change={symbol.price_change}, deals={len(symbol.candles)}\n"
 
-        with open(self.configuration.data_directory/ "purchase_plan.txt", "w") as file:
+        with open(self.configuration.data_directory/ "purchase_plan.txt", "w", encoding="utf-8") as file:
             file.write(str_ret)
         print(f"Purchase_plan is ready: {self.configuration.data_directory/ 'purchase_plan.txt'}")
         return True
@@ -928,7 +839,7 @@ class QuestradeAPI:
             return 0
         vwap_change = min_vwap / max_vwap * 100
         return QuestradeAPI.calculate_price_incline(candles, lambda x: x.vwap) * vwap_change
-    
+
     @staticmethod
     def calculate_price_incline(candles, callback_price):
         """
@@ -953,11 +864,20 @@ class QuestradeAPI:
         x_data = [(candle.float_end + candle.float_start) / 2 for candle in candles]
         y_data = [callback_price(candle) for candle in candles]
         slope, intercept, r_value, p_value, std_err = stats.linregress(x_data, y_data)
+        if (intercept, r_value, p_value, std_err):
+            pass
         return slope
 
     @staticmethod
     def connected(func):
+        """
+        Connected to DB decorator.
+        """
+
         def wrapper(self, *args, **kwargs):
+            """
+            Wrapper for underlying function.
+            """
             self.connect_api()
             return func(self, *args, **kwargs)
         return wrapper
@@ -1047,7 +967,7 @@ class QuestradeAPI:
                 if symbol is not None:
                     symbol.candles = self.db_get_today_candles(symbol)
                     if symbol.candles:
-                        today_max = max([candle.high for candle in symbol.candles])
+                        today_max = max(candle.high for candle in symbol.candles)
                     else:
                         today_max = "no_trades_yet"
                 else:
@@ -1095,7 +1015,7 @@ class QuestradeAPI:
         :return:
         """
 
-        ret = self.db_cursor.execute('SELECT * FROM candles group by symbol_id')
+        self.db_cursor.execute('SELECT * FROM candles group by symbol_id')
         rows = self.db_cursor.fetchall()
 
         for row in rows:
@@ -1155,7 +1075,7 @@ class QuestradeAPI:
         btn = btn_container.find_element(By.NAME ,"button")
         btn.click()
         breakpoint()
-    
+
     def selenium_open_symbol_page(self, symbol):
         """
         Open sybol page
@@ -1169,22 +1089,22 @@ class QuestradeAPI:
         :param symbol_name:
         :return:
         """
-        
+
         self.selenium_open_symbol_page(symbol)
         breakpoint()
-        for i in range(5*10):
+        for _ in range(5*10):
             time.sleep(0.1)
             btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
             #if not btn:
             #    btn = self.selenium_api.get_shadowed_element_by_text("button", "Sell")
             if not btn:
                 continue
-            
-            try:        
+
+            try:
                 btn.click()
             except StaleElementReferenceException:
                 continue
-            
+
 
             div_input = self.get_limit_price_input_div()
             if not div_input:
@@ -1205,7 +1125,7 @@ class QuestradeAPI:
                 div_input = self.get_limit_price_input_div()
                 if not div_input:
                     raise RuntimeError("Can not find div input")
-            
+
             try:
                 self.selenium_fill_limit_price_input(div_input, price)
             except TimeoutError as inst_err:
@@ -1214,12 +1134,12 @@ class QuestradeAPI:
                 continue
 
             break
-            
+
         else:
-            raise TimeoutError(f"Reached timeout waiting for 'Sell' button to appear")
+            raise TimeoutError("Reached timeout waiting for 'Sell' button to appear")
 
         self.select_gtem()
-        
+
         btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="order-entry-next-button"]')
         if not btn:
             btn = self.selenium_api.get_shadowed_element_by_text("button", "Review Order")
@@ -1229,13 +1149,13 @@ class QuestradeAPI:
         #if not btn:
         btn = self.selenium_api.get_shadowed_element_by_text("button", "Send order")
         btn.click()
-    
+
     def get_limit_price_input_div(self):
         """
         Get div input
         """
 
-        for i in range(50):
+        for _ in range(50):
             div_input = self.get_div_input_by_label("Limit Price")
             if div_input:
                 return div_input
@@ -1255,9 +1175,9 @@ class QuestradeAPI:
         actions.key_down(select_all_key).send_keys("a").key_up(select_all_key)
         actions.send_keys(Keys.BACKSPACE)
         actions.perform()
-    
+
         # Force hard clearance of value via JS to override pre-filled values/masks
-        for i in range(50):
+        for _ in range(50):
             try:
                 self.selenium_api.driver.execute_script("arguments[0].value = '';", div_input)
                 break
@@ -1266,22 +1186,25 @@ class QuestradeAPI:
         else:
             logger.warning("Was not able to hard delete contents of input")
 
-        formatted_price = f"{price:.4f}".rstrip('0').rstrip('.') if isinstance(price, float) else str(price) 
+        formatted_price = f"{price:.4f}".rstrip('0').rstrip('.') if isinstance(price, float) else str(price)
         # 4. Input the new float price
         div_input.send_keys(formatted_price)
-    
+
         # 5. Dispatch UI events so Angular updates validation & recalculates "Estimated order total"
         self.selenium_api.driver.execute_script("""
             arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
             arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
             arguments[0].dispatchEvent(new Event('blur', { bubbles: true }));
         """, div_input)
-    
+
     def select_gtem(self):
+        """
+        Do it using JS
+        """
         self.selenium_api.driver.execute_script("""
 function clickChip(root) {
     if (!root) return false;
-    
+
     // Look for q-chip or label containing "Day"
     const labels = Array.from(root.querySelectorAll('q-chip, label, .q-chip-label'));
     for (let el of labels) {
@@ -1291,7 +1214,7 @@ function clickChip(root) {
             return true;
         }
     }
-    
+
     // Search inside shadow roots
     for (let child of root.querySelectorAll('*')) {
         if (child.shadowRoot) {
@@ -1306,25 +1229,25 @@ return clickChip(document);
         self.selenium_api.driver.execute_script("""
 function selectGTEMOption(root) {
     if (!root) return false;
-    
+
     // Find all elements containing GTEM text
     const allNodes = Array.from(root.querySelectorAll('*'));
     for (let el of allNodes) {
         if (el.children.length === 0 && el.textContent && el.textContent.includes('GTEM')) {
-            
+
             // Walk up the DOM to find the clickable list item wrapper
             let target = el;
             while (target && target !== document.body) {
                 // Look for common Angular dropdown item roles or classes
-                if (target.getAttribute('role') === 'option' || 
-                    target.classList.contains('q-dropmenu-item') || 
+                if (target.getAttribute('role') === 'option' ||
+                    target.classList.contains('q-dropmenu-item') ||
                     target.tagName.toLowerCase().includes('item') ||
                     target.tagName.toLowerCase().includes('option')) {
                     break;
                 }
                 target = target.parentElement;
             }
-            
+
             // If no wrapper found, fallback to element 3 levels up
             if (!target || target === document.body) {
                 target = el.parentElement?.parentElement || el;
@@ -1342,7 +1265,7 @@ function selectGTEMOption(root) {
             return true;
         }
     }
-    
+
     // Pierce Shadow DOM
     for (let child of root.querySelectorAll('*')) {
         if (child.shadowRoot) {
@@ -1356,6 +1279,9 @@ return selectGTEMOption(document);
 """)
 
     def get_div_input_by_label(self, label_text):
+        """
+        Find using JS
+        """
         js_script = """
 function findInShadow(root = document) {
     // 1. Try finding input relative to the label
@@ -1386,7 +1312,7 @@ return findInShadow();
         js_script = js_script.replace("STRING_REPLACEMENT_LABEL_TEXT", label_text)
         div_input = self.selenium_api.driver.execute_script(js_script)
         return div_input
-     
+
 
     def write_to_cache(self, lst_obj):
         """
@@ -1396,7 +1322,7 @@ return findInShadow();
         """
         ret = [obj.dict_src for obj in lst_obj]
         file_name = lst_obj[0].__class__.__name__.lower() + "s_cache.json"
-        with open(self.configuration.data_directory / file_name, "w") as file:
+        with open(self.configuration.data_directory / file_name, "w", encoding="utf-8") as file:
             json.dump(ret, file, indent=2)
 
     def load_from_cache(self, obj_class):
@@ -1406,10 +1332,11 @@ return findInShadow();
         :return:
         """
         file_name = obj_class.__name__.lower() + "s_cache.json"
-        with open(self.configuration.data_directory / file_name) as file:
+        with open(self.configuration.data_directory / file_name, encoding="utf-8") as file:
             order_dicts = json.load(file)
         return [obj_class(dict_src) for dict_src in order_dicts]
 
+    # pylint: disable = too-many-locals
     def generate_profit_review(self, start_time, end_time):
         """
         Analise profit
@@ -1493,6 +1420,10 @@ return findInShadow();
 
     @connected
     def get_idle_positions(self):
+        """
+        Positions in huge price drop.
+        """
+
         positions = self.get_positions()
         for position in positions:
             if position.average_entry_price*0.6 > position.current_price:
@@ -1534,17 +1465,14 @@ return findInShadow();
                 symbol = self.db_get_symbol(symbol_symbol =position.symbol)
                 if symbol is not None:
                     symbol.candles = self.db_get_today_candles(symbol)
-                    if symbol.candles:
-                        today_max = max([candle.high for candle in symbol.candles])
-                    else:
-                        today_max = "no_trades_yet"
+                    today_max = max(candle.high for candle in symbol.candles) if symbol.candles else "no_trades_yet"
                 else:
                     today_max = "todo"
-                
+
                 order = Order({})
-                order.symbol = position.symbol 
+                order.symbol = position.symbol
                 order.symbol_id = position.symbol_id
-                order.limit_price = sell_calculated_round 
+                order.limit_price = sell_calculated_round
                 orders_to_place.append(order)
                 lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculated_round}, today_max={today_max} revenue={int(sell_calculated/( Decimal(str(position.average_entry_price))/100))}%")
 
@@ -1554,3 +1482,37 @@ return findInShadow();
             self.selenium_sell_symbol(order_to_place.symbol, order_to_place.limit_price)
 
         return True
+
+    @connected
+    def run_the_main_loop(self):
+        """
+        Run the main loop
+        """
+
+        sleep_time = 10
+        refresh_time = 5*60
+
+        for _ in range(int(60*60*4 / refresh_time)):
+            self.async_make_purchase_plan()
+
+            for _ in range(int(refresh_time/sleep_time)):
+                self.get_positions_without_sell_orders()
+                logger.info(f"Sleeping {sleep_time} seconds...")
+                time.sleep(sleep_time)
+
+    def async_make_purchase_plan(self):
+        """
+        Run the purchase plan async
+        """
+
+        def async_make_purchase_plan_helper():
+            """
+            Thread task
+            """
+
+            cursor = sqlite3.connect(self.configuration.db_file_path).cursor()
+            self.update_cheap_candles_with_today_data(db_cursor=cursor)
+            self.make_purchase_plan(db_cursor=cursor)
+        breakpoint()
+        thread = threading.Thread(target=async_make_purchase_plan_helper)
+        thread.start()

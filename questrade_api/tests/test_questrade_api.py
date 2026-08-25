@@ -7,15 +7,12 @@ import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+from typing import TypeVar
 import pytest
 
 from horey.questrade_api.items import Candle
 from horey.questrade_api.questrade_api import QuestradeAPI, QuestradeAPIConfigurationPolicy
 
-"""
-Common test utilities for infrastructure_api tests.
-"""
-from typing import TypeVar
 
 from horey.common_utils.common_utils import CommonUtils
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
@@ -32,8 +29,13 @@ logger = get_logger()
 T = TypeVar('T', bound=ConfigurationPolicy)
 data_directory = Path("/tmp/data")
 
+# pylint: disable = missing-function-docstring
 
 class Configs(ConfigurationPolicy):
+    """
+    Standard tests configs.
+    """
+
     def __init__(self):
         super().__init__()
         self._token = None
@@ -213,7 +215,7 @@ def test_debug_symbol_calculate_vwap_incline(questrade_api):
 
 @pytest.mark.unit
 def test_calculate_vwap_incline(questrade_api):
-    with open(Path(__file__).parent / "candles_sample.json") as fh:
+    with open(Path(__file__).parent / "candles_sample.json", encoding="utf-8") as fh:
         candle_dicts = json.load(fh)
     candles = [Candle(dict_src) for dict_src in candle_dicts]
     assert questrade_api.calculate_vwap_incline(candles)
@@ -239,7 +241,6 @@ def test_generate_profit_review(questrade_api):
     time_end = today.replace(hour=20, minute=0, second=0, microsecond=0) - timedelta(minutes=1)
 
     assert questrade_api.generate_profit_review(time_start, time_end)
-    breakpoint()
 
 @pytest.mark.unit
 def test_fetch_symbols_by_max_price(questrade_api):
@@ -259,7 +260,7 @@ def test_selenium_sell_symbol(questrade_api):
     finally:
         questrade_api.selenium_api.disconnect()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_selenium_sell_routine(questrade_api):
     try:
         questrade_api.selenium_login()
@@ -269,12 +270,10 @@ def test_run_selenium_sell_routine(questrade_api):
 
 @pytest.mark.unit
 def test_get_positions_without_sell_orders(questrade_api):
-    breakpoint()
     assert questrade_api.get_positions_without_sell_orders()
 
 @pytest.mark.unit
 def test_update_cheap_candles_with_today_data(questrade_api):
-
     assert questrade_api.update_cheap_candles_with_today_data()
 
 @pytest.mark.unit
@@ -287,3 +286,7 @@ def test_get_positions_without_sell_orders_loop(questrade_api):
         assert questrade_api.get_positions_without_sell_orders()
         logger.info("Sleeping 60 seconds...")
         time.sleep(60)
+
+@pytest.mark.wip
+def test_run_the_main_loop(questrade_api):
+    assert questrade_api.run_the_main_loop()
