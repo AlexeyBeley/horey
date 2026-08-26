@@ -226,6 +226,8 @@ class QuestradeAPI:
             self.api_server = response['api_server'].rstrip("/")
             return None
 
+        logger.info(f"Reconnecting to api: {reconnect=}, {timestamp_now=}, expires_at - 5min = {response['expires_at'] - 5 * 60}")
+
         response_file_path.unlink()
         refresh_token = response["refresh_token"]
         auth_url = f"https://login.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token={refresh_token}"
