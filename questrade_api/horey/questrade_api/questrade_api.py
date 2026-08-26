@@ -30,7 +30,7 @@ from horey.questrade_api.questrade_api_configuration_policy import (
 )
 from horey.questrade_api.items import Symbol, Candle, Position, Order
 
-logger = get_logger()
+logger = get_logger(level="DEBUG")
 
 
 class QuestradeAPI:
@@ -733,7 +733,7 @@ class QuestradeAPI:
         start_time = self.convert_time_to_request_format(start_time)
         end_time = self.convert_time_to_request_format(end_time)
 
-        logger.debug("Fetching Symbol's candles from API")
+        logger.debug(f"Fetching Symbol's {symbol.symbol} candles from API")
         try:
             position_candles = self.get(
             f"v1/markets/candles/{symbol.symbol_id}?startTime={start_time}&endTime={end_time}&interval=OneMinute")
@@ -742,6 +742,7 @@ class QuestradeAPI:
                 logger.error(f"Failed to fetch candles for symbol {symbol.symbol}")
                 return []
             raise
+        logger.debug(f"Fetched Symbol's {symbol.symbol} candles from API")
 
         return [Candle(dict_src) for dict_src in position_candles["candles"]]
 
@@ -1096,7 +1097,7 @@ class QuestradeAPI:
         """
 
         self.selenium_open_symbol_page(symbol)
-        breakpoint()
+
         for _ in range(5*10):
             time.sleep(0.1)
             btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
@@ -1110,23 +1111,25 @@ class QuestradeAPI:
             except StaleElementReferenceException:
                 continue
 
-
             div_input = self.get_limit_price_input_div()
             if not div_input:
-                if self.clicked_on_ignore_night_sales:
-                    raise RuntimeError("Can not find div limit price input but the ignore night popup was pressed.")
-                breakpoint()
-                body = self.selenium_api.driver.find_element(By.TAG_NAME, "body")
-                x_coord = 600  # pixels right from the element's top-left
-                y_coord = 300   # pixels down from the element's top-left
+                btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
+                if btn:
+                    btn.click()
+                if not self.clicked_on_ignore_night_sales:
+                    breakpoint()
+                    body = self.selenium_api.driver.find_element(By.TAG_NAME, "body")
+                    x_coord = 600  # pixels right from the element's top-left
+                    y_coord = 300   # pixels down from the element's top-left
 
-                ActionChains(self.selenium_api.driver)\
-                .move_to_element_with_offset(body, 0, 0)\
-                .move_by_offset(x_coord, y_coord)\
-                .click()\
-                .perform()
+                    ActionChains(self.selenium_api.driver)\
+                    .move_to_element_with_offset(body, 0, 0)\
+                    .move_by_offset(x_coord, y_coord)\
+                    .click()\
+                    .perform()
 
-                self.clicked_on_ignore_night_sales = True
+                    self.clicked_on_ignore_night_sales = True
+
                 div_input = self.get_limit_price_input_div()
                 if not div_input:
                     raise RuntimeError("Can not find div input")
@@ -1149,11 +1152,67 @@ class QuestradeAPI:
         if not btn:
             btn = self.selenium_api.get_shadowed_element_by_text("button", "Review Order")
         btn.click()
-        breakpoint()
+        #breakpoint()
         #btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="order-entry-sm-screen-sell-button"]')
         #if not btn:
         btn = self.selenium_api.get_shadowed_element_by_text("button", "Send order")
         btn.click()
+        time.sleep(2)
+
+    def get_shadow_button_by_text(self, target_text="Place a night order", timeout=5):
+        """
+        Get shadow button
+        """
+
+        driver = self.selenium_api.driver
+        script = """
+        const targetText = arguments[0];
+    
+        // Recursive function to search standard DOM and nested Shadow DOMs
+        function findInShadow(root) {
+            const elements = root.querySelectorAll('button, [role="button"], a, input[type="button"], input[type="submit"]');
+        
+            // 1. Check direct button elements matching the target text
+            for (let el of elements) {
+                if (el.textContent && el.textContent.includes(targetText)) {
+                    return el;
+                }
+            }
+
+            // 2. Deeply traverse all child elements to search nested shadow roots
+            const allElements = root.querySelectorAll('*');
+            for (let el of allElements) {
+                if (el.shadowRoot) {
+                    const found = findInShadow(el.shadowRoot);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        return findInShadow(document);
+        """
+    
+        import time
+        start_time = time.time()
+    
+        # Poll until the element renders or timeout is reached
+        while time.time() - start_time < timeout:
+            element = driver.execute_script(script, target_text)
+            if element:
+                return element
+            time.sleep(0.5)
+        
+        return None
+
+    # Usage Example:
+    #btn = get_shadow_button_by_text(driver, "Place a night order")
+
+    #if btn:
+        # Perform standard Selenium interactions on the returned element
+    #    btn.click()
+    #else:
+    #    print("Button not found within Shadow DOM.")
 
     def get_limit_price_input_div(self):
         """
@@ -1440,6 +1499,8 @@ return findInShadow();
         """
         Perform automatic acquiring
         """
+
+        self.selenium_login()
         ret = []
         lines = []
 
@@ -1483,7 +1544,6 @@ return findInShadow();
 
         for order_to_place in orders_to_place:
             # https://www.questrade.com/api/documentation/rest-operations/market-calls/markets-quotes-options
-            breakpoint()
             self.selenium_sell_symbol(order_to_place.symbol, order_to_place.limit_price)
 
         return True
@@ -1497,7 +1557,7 @@ return findInShadow();
         sleep_time = 30
         refresh_time = 5*60
 
-        for _ in range(int(60*60*4 / refresh_time)):
+        for _ in range(int(60*60*16 / refresh_time)):
             self.async_make_purchase_plan()
 
             for _ in range(int(refresh_time/sleep_time)):
@@ -1516,6 +1576,7 @@ return findInShadow();
             Thread task
             """
 
+            logger.info("Start working on Purchase Plan")
             connection = sqlite3.connect(self.configuration.db_file_path)
             cursor = connection.cursor()
             self.update_cheap_candles_with_today_data(db_cursor=cursor)

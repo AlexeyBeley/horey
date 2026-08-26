@@ -52,7 +52,7 @@ def init_logger_from_configuration(configuration_file_full_path):
         StaticData.logger.addHandler(file_handler)
 
 
-def get_logger(configuration_file_full_path=None, name="horey", add_handler=True):
+def get_logger(configuration_file_full_path=None, name="horey", add_handler=True, level="INFO"):
     """
     Reuse logger
     :return:
@@ -63,7 +63,7 @@ def get_logger(configuration_file_full_path=None, name="horey", add_handler=True
         if StaticData.logger.hasHandlers():
             if bool(StaticData.logger.handlers):
                 raise RuntimeError(f"There are handlers registered in this logger. Looks like you are redefining same logger: {name=}")
-        StaticData.logger.setLevel("INFO")
+        StaticData.logger.setLevel(level)
         if add_handler:
             handler = logging.StreamHandler()
             handler.setFormatter(StaticData.formatter)

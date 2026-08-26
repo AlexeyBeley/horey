@@ -261,14 +261,6 @@ def test_selenium_sell_symbol(questrade_api):
         questrade_api.selenium_api.disconnect()
 
 @pytest.mark.unit
-def test_run_selenium_sell_routine(questrade_api):
-    try:
-        questrade_api.selenium_login()
-        assert questrade_api.run_selenium_sell_routine()
-    finally:
-        questrade_api.selenium_api.disconnect()
-
-@pytest.mark.unit
 def test_get_positions_without_sell_orders(questrade_api):
     assert questrade_api.get_positions_without_sell_orders()
 
@@ -286,6 +278,13 @@ def test_get_positions_without_sell_orders_loop(questrade_api):
         assert questrade_api.get_positions_without_sell_orders()
         logger.info("Sleeping 60 seconds...")
         time.sleep(60)
+
+@pytest.mark.unit
+def test_run_selenium_sell_routine(questrade_api):
+    try:
+        assert questrade_api.run_selenium_sell_routine()
+    finally:
+        questrade_api.selenium_api.disconnect()
 
 @pytest.mark.wip
 def test_run_the_main_loop(questrade_api):
