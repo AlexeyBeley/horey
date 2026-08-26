@@ -1017,7 +1017,7 @@ class AlertsAPI:
         """
 
         payload_dict[self.alert_system.configuration.ALERT_SYSTEM_RAW_MESSAGE_KEY] = True
-        breakpoint()
+
         request_dict= {"FunctionName": self.configuration.lambda_name,
         "InvocationType": "RequestResponse",
         "Payload": json.dumps(payload_dict).encode("utf-8")}
