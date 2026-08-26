@@ -1010,13 +1010,13 @@ class AlertsAPI:
         return {AlertSystemConfigurationPolicy.ALERT_SYSTEM_RAW_MESSAGE_KEY: "",
                 "type": notification_type}
 
-    def trigger_lambda_raw_event(self, event):
+    def trigger_lambda_raw_event(self, payload_dict):
         """
         Trigger lambda
 
         """
 
-        payload_dict = {self.alert_system.configuration.ALERT_SYSTEM_RAW_MESSAGE_KEY: True}
+        payload_dict[self.alert_system.configuration.ALERT_SYSTEM_RAW_MESSAGE_KEY] = True
         breakpoint()
         request_dict= {"FunctionName": self.configuration.lambda_name,
         "InvocationType": "RequestResponse",
