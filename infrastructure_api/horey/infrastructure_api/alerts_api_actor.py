@@ -26,7 +26,7 @@ def trigger_lambda_raw_event_parser():
     description = "Trigger alert system lambda with raw event"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--alerts_api_configuration_file_path", required=True, type=str)
-    parser.add_argument("--region", required=True, type=str)
+    parser.add_argument("--environment_api_configuration_file_path", required=True, type=str)
     parser.add_argument("--payload", required=True, type=str)
     return parser
 
@@ -35,7 +35,7 @@ def trigger_lambda_raw_event(arguments) -> None:
     infrastructure_api = InfrastructureAPI()
     aws_api = AWSAPI()
     env_api_config  = EnvironmentAPIConfigurationPolicy()
-    env_api_config.region = arguments.region
+    env_api_config.init_from_file(arguments.environment_api_configuration_file_path)
     env_api  = infrastructure_api.get_environment_api(env_api_config, aws_api)
     config = AlertsAPIConfigurationPolicy()
     config.init_from_file(arguments.alerts_api_configuration_file_path)
