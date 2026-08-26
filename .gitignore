@@ -130,3 +130,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+gitlab_api/.DS_Store
+github_api/.DS_Store
+go/.DS_Store
+.DS_Store
+pylint_report.tmp
+.vscode/tasks.json
