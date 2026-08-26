@@ -1020,5 +1020,5 @@ class AlertsAPI:
         breakpoint()
         request_dict= {"FunctionName": self.configuration.lambda_name,
         "InvocationType": "RequestResponse",
-        "Payload": payload_dict}
+        "Payload": json.dumps(payload_dict).encode("utf-8")}
         return self.environment_api.aws_api.lambda_client.invoke_raw(self.environment_api.region, request_dict)
