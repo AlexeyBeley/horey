@@ -4,9 +4,9 @@ Alerts api entry point script.
 """
 
 import argparse
+import json
 
 from horey.aws_api.aws_api import AWSAPI
-from horey.aws_api.base_entities.region import Region
 from horey.h_logger import get_logger
 
 from horey.common_utils.actions_manager import ActionsManager
