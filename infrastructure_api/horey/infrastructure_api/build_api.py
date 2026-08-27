@@ -97,8 +97,9 @@ class BuildAPI:
         build_directory = self.run_prepare_image_build_directory_routine(branch_name, build_number)
         print(f"cd {build_directory} && docker build -t {tags[0]} --platform linux/amd64 .")
         
-        #image = self.build_docker_image(build_directory, tags, nocache=nocache, dockerfile=dockerfile)
-        image = self.environment_api.docker_api.get_image(tags[0])
+        image = self.build_docker_image(build_directory, tags, nocache=nocache, dockerfile=dockerfile)
+        # for debug:
+        #image = self.environment_api.docker_api.get_image(tags[0])
         return image
 
     def run_build_and_upload_image_routine(self, branch_name, build_number, nocache=False, dockerfile="Dockerfile"):
