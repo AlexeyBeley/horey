@@ -139,7 +139,6 @@ class AlertsAPI:
         :return:
         """
 
-        self.aws_lambda_api.build_api.docker_build_directory.mkdir()
         self.alert_system.generate_lambda_dockerfile(self.aws_lambda_api.build_api.docker_build_directory)
 
         self.aws_lambda_api.build_api.docker_build_directory =  self.aws_lambda_api.build_api.prepare_docker_image_horey_package_build_directory(source_code_directory_path, "alert_system")
