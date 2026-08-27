@@ -299,6 +299,10 @@ class MessageCloudwatchDefault(MessageBase):
 
         if "log_group_name" in self.alarm_description and "log_group_filter_pattern" in self.alarm_description:
             notification = self.generate_notification_log_group_filter_pattern()
+        elif self.trigger is None:
+            notification = self.generate_notification_default(reason=self.message_dict.get("alarmData").get("state").get("reason"))
+            notification.link = self.generate_alert_system_lambda_link()
+            notification.link_href = "View AlertSystem Lambda"
         elif self.trigger["MetricName"] == "Duration":
             notification = self.generate_notification_default()
             notification.link = self.generate_alert_system_lambda_link()
@@ -392,9 +396,8 @@ class MessageCloudwatchDefault(MessageBase):
             f'Time: {alarm_time}\n'
         )
 
-        notification.routing_tags = self.alarm_description.get("routing_tags")
-        if not notification.routing_tags:
-            notification.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
+        notification.routing_tags = self.alarm_description.get("routing_tags", 
+                       [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG])
 
         notification.link = self.generate_cloudwatch_alarm_link()
         notification.link_href = "View Cloudwatch Alarm"
