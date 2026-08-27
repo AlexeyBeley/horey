@@ -1112,6 +1112,8 @@ class QuestradeAPI:
                 btn.click()
             except StaleElementReferenceException:
                 continue
+            breakpoint()
+            self.check_and_dismiss_otc_popup()
 
             div_input = self.get_limit_price_input_div()
             if not div_input:
@@ -1147,8 +1149,11 @@ class QuestradeAPI:
 
         else:
             raise TimeoutError("Reached timeout waiting for 'Sell' button to appear")
-
-        self.select_gtem()
+        breakpoint()
+        
+        if not self.select_gtem():
+            breakpoint()
+            self.select_night_option()
 
         btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="order-entry-next-button"]')
         if not btn:
@@ -1160,6 +1165,59 @@ class QuestradeAPI:
         btn = self.selenium_api.get_shadowed_element_by_text("button", "Send order")
         btn.click()
         time.sleep(2)
+    
+    def check_and_dismiss_otc_popup(self, timeout=3):
+        """
+        Checks if the OTC/PINK sheet confirmation popup is present inside shadow roots.
+        If found, returns True and clicks the 'OK' button.
+        """
+
+        script = """
+        const searchTarget = "confirm otc/pink sheet order";
+
+    function findAndHandlePopup(root) {
+        if (!root) return false;
+
+        // Check all elements inside the current root for matching header text
+        const elements = root.querySelectorAll('*');
+        for (let el of elements) {
+            const text = (el.textContent || '').toLowerCase();
+            
+            // Check if this container holds the OTC popup title
+            if (text.includes(searchTarget)) {
+                // Look for the OK button inside the active shadow root level
+                const okBtn = root.querySelector('button.ok, button[data-qt*="ok"], button');
+                
+                // Fine-tune search for the specific 'OK' text button
+                const allButtons = Array.from(root.querySelectorAll('button, [role="button"]'));
+                const targetBtn = allButtons.find(b => b.textContent.trim().toUpperCase() === 'OK');
+                
+                if (targetBtn) {
+                    targetBtn.click();
+                    return true;
+                }
+            }
+
+            // Recursively traverse open shadow roots
+            if (el.shadowRoot) {
+                const found = findAndHandlePopup(el.shadowRoot);
+                if (found) return true;
+            }
+        }
+        return false;
+    }
+
+    return findAndHandlePopup(document);
+    """
+        start_time = time.time()
+    
+        while time.time() - start_time < timeout:
+            popup_handled = self.selenium_api.driver.execute_script(script)
+            if popup_handled:
+                return True
+            time.sleep(0.1)
+        
+        return False
 
     def get_shadow_button_by_text(self, target_text="Place a night order", timeout=5):
         """
@@ -1292,7 +1350,7 @@ function clickChip(root) {
 return clickChip(document);
 """)
 
-        self.selenium_api.driver.execute_script("""
+        return self.selenium_api.driver.execute_script("""
 function selectGTEMOption(root) {
     if (!root) return false;
 
@@ -1343,6 +1401,13 @@ function selectGTEMOption(root) {
 
 return selectGTEMOption(document);
 """)
+
+    def select_night_option(self):
+        """
+        Select if exists
+        """
+        breakpoint()
+        pass
 
     def get_div_input_by_label(self, label_text):
         """
