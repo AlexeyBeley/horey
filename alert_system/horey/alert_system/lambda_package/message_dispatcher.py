@@ -43,7 +43,7 @@ class MessageDispatcher:
         if not self.configuration.notification_channels:
             raise ValueError(f"Notification channels not configured! {self.configuration.notification_channels=}")
 
-        self.notification_channels = NotificationChannelFactory().load_notification_channels(self.configuration.notification_channels)
+        self.notification_channels = NotificationChannelFactory().load_notification_channels(self.configuration)
 
         return len(self.notification_channels) > 0 and \
             len(self.notification_channels) == len(self.configuration.notification_channels)
@@ -75,7 +75,7 @@ class MessageDispatcher:
 
         notification = self.generate_alert_system_exception_notification(error_inst, data)
         if not notification.link_href or not notification.link:
-            notification.link_href = "Link to has3 lambda"
+            notification.link_href = "HAS2 lambda"
             notification.link = f"https://{self.configuration.region}.console.aws.amazon.com/lambda/home?region={self.configuration.region}#/functions/{self.configuration.lambda_name}?tab=monitoring"
 
         logger.info(f"Number of notification channels: {len(self.notification_channels)}")

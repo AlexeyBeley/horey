@@ -46,22 +46,12 @@ class MessageRaw(MessageBase):
         :return:
         """
 
-        errors = []
         notification = Notification()
-        text = self.message_dict.get("text")
-        if text is None:
-            errors.append("Value 'text' was not received in message")
 
-        str_type = self.message_dict.get("type")
-        if not str_type:
-            errors.append("Value 'type' was not received in message, setting explicitly to CRITICAL")
-            str_type = "CRITICAL"
-
-        notification.text = " ".join(errors) + f" {self.message_dict=}" if errors else text
-        notification.type = Notification.Types.__members__.get(str_type)
-
-        notification.header = self.message_dict.get("header", "Default header")
-        for attr in ["link", "link_href", "routing_tags"]: 
-            if value := self.message_dict.get(attr):
-                setattr(notification, attr, value)
+        notification.type = Notification.Types.__members__.get(self.message_dict["type"])
+        notification.text = self.message_dict["text"]
+        notification.header = self.message_dict["header"]
+        notification.link = self.message_dict["link"]
+        notification.link_href = self.message_dict["link_href"]
+        notification.routing_tags = self.message_dict["routing_tags"]
         return notification

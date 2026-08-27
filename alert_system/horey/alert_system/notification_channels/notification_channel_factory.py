@@ -15,13 +15,13 @@ class NotificationChannelFactory:
 
     """
 
-    def load_notification_channels(self, notification_channel_files):
+    def load_notification_channels(self, configuration):
         """
 
         :return:
         """
 
-        return [self.load_notification_channel(file_path) for file_path in notification_channel_files]
+        return [self.load_notification_channel(file_path) for file_path in configuration.notification_channels]
 
     @staticmethod
     def load_notification_channel(initializer_file_path):
@@ -32,6 +32,5 @@ class NotificationChannelFactory:
         :return:
         """
 
-        logger.info(f"Loading notification channel from file: {initializer_file_path}")
         notification_channel = CommonUtils.load_object_from_module(initializer_file_path, "main")
         return notification_channel

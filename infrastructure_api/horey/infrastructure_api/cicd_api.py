@@ -895,6 +895,20 @@ class CICDAPI:
 
         return target
 
+    def init_raw_target(self, address, ssh_key_path, port=22, deployment_target_ssh_systemd_metadata=False):
+        """
+        Raw host
+        """
+
+        target = DeploymentTarget()
+        target.deployment_target_user_name = "ubuntu"
+        target.deply = "ubuntu"
+        target.deployment_target_ssh_key_path = ssh_key_path 
+        target.deployment_target_ssh_port = port
+        target.deployment_target_address = address 
+        target.deployment_target_ssh_systemd_metadata = deployment_target_ssh_systemd_metadata 
+        return target
+
     def init_bastion_chain_link(self, ec2_instance: EC2Instance, address: str, ) -> DeploymentTarget.BastionChainLink:
         """
 
@@ -974,7 +988,7 @@ class CICDAPI:
                                                                           provision_script_generator, target=target)
         raise NotImplementedError("Not implemented")
 
-    def run_remote_provision_constructor(self, target, function_name, windows=False, timeout=60 * 60, **kwargs):
+    def run_remote_provision_constructor(self, target: DeploymentTarget, function_name, windows=False, timeout=60 * 60, **kwargs):
         """
         Run the function remotely
 

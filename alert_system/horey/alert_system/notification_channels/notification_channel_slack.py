@@ -243,6 +243,7 @@ def main():
     """
 
     config = NotificationChannelSlackConfigurationPolicy()
-    config.init_from_file(NotificationChannelSlack.CONFIGURATION_FILE_NAME)
+    config.configuration_file_full_path = NotificationChannelSlack.CONFIGURATION_FILE_NAME
+    config.init_from_file()
 
     return NotificationChannelSlack(config)

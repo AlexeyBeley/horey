@@ -273,7 +273,7 @@ class AlertSystem:
         """
 
         alarm = CloudWatchAlarm({})
-        alarm.name = f"has3-{self.configuration.lambda_name}-eventbridge-successful-invocations"
+        alarm.name = f"has2-{self.configuration.lambda_name}-eventbridge-successful-invocations"
         alarm.actions_enabled = True
         alarm.insufficient_data_actions = []
         alarm.metric_name = "Invocations"
@@ -709,7 +709,7 @@ class AlertSystem:
 
         alarm = CloudWatchAlarm({})
         alarm.region = self.region
-        alarm.name = f"has3-alarm-{log_group_name}-{metric_uid}"
+        alarm.name = f"has2-alarm-{log_group_name}-{metric_uid}"
         alarm.actions_enabled = True
         alarm.alarm_description = json.dumps(alarm_description)
         alarm.metric_name = metric_filter.name
@@ -739,7 +739,7 @@ class AlertSystem:
 
         metric_filter = CloudWatchLogGroupMetricFilter({})
         metric_filter.log_group_name = log_group_name
-        metric_filter.name = f"has3-metric-filter-{log_group_name}-{metric_uid}"
+        metric_filter.name = f"has2-metric-filter-{log_group_name}-{metric_uid}"
         metric_filter.filter_pattern = filter_text
         metric_filter.metric_transformations = [
             {
@@ -767,7 +767,7 @@ class AlertSystem:
         alarm = CloudWatchAlarm({})
         alarm.region = self.region
         alarm.name = (
-            f"has3_alarm-{sqs_queue_name}-ApproximateNumberOfMessagesVisible"
+            f"has2_alarm-{sqs_queue_name}-ApproximateNumberOfMessagesVisible"
         )
         alarm.actions_enabled = True
         if "queue_name" not in message_data:
@@ -1051,11 +1051,11 @@ class AlertSystem:
                                  routing_tags,
                                  metric_data_start_time=None,
                                  metric_data_end_time=None,
-                                 metric_names=None):
+                                 metric_name=None):
         """
         Generate alarms based on 2 weeks data
 
-        :param metric_names:
+        :param metric_name:
         :param metric_data_end_time:
         :param metric_data_start_time:
         :param resource_alarms_builder:
@@ -1079,15 +1079,15 @@ class AlertSystem:
                                                                        {dim["Name"]: dim["Value"] for dim in
                                                                         result["Dimensions"]} == filter_dimensions]
             if not metrics_fetched_from_aws_filtered_by_request_dimensions:
-                raise RuntimeError(f"Was not able to find metrics with dimetions: {filters_req}")
+                raise RuntimeError(f"Was not able to find metrics: {filters_req}")
 
-            if metric_names:
+            if metric_name:
                 metrics_fetched_from_aws_filtered_by_request_dimensions = [metric_raw for metric_raw in
                                                                            metrics_fetched_from_aws_filtered_by_request_dimensions \
-                                                                           if metric_raw["MetricName"] in metric_names]
+                                                                           if metric_raw["MetricName"] == metric_name]
 
             all_metrics += metrics_fetched_from_aws_filtered_by_request_dimensions
-        
+
         return self.generate_alarms_from_metrics(resource_alarms_builder, all_metrics, routing_tags,
                                                  metric_data_start_time=metric_data_start_time,
                                                  metric_data_end_time=metric_data_end_time)

@@ -1035,12 +1035,16 @@ class ECSAPI:
         """
 
         for ecr_image in self.ecr_images:
-            build_numbers = [int(build_subtag.split("_")[1]) for str_image_tag in ecr_image.image_tags for build_subtag
+            build_numbers = [int(build_subtag.split("_")[1]) for str_image_tag in (ecr_image.image_tags or []) for build_subtag
                              in
                              str_image_tag.split("-") if build_subtag.startswith("build_")]
-            ecr_image.build_number = max(build_numbers)
+
+            ecr_image.build_number = max(build_numbers) if build_numbers else -1
+        
         try:
-            return max(self.ecr_images, key=lambda _image: _image.build_number)
+            max_build = max(self.ecr_images, key=lambda _image: _image.build_number)
+            if max_build == -1:
+                raise RuntimeError("All the images do not have tag build_<int>")
         except ValueError as inst_error:
             if "iterable argument is empty" not in repr(inst_error) and "arg is an empty sequence" not in repr(
                     inst_error):
@@ -1809,7 +1813,6 @@ class ECSAPI:
             raise ValueError("Unknown status")
 
         return self.provision_ecs_service(ecs_task_definition)
-
 
 
         build_number = self.get_next_build_number()

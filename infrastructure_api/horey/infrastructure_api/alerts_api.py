@@ -15,7 +15,6 @@ from horey.alert_system.notification_channels.notification_channel_slack import 
 from horey.alert_system.lambda_package.notification import Notification
 from horey.alert_system.postgres.postgres_alert_builder import \
     PostgresAlertBuilder
-from horey.alert_system.mysql.mysql_alert_builder import MysqlAlertBuilder
 from horey.alert_system.elb_alert_builder import ELBAlertBuilder
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
@@ -23,7 +22,6 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPI, AWSLambdaAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI, CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.db_api import DBAPI, DBAPIConfigurationPolicy
-from horey.infrastructure_api.alerts_api_configuration_policy import AlertsAPIConfigurationPolicy
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -35,7 +33,7 @@ class AlertsAPI:
 
     """
 
-    def __init__(self, configuration: AlertsAPIConfigurationPolicy, environment_api):
+    def __init__(self, configuration, environment_api):
         self.configuration = configuration
         self.environment_api = environment_api
         self._aws_lambda_api = None
@@ -230,11 +228,11 @@ class AlertsAPI:
         return self.aws_lambda_api.update_docker_lambda()
 
     def generate_postgres_cluster_alarms(self, cluster, routing_tags,
-                                         metric_names=None):
+                                         metric_name=None):
         """
         Generate alerts per resource: RDS Postgres Cluster
 
-        :param metric_names:
+        :param metric_name:
         :param metric_data_end_time:
         :param metric_data_start_time:
         :param cluster_id:
@@ -243,25 +241,8 @@ class AlertsAPI:
 
         alerts_builder = PostgresAlertBuilder(cluster=cluster)
         return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
-                                                          metric_names=metric_names)
+                                                          metric_name=metric_name)
 
-    def generate_mysql_cluster_alarms(self, cluster, routing_tags,
-                                        metric_names=None):
-        """
-        Generate alerts per resource: RDS Mysql Cluster
-
-        :param metric_nams:
-        :param metric_data_end_time:
-        :param metric_data_start_time:
-        :param cluster_id:
-        :return:
-        """
-
-        alerts_builder = MysqlAlertBuilder(self.environment_api.aws_api, cluster=cluster)
-        return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
-                                                          metric_names=metric_names)
-
-        
     def generate_alb_alarms(self, alb_name):
         """
         Generate alerts per resource: Elastic load balancer
@@ -702,22 +683,25 @@ class AlertsAPI:
         )
 
         self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
-
+    
     def provision_rds_postgres_monitoring(self, cluster_name, routing_tags):
         """
-        Provision rds postgres monitoring.
+        Provision Lambda monitoring.
 
         """
 
-        required_metric_names = ["ACUUtilization",
-        "ActiveTransactions",
-        "ConnectionAttempts",
-        "CommitLatency",
-        "CommitThroughput",
-        "DatabaseConnections",
-        "CPUUtilization",
+        cluster = self.db_api.get_cluster(cluster_name=cluster_name)
+        all_alarms, remove_alarms = self.generate_postgres_cluster_alarms(cluster, routing_tags)
+        logger.info(f"todo: Remove alarms: {remove_alarms}")
+        
+        required_metric_names = ["ACUUtilization", 
+        "ActiveTransactions", 
+        "ConnectionAttempts", 
+        "CommitLatency", 
+        "CommitThroughput", 
+        "DatabaseConnections", 
+        "CPUUtilization", 
         "InsertLatency",
-        "ReadIOPS",
         "InsertThroughput",
         "SelectLatency",
         "SelectThroughput",
@@ -734,15 +718,10 @@ class AlertsAPI:
         "UpdateLatency",
         "WriteLatency",
         "ReadLatency",
-        "ReadThroughput",
         "UpdateThroughput",
         "WriteThroughput",
         "WriteIOPS",
         "TotalIOPS"]
-        cluster = self.db_api.get_cluster(cluster_name=cluster_name)
-        all_alarms, remove_alarms = self.generate_postgres_cluster_alarms(cluster, routing_tags, metric_names=required_metric_names)
-        logger.info(f"todo: Remove alarms: {remove_alarms}")
-
 
         add_alarms = [alarm for alarm in all_alarms if alarm.metric_name in required_metric_names]
         for add_alarm in add_alarms:
@@ -752,89 +731,15 @@ class AlertsAPI:
             add_alarm.desription = json.dumps(alarm_description)
             self.provision_cloudwatch_alarm_object(add_alarm)
 
-        logger.info(f"Added {len(add_alarms)} alarms")
+            added_metric_names.append(add_alarm.metric_name)
+        
         # trigger only first and last alarms
         self.environment_api.trigger_cloudwatch_alarm(add_alarms[0], "Explicitly changed state to ALARM")
         self.environment_api.trigger_cloudwatch_alarm(add_alarms[-1], "Explicitly changed state to ALARM")
-
-        added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
-        if len(added_metric_names) != len(required_metric_names):
-            logger.warning(f"Not all required metrics were added: {set(required_metric_names)- set(added_metric_names)}")
-            if len(added_metric_names) < len(required_metric_names) /2:
-                raise ValueError("Less then 50% of required alarms were added") 
-        return True
-
-    def provision_rds_mysql_monitoring(self, cluster_name, routing_tags):
-        """
-        Provision rds mysql monitoring.
-
-        """
-
-        cluster = self.db_api.get_cluster(cluster_name=cluster_name)
-
-        required_metric_names = [
-        "ACUUtilization",
-        "ActiveTransactions",
-        "AbortedClients",
-        "CommitLatency",
-        "CPUUtilization",
-        "CommitThroughput",
-        "ConnectionAttempts",
-        "DatabaseConnections",
-        "Deadlocks",
-        "DeleteLatency",
-        "DeleteThroughput",
-        "DiskQueueDepth",
-        "DMLLatency",
-        "DMLThroughput",
-        "InsertLatency",
-        "FreeableMemory",
-        "NetworkReceiveThroughput",
-        "InsertThroughput",
-        "NetworkTransmitThroughput",
-        "NumActiveTransactions",
-        "NetworkThroughput",
-        "Queries",
-        "ReadIOPS",
-        "ReadThroughput",
-        "SelectLatency",
-        "SelectThroughput",
-        "RowLockTime",
-        "StorageNetworkReceiveThroughput",
-        "ServerlessDatabaseCapacity",
-        "StorageNetworkTransmitThroughput",
-        "StorageNetworkThroughput",
-        "SwapUsage",
-        "TempStorageIOPS",
-        "UpdateLatency",
-        "UpdateThroughput",
-        "WriteIOPS",
-        "ReadLatency",
-        "WriteLatency",
-        "WriteThroughput",
-        "TotalIOPS",]
-
-        add_alarms, remove_alarms = self.generate_mysql_cluster_alarms(cluster, routing_tags, metric_names=required_metric_names)
-        logger.info(f"todo: Remove alarms: {remove_alarms}")
-
-        for add_alarm in add_alarms:
-            alarm_description = {"routing_tags": routing_tags,
-                                 "cluster_name": cluster_name}
-
-            add_alarm.desription = json.dumps(alarm_description)
-            self.provision_cloudwatch_alarm_object(add_alarm)
-
-        logger.info(f"Added {len(add_alarms)} alarms")
-        # trigger only first and last alarms
-        self.environment_api.trigger_cloudwatch_alarm(add_alarms[0], "Explicitly changed state to ALARM")
-        self.environment_api.trigger_cloudwatch_alarm(add_alarms[-1], "Explicitly changed state to ALARM")
-
-        added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
-        if len(added_metric_names) != len(required_metric_names):
-            logger.warning(f"Not all required metrics were added: {set(required_metric_names)- set(added_metric_names)}")
-            if len(added_metric_names) < len(required_metric_names) /2:
-                raise ValueError("Less then 50% of required alarms were added") 
-        return True
+        
+        logger.info(f"Added {len(added_metric_names)} alarms")
+        if len(set(added_metric_names)) != len(required_metric_names):
+            raise ValueError("Not all required metrics were added")
 
     def provision_self_monitoring_log_error_alarm(self):
         """
@@ -1009,16 +914,3 @@ class AlertsAPI:
 
         return {AlertSystemConfigurationPolicy.ALERT_SYSTEM_RAW_MESSAGE_KEY: "",
                 "type": notification_type}
-
-    def trigger_lambda_raw_event(self, payload_dict):
-        """
-        Trigger lambda
-
-        """
-
-        payload_dict[self.alert_system.configuration.ALERT_SYSTEM_RAW_MESSAGE_KEY] = True
-
-        request_dict= {"FunctionName": self.configuration.lambda_name,
-        "InvocationType": "RequestResponse",
-        "Payload": json.dumps(payload_dict).encode("utf-8")}
-        return self.environment_api.aws_api.lambda_client.invoke_raw(self.environment_api.region, request_dict)

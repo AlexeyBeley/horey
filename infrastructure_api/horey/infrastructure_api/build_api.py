@@ -95,8 +95,11 @@ class BuildAPI:
         """
 
         build_directory = self.run_prepare_image_build_directory_routine(branch_name, build_number)
-        tags = tags or []
-        image = self.build_docker_image(build_directory, tags, nocache=nocache, dockerfile=dockerfile)
+        print(f"cd {build_directory} && docker build -t {tags[0]} --platform linux/amd64 .")
+        breakpoint()
+        
+        #image = self.build_docker_image(build_directory, tags, nocache=nocache, dockerfile=dockerfile)
+        image = self.environment_api.docker_api.get_image(tags[0])
         return image
 
     def run_build_and_upload_image_routine(self, branch_name, build_number, nocache=False, dockerfile="Dockerfile"):
@@ -112,6 +115,13 @@ class BuildAPI:
         self.upload_docker_image_to_artifactory(tags)
         return image
 
+    def init_commit_id(self):
+        """
+        Init commit id
+
+        """
+        self.commit_id = self.git_api.get_commit_id()
+
     def prepare_source_code_directory(self, branch_name):
         """
 
@@ -121,7 +131,7 @@ class BuildAPI:
         logger.info(f"Preparing source code directory, {branch_name=}")
         perf_counter_start = time.perf_counter()
         self.git_api.update_local_source_code(branch_name)
-        self.commit_id = self.git_api.get_commit_id()
+        self.init_commit_id()
 
         logger.info(
             f"Prepared source code directory commit: {self.commit_id}. Took {time.perf_counter() - perf_counter_start}")
