@@ -43,7 +43,7 @@ class MessageDispatcher:
         if not self.configuration.notification_channels:
             raise ValueError(f"Notification channels not configured! {self.configuration.notification_channels=}")
 
-        self.notification_channels = NotificationChannelFactory().load_notification_channels(self.configuration)
+        self.notification_channels = NotificationChannelFactory().load_notification_channels(self.configuration.notification_channels)
 
         return len(self.notification_channels) > 0 and \
             len(self.notification_channels) == len(self.configuration.notification_channels)
