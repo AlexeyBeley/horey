@@ -1099,6 +1099,7 @@ class QuestradeAPI:
         """
 
         self.selenium_open_symbol_page(symbol)
+        self.selenium_press_sell_button()
 
         for _ in range(5*10):
             time.sleep(0.1)
@@ -1120,19 +1121,7 @@ class QuestradeAPI:
                 btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
                 if btn:
                     btn.click()
-                if not self.clicked_on_ignore_night_sales:
-                    breakpoint()
-                    body = self.selenium_api.driver.find_element(By.TAG_NAME, "body")
-                    x_coord = 600  # pixels right from the element's top-left
-                    y_coord = 300   # pixels down from the element's top-left
-
-                    ActionChains(self.selenium_api.driver)\
-                    .move_to_element_with_offset(body, 0, 0)\
-                    .move_by_offset(x_coord, y_coord)\
-                    .click()\
-                    .perform()
-
-                    self.clicked_on_ignore_night_sales = True
+              
 
                 div_input = self.get_limit_price_input_div()
                 if not div_input:
@@ -1165,6 +1154,54 @@ class QuestradeAPI:
         btn = self.selenium_api.get_shadowed_element_by_text("button", "Send order")
         btn.click()
         time.sleep(2)
+    
+    def selenium_press_sell_button(self):
+        """
+        Fallback that works 50% of the time:
+        if not btn:
+            btn = self.selenium_api.get_shadowed_element_by_text("button", "Sell")
+        """
+
+        for _ in range(5*10):
+            time.sleep(0.1)
+            btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
+
+            if not btn:
+                continue
+
+            try:
+                btn.click()
+            except StaleElementReferenceException:
+                continue
+                
+            btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
+
+            if btn:
+                time.sleep(1)
+                continue
+
+            breakpoint()
+            self.check_and_dismiss_otc_popup()
+
+            div_input = self.get_limit_price_input_div()
+            if not div_input:
+                btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
+                if btn:
+                    btn.click()
+            
+            if not self.clicked_on_ignore_night_sales:
+                    breakpoint()
+                    body = self.selenium_api.driver.find_element(By.TAG_NAME, "body")
+                    x_coord = 600  # pixels right from the element's top-left
+                    y_coord = 300   # pixels down from the element's top-left
+
+                    ActionChains(self.selenium_api.driver)\
+                    .move_to_element_with_offset(body, 0, 0)\
+                    .move_by_offset(x_coord, y_coord)\
+                    .click()\
+                    .perform()
+
+                    self.clicked_on_ignore_night_sales = True
     
     def check_and_dismiss_otc_popup(self, timeout=3):
         """
