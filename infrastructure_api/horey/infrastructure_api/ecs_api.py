@@ -1042,9 +1042,10 @@ class ECSAPI:
             ecr_image.build_number = max(build_numbers) if build_numbers else -1
         
         try:
-            max_build = max(self.ecr_images, key=lambda _image: _image.build_number)
-            if max_build == -1:
+            max_build_image = max(self.ecr_images, key=lambda _image: _image.build_number)
+            if max_build_image.build_number == -1:
                 raise RuntimeError("All the images do not have tag build_<int>")
+            return max_build_image
         except ValueError as inst_error:
             if "iterable argument is empty" not in repr(inst_error) and "arg is an empty sequence" not in repr(
                     inst_error):
