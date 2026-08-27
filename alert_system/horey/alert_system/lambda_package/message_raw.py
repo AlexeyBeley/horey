@@ -59,8 +59,9 @@ class MessageRaw(MessageBase):
 
         notification.text = " ".join(errors) + f" {self.message_dict=}" if errors else text
         notification.type = Notification.Types.__members__.get(str_type)
+
         notification.header = self.message_dict.get("header", "Default header")
-        notification.link = self.message_dict.get("link")
-        notification.link_href = self.message_dict.get("link_href")
-        notification.routing_tags = self.message_dict.get("routing_tags")
+        for attr in ["link", "link_href", "routing_tags"]: 
+            if value := self.message_dict.get(attr):
+                setattr(notification, attr, value)
         return notification
