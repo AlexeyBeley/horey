@@ -1100,8 +1100,6 @@ class QuestradeAPI:
         :return:
         """
 
-        logger.info(f"Selling symbol {symbol}")
-
         self.selenium_open_symbol_page(symbol)
         self.selenium_press_sell_button()
 
@@ -1652,8 +1650,9 @@ return findInShadow();
                 orders_to_place.append(order)
                 lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculated_round}, today_max={today_max} revenue={int(sell_calculated/( Decimal(str(position.average_entry_price))/100))}%")
 
-        for order_to_place in orders_to_place:
+        for i, order_to_place in enumerate(orders_to_place):
             # https://www.questrade.com/api/documentation/rest-operations/market-calls/markets-quotes-options
+            logger.info(f"Selling symbol {order_to_place.symbol} {i}/{len(orders_to_place)}")
             self.selenium_sell_symbol(order_to_place.symbol, order_to_place.limit_price)
 
         return True
