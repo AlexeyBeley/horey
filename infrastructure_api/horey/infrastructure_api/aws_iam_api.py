@@ -201,3 +201,19 @@ class AWSIAMAPI:
         iam_instance_profile.roles = [{"RoleName": iam_role.name}]
         self.environment_api.aws_api.iam_client.provision_instance_profile(iam_instance_profile)
         return iam_instance_profile
+
+    def generate_lambda_role_name(self, lambda_name:str):
+        """
+        Generate lambda role name
+        """
+
+        lambda_name = lambda_name.replace(self.environment_api.configuration.environment_level, "")
+        for replace_me in ["--", "__", "-_", "_-"]:
+            lambda_name = lambda_name.replace(replace_me, "-")
+        lambda_name = lambda_name.strip("-").strip("_")
+        breakpoint()
+        if self.environment_api.configuration.environment_name in [self.environment_api.configuration.EnvironmentLevel.PRODUCTION.value,
+                    self.configuration.EnvironmentLevel.STAGING.value]:
+            return f"role_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.region}-{lambda_name}"
+
+        return f"role_{self.environment_api.configuration.environment_level}-{lambda_name}"

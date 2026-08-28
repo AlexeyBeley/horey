@@ -121,7 +121,7 @@ class AWSLambdaAPI:
             try:
                 lambda_role_name = self.configuration.lambda_role_name
             except self.aws_iam_api.configuration.UndefinedValueError:
-                lambda_role_name = f"role_{self.environment_api.configuration.environment_level}-{self.configuration.lambda_name}"
+                lambda_role_name = self.generate_lambda_role_name(self.configuration.lambda_name)
             self.aws_iam_api.configuration.role_name = lambda_role_name
 
         try:
@@ -870,7 +870,7 @@ class AWSLambdaAPI:
             break
         else:
             raise NotImplementedError("No streams found")
-        ret = [log for log in  self.cloudwatch_api.yield_logs(self.log_group_name, streams=[stream])]
+        ret = list(self.cloudwatch_api.yield_logs(self.log_group_name, streams=[stream]))
 
         for log in ret:
             print(log["message"])
