@@ -121,7 +121,7 @@ class AWSLambdaAPI:
             try:
                 lambda_role_name = self.configuration.lambda_role_name
             except self.aws_iam_api.configuration.UndefinedValueError:
-                lambda_role_name = self.generate_lambda_role_name(self.configuration.lambda_name)
+                lambda_role_name = self.aws_iam_api.generate_lambda_role_name(self.configuration.lambda_name)
             self.aws_iam_api.configuration.role_name = lambda_role_name
 
         try:
