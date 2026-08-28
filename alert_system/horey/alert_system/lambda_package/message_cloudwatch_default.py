@@ -301,7 +301,7 @@ class MessageCloudwatchDefault(MessageBase):
             notification = self.generate_notification_log_group_filter_pattern()
         elif self.trigger is None:
             try:
-                state = alarm_data.get("state")
+                state = self.message_dict.get("state")
                 reason = state.get("reason")
             except Exception:
                 logger.info(f"Was not able to find data: {self.message_dict}")
