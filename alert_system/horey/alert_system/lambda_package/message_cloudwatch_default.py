@@ -217,7 +217,7 @@ class MessageCloudwatchDefault(MessageBase):
 
         :return:
         """
-
+        
         lambda_name = self.get_dimension("FunctionName")
 
         return f"https://{self.configuration.region}.console.aws.amazon.com/lambda/home?region={self.configuration.region}#/functions/{lambda_name}?tab=monitoring"
@@ -255,10 +255,21 @@ class MessageCloudwatchDefault(MessageBase):
         :param name:
         :return:
         """
+        
+        if self.trigger is not None:
+            for dimension in self.trigger["Dimensions"]:
+                if dimension.get("name") == name:
+                    return dimension["value"]
+        else:
+            try:
+                for metric in self.message_dict["configuration"]["metrics"]:
+                    for dimention_name, dimention_value in metric.get("metricState").get("metric").get("dimentions").items():
+                        if dimention_name == name:
+                            return dimention_value
+            except Exception:
+                logger.info(f"Can not find doimetion: {self.message_dict}")
+                raise
 
-        for dimension in self.trigger["Dimensions"]:
-            if dimension.get("name") == name:
-                return dimension["value"]
         return None
 
     def generate_notification_lambda_duration(self):
