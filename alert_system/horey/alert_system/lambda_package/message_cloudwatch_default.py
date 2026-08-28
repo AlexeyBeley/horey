@@ -300,7 +300,15 @@ class MessageCloudwatchDefault(MessageBase):
         if "log_group_name" in self.alarm_description and "log_group_filter_pattern" in self.alarm_description:
             notification = self.generate_notification_log_group_filter_pattern()
         elif self.trigger is None:
-            notification = self.generate_notification_default(reason=self.message_dict.get("alarmData").get("state").get("reason"))
+            try:
+                alarm_data = self.message_dict.get("alarmData")
+                state = alarm_data.get("state")
+                reason = state.get("reason")
+            except Exception:
+                logger.info(f"Was not able to find data: {self.message_dict}")
+                raise
+            
+            notification = self.generate_notification_default(reason=reason)
             notification.link = self.generate_alert_system_lambda_link()
             notification.link_href = "View AlertSystem Lambda"
         elif self.trigger["MetricName"] == "Duration":
