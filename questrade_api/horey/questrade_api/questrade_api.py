@@ -19,7 +19,9 @@ from scipy import stats
 import requests
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import  StaleElementReferenceException, JavascriptException
+from selenium.common.exceptions import StaleElementReferenceException, \
+                            JavascriptException, ElementNotInteractableException, \
+                            ElementClickInterceptedException
 from selenium.webdriver.common.action_chains import ActionChains
 
 
@@ -1098,62 +1100,49 @@ class QuestradeAPI:
         :return:
         """
 
+        logger.info(f"Selling symbol {symbol}")
+
         self.selenium_open_symbol_page(symbol)
         self.selenium_press_sell_button()
 
-        for _ in range(5*10):
-            time.sleep(0.1)
-            btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
-            #if not btn:
-            #    btn = self.selenium_api.get_shadowed_element_by_text("button", "Sell")
-            if not btn:
-                continue
+        div_input = self.get_limit_price_input_div()
+        if not div_input:
+            raise RuntimeError("Can not find div input")
 
-            try:
-                btn.click()
-            except StaleElementReferenceException:
-                continue
+        try:
+            self.selenium_fill_limit_price_input(div_input, price)
+        except TimeoutError as inst_err:
             breakpoint()
-            self.check_and_dismiss_otc_popup()
+            if "Limit Price" not in repr(inst_err):
+                raise
 
-            div_input = self.get_limit_price_input_div()
-            if not div_input:
-                btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
-                if btn:
-                    btn.click()
-              
-
-                div_input = self.get_limit_price_input_div()
-                if not div_input:
-                    raise RuntimeError("Can not find div input")
-
-            try:
-                self.selenium_fill_limit_price_input(div_input, price)
-            except TimeoutError as inst_err:
-                if "Limit Price" not in repr(inst_err):
-                    raise
-                continue
-
-            break
-
-        else:
-            raise TimeoutError("Reached timeout waiting for 'Sell' button to appear")
-        breakpoint()
-        
         if not self.select_gtem():
-            breakpoint()
             self.select_night_option()
 
         btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="order-entry-next-button"]')
         if not btn:
             btn = self.selenium_api.get_shadowed_element_by_text("button", "Review Order")
-        btn.click()
+        try:
+            btn.click()
+        except ElementClickInterceptedException:
+            breakpoint()
         #breakpoint()
         #btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="order-entry-sm-screen-sell-button"]')
         #if not btn:
         btn = self.selenium_api.get_shadowed_element_by_text("button", "Send order")
         btn.click()
         time.sleep(2)
+        btn = self.selenium_api.get_shadowed_element_by_text("button", "Send order")
+        if btn:
+            btn.click()
+        
+        btn = self.selenium_api.get_shadowed_element_by_text("button", "Done")
+        if not btn:
+            time.sleep(2)
+            btn = self.selenium_api.get_shadowed_element_by_text("button", "Done")
+            if not btn:
+                breakpoint()
+                logger.info("Expected to find 'Done' button")
     
     def selenium_press_sell_button(self):
         """
@@ -1164,44 +1153,61 @@ class QuestradeAPI:
 
         for _ in range(5*10):
             time.sleep(0.1)
+            if self.get_limit_price_input_div():
+                return True
             btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
 
             if not btn:
+                logger.info("No Sell button found")
+                if self.get_limit_price_input_div():
+                    return True
+                time.sleep(1)
                 continue
 
             try:
                 btn.click()
+            except ElementNotInteractableException:
+                logger.info("Sell button click: ElementNotInteractableException")
+                continue
             except StaleElementReferenceException:
-                continue
-                
-            btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
-
-            if btn:
-                time.sleep(1)
+                logger.info("Sell button click: StaleElementReferenceException")
                 continue
 
-            breakpoint()
-            self.check_and_dismiss_otc_popup()
-
-            div_input = self.get_limit_price_input_div()
-            if not div_input:
-                btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
-                if btn:
-                    btn.click()
-            
+            accepted_agreement = self.check_and_dismiss_otc_popup()
+            if accepted_agreement:
+                continue
+                        
             if not self.clicked_on_ignore_night_sales:
-                    breakpoint()
-                    body = self.selenium_api.driver.find_element(By.TAG_NAME, "body")
-                    x_coord = 600  # pixels right from the element's top-left
-                    y_coord = 300   # pixels down from the element's top-left
+                body = self.selenium_api.driver.find_element(By.TAG_NAME, "body")
+                x_coord = 600  # pixels right from the element's top-left
+                y_coord = 300   # pixels down from the element's top-left
 
-                    ActionChains(self.selenium_api.driver)\
-                    .move_to_element_with_offset(body, 0, 0)\
-                    .move_by_offset(x_coord, y_coord)\
-                    .click()\
-                    .perform()
+                ActionChains(self.selenium_api.driver)\
+                .move_to_element_with_offset(body, 0, 0)\
+                .move_by_offset(x_coord, y_coord)\
+                .click()\
+                .perform()
+                time.sleep(2)
+                self.clicked_on_ignore_night_sales = True
+                if self.get_limit_price_input_div():
+                    return True
+            else:
+                time.sleep(1)
+                if self.get_limit_price_input_div():
+                    return True
+                logger.info("todo:")
+                btn = self.selenium_api.get_shadowed_element_by_css_selector('button[data-qt*="sell-button"]')
 
-                    self.clicked_on_ignore_night_sales = True
+                if btn:
+                    time.sleep(1)
+                    continue
+
+            logger.info("todo: Unknown state")
+    
+        div_input = self.get_limit_price_input_div()
+        if not div_input:
+            raise RuntimeError("Can not find div input")
+
     
     def check_and_dismiss_otc_popup(self, timeout=3):
         """
@@ -1443,7 +1449,7 @@ return selectGTEMOption(document);
         """
         Select if exists
         """
-        breakpoint()
+        logger.info("Todo: change time limit selection by time.")
         pass
 
     def get_div_input_by_label(self, label_text):
