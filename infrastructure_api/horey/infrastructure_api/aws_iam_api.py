@@ -213,7 +213,7 @@ class AWSIAMAPI:
         lambda_name = lambda_name.strip("-").strip("_")
         breakpoint()
         if self.environment_api.configuration.environment_name in [self.environment_api.configuration.EnvironmentLevel.PRODUCTION.value,
-                    self.configuration.EnvironmentLevel.STAGING.value]:
+                    self.environment_api.configuration.EnvironmentLevel.STAGING.value]:
             return f"role_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.region}-{lambda_name}"
 
         return f"role_{self.environment_api.configuration.environment_level}-{lambda_name}"
