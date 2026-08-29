@@ -263,11 +263,11 @@ class MessageCloudwatchDefault(MessageBase):
         else:
             try:
                 for metric in self.message_dict["configuration"]["metrics"]:
-                    for dimention_name, dimention_value in metric.get("metricStat").get("metric").get("dimentions").items():
+                    for dimention_name, dimention_value in metric.get("metricStat").get("metric").get("dimensions").items():
                         if dimention_name == name:
                             return dimention_value
             except Exception:
-                logger.info(f"Can not find dimetion: {self.message_dict}")
+                logger.info(f"Can not find dimension: {self.message_dict}")
                 raise
 
         return None
