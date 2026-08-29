@@ -9,6 +9,7 @@ import sqlite3
 import platform
 import time
 import threading
+from threading import Lock
 from datetime import datetime, timezone, timedelta
 import json
 from pathlib import Path
@@ -40,6 +41,8 @@ class QuestradeAPI:
     Main Class.
     https://www.questrade.com/api/documentation/getting-started
     """
+
+    THREADING_LOCK = Lock()
 
     def __init__(self, configuration: QuestradeAPIConfigurationPolicy = None):
         self.configuration = configuration
@@ -361,10 +364,9 @@ class QuestradeAPI:
         start_time = today.replace(hour=3, minute=0, second=0, microsecond=0)  - timedelta(days=10)
 
         start_timestamp = start_time.timestamp() if start_time else None
-        self.db_cursor.execute(
-                f"select symbol_id from candles where vwap <= {max_price} and vwap >= {min_price} AND start >= {start_timestamp}  group by symbol_id"
-            )
-        response = self.db_cursor.fetchall()
+        response = self.db_execute(
+                    f"select symbol_id from candles where vwap <= {max_price} and vwap >= {min_price} AND start >= {start_timestamp}  group by symbol_id"
+                )
 
         symbols = []
         for line in response:
@@ -407,12 +409,9 @@ class QuestradeAPI:
         if max_price:
             where_string = f" WHERE high<={max_price}"
 
-        with sqlite3.connect(self.configuration.db_file_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                f"select * from candles{where_string}"
-            )
-            response = cursor.fetchall()
+            response = self.db_execute(
+                    f"select * from candles{where_string}"
+                )
 
         return [Candle({
             "id": row[0],
@@ -432,23 +431,20 @@ class QuestradeAPI:
         Create table
         :return:
         """
-
-        with sqlite3.connect(self.configuration.db_file_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS symbols (
-                    id INTEGER PRIMARY KEY,
-                    symbol_id INTEGER NOT NULL UNIQUE,
-                    symbol TEXT NOT NULL UNIQUE,
-                    description TEXT,
-                    security_type TEXT,
-                    listing_exchange TEXT,
-                    is_tradable BOOLEAN,
-                    is_quotable BOOLEAN,
-                    currency TEXT
-                )
-            ''')
-            conn.commit()
+        
+        self.db_execute('''
+                    CREATE TABLE IF NOT EXISTS symbols (
+                        id INTEGER PRIMARY KEY,
+                        symbol_id INTEGER NOT NULL UNIQUE,
+                        symbol TEXT NOT NULL UNIQUE,
+                        description TEXT,
+                        security_type TEXT,
+                        listing_exchange TEXT,
+                        is_tradable BOOLEAN,
+                        is_quotable BOOLEAN,
+                        currency TEXT
+                    )
+                ''')
         logger.info(f"Table symbols created in {self.configuration.db_file_path}' database")
         return True
 
@@ -459,63 +455,57 @@ class QuestradeAPI:
         :return:
         """
 
-        with sqlite3.connect(self.configuration.db_file_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS candles(
-                    id INTEGER PRIMARY KEY,
-                    symbol_id INTEGER REFERENCES symbols(symbol_id) NOT NULL,
-                    start REAL NOT NULL,
-                    end REAL NOT NULL,
-                    low REAL NOT NULL,
-                    high REAL NOT NULL,
-                    open REAL NOT NULL,
-                    close REAL NOT NULL,
-                    volume INTEGER NOT NULL,
-                    vwap REAL NOT NULL
-                )
-            ''')
-            conn.commit()
+        self.db_execute('''
+                    CREATE TABLE IF NOT EXISTS candles(
+                        id INTEGER PRIMARY KEY,
+                        symbol_id INTEGER REFERENCES symbols(symbol_id) NOT NULL,
+                        start REAL NOT NULL,
+                        end REAL NOT NULL,
+                        low REAL NOT NULL,
+                        high REAL NOT NULL,
+                        open REAL NOT NULL,
+                        close REAL NOT NULL,
+                        volume INTEGER NOT NULL,
+                        vwap REAL NOT NULL
+                    )
+                ''')
         logger.info(f"Table candles created in {self.configuration.db_file_path}' database")
         return True
 
-    def db_upsert_symbol(self, symbol: Symbol, cursor=None):
+    def db_upsert_symbol(self, symbol: Symbol, db_execute=None):
         """
         Update or insert symbol into DB
         :param symbol:
         :return:
         """
 
+        db_execute = db_execute or self.db_execute
         logger.info(f"Upserting symbol {symbol.symbol} into {self.configuration.db_file_path}' database")
-        if not cursor:
-            with sqlite3.connect(self.configuration.db_file_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT OR REPLACE INTO symbols (symbol_id, symbol, description, security_type, listing_exchange, is_tradable, is_quotable, currency)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (symbol.symbol_id, symbol.symbol, symbol.description, symbol.security_type,
-                      symbol.listing_exchange, symbol.is_tradable, symbol.is_quotable, symbol.currency))
-                conn.commit()
-        else:
-            cursor.execute('''
-                               INSERT OR REPLACE INTO symbols (symbol_id, symbol, description, security_type, listing_exchange, is_tradable, is_quotable, currency)
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                           ''', (symbol.symbol_id, symbol.symbol, symbol.description, symbol.security_type,
-                                 symbol.listing_exchange, symbol.is_tradable, symbol.is_quotable, symbol.currency))
+        db_execute('''
+                        INSERT OR REPLACE INTO symbols (symbol_id, symbol, description, security_type, listing_exchange, is_tradable, is_quotable, currency)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (symbol.symbol_id, symbol.symbol, symbol.description, symbol.security_type,
+                        symbol.listing_exchange, symbol.is_tradable, symbol.is_quotable, symbol.currency))
 
         logger.info(f"Symbol {symbol.symbol} upserted into {self.configuration.db_file_path}' database")
         return True
 
-    def db_execute(self, query, args):
+    def db_execute(self, query, args, db_connection=None, db_cursor: sqlite3.Cursor=None):
         """
         Execute query
         :param query:
         :param args:
         :return:
         """
+        
+        db_connection = db_connection or self.db_connection
+        db_cursor = db_cursor or self.db_cursor
 
-        self.db_cursor.execute(query, args)
-        self.db_connection.commit()
+        with QuestradeAPI.THREADING_LOCK:
+            db_cursor.execute(query, args)
+            if query.lower().startswith("select"):
+                return db_cursor.fetchall()
+            db_connection.commit()
         return True
 
     @property
@@ -537,11 +527,12 @@ class QuestradeAPI:
         :param self:
         :return:
         """
+    
         if self._db_cursor is None:
             self._db_cursor = self.db_connection.cursor()
         return self._db_cursor
 
-    def db_upsert_candle(self, symbol_id, candle: Candle, db_cursor=None):
+    def db_upsert_candle(self, symbol_id, candle: Candle, db_execute=None):
         """
         Update or insert candle into DB
         :param cursor:
@@ -550,49 +541,41 @@ class QuestradeAPI:
         :return:
         """
 
-        if not db_cursor:
-            self.db_execute('''
+        db_execute = db_execute or self.db_execute
+
+        db_execute('''
                     INSERT OR REPLACE INTO candles (symbol_id, start, end, low, high, open, close, volume, vwap)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''', (symbol_id, candle.float_start, candle.float_end, candle.low, candle.high, candle.open,
                           candle.close, candle.volume, candle.vwap))
-        else:
-            db_cursor.execute('''
-                INSERT OR REPLACE INTO candles (symbol_id, start, end, low, high, open, close, volume, vwap)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (symbol_id, candle.float_start, candle.float_end, candle.low, candle.high, candle.open, candle.close,
-                  candle.volume,
-                  candle.vwap))
-
         return True
 
-    def db_get_symbol(self, symbol_id=None, db_cursor=None, symbol_symbol=None):
+    def db_get_symbol(self, symbol_id=None, db_execute=None, symbol_symbol=None):
         """
         Get symbol from DB
-        :param db_cursor:
+        :param db_execute:
         :param symbol_id:
         :return:
         """
 
         logger.debug(f"Fetching symbol {symbol_id} from {self.configuration.db_file_path}' database")
-        db_cursor = db_cursor or self.db_cursor
+        db_execute = db_execute or self.db_execute
 
-        return self.db_get_symbol_raw(symbol_id, db_cursor, symbol_symbol=symbol_symbol)
+        return self.db_get_symbol_raw(symbol_id, db_execute, symbol_symbol=symbol_symbol)
 
-    def db_get_symbol_raw(self, symbol_id, cursor, symbol_symbol=None):
+    def db_get_symbol_raw(self, symbol_id, db_execute, symbol_symbol=None):
         """
         Get symbol from DB
         :param cursor:
         :param symbol_id:
         :return:
         """
-
+        
         if symbol_symbol:
-            cursor.execute('SELECT * FROM symbols WHERE symbol = ?', (symbol_symbol,))
-
+            rows = db_execute('SELECT * FROM symbols WHERE symbol = ?', (symbol_symbol,))
         else:
-            cursor.execute('SELECT * FROM symbols WHERE symbol_id = ?', (symbol_id,))
-        rows = cursor.fetchall()
+            rows = db_execute('SELECT * FROM symbols WHERE symbol_id = ?', (symbol_id,))
+
         if len(rows) == 0:
             return None
         if len(rows) > 1:
@@ -610,33 +593,33 @@ class QuestradeAPI:
             "currency": row[8]
         })
 
-    def db_get_symbol_candles(self, symbol_id, limit=None, start_time:datetime=None, end_time:datetime=None, db_cursor=None):
+    def db_get_symbol_candles(self, symbol_id, limit=None, start_time:datetime=None, end_time:datetime=None, db_execute=None):
         """
         Get symbol candles from DB
 
         :param end_time:
         :param start_time:
-        :param cursor:
+        :param db_execute:
         :param limit:
         :param symbol_id:
         :return:
         """
 
-        db_cursor = db_cursor or self.db_cursor
+        db_execute = db_execute or self.db_execute
 
         end_timestamp = end_time.timestamp() if end_time else None
 
         start_timestamp = start_time.timestamp() if start_time else None
 
-        return self.db_get_symbol_candles_raw(symbol_id, db_cursor, limit=limit, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
+        return self.db_get_symbol_candles_raw(symbol_id, db_execute, limit=limit, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
 
-    def db_get_symbol_candles_raw(self, symbol_id, cursor, limit=None, start_timestamp:float=None, end_timestamp:float=None):
+    def db_get_symbol_candles_raw(self, symbol_id, db_execute, limit=None, start_timestamp:float=None, end_timestamp:float=None):
         """
         Get symbol candles from DB
         :param end_timestamp:
         :param start_timestamp:
         :param symbol_id:
-        :param cursor:
+        :param db_execute:
         :param limit:
         :return:
         """
@@ -651,8 +634,8 @@ class QuestradeAPI:
             where_string += f" AND start >= {start_timestamp}"
             where_string += f" AND end <= {end_timestamp}"
 
-        cursor.execute(f'SELECT * FROM candles WHERE symbol_id = ?{where_string}{limit_string}', (symbol_id,))
-        rows = cursor.fetchall()
+        rows = db_execute(f'SELECT * FROM candles WHERE symbol_id = ?{where_string}{limit_string}', (symbol_id,))
+
         if rows is None:
             return None
         ret = []
@@ -671,16 +654,16 @@ class QuestradeAPI:
             }))
         return ret
 
-    def update_symbol_today_candles(self, symbol: Symbol, db_cursor=None):
+    def update_symbol_today_candles(self, symbol: Symbol, db_execute=None):
         """
         Update symbols today candles
         :param symbol:
         :return:
         """
 
-        db_cursor = db_cursor or self.db_cursor
+        db_execute = db_execute or self.db_execute
 
-        existing_candles = self.db_get_today_candles(symbol, db_cursor=db_cursor)
+        existing_candles = self.db_get_today_candles(symbol, db_execute=db_execute)
         existing_pairs = [(candle.float_start, candle.float_end) for candle in existing_candles]
         today = datetime.now(timezone.utc)
         if today.hour < 3:
@@ -695,12 +678,12 @@ class QuestradeAPI:
             if (candle.float_start, candle.float_end) in existing_pairs:
                 continue
             upserted += 1 
-            self.db_upsert_candle(symbol.symbol_id, candle, db_cursor=db_cursor)
+            self.db_upsert_candle(symbol.symbol_id, candle, db_execute=db_execute)
         
         logger.debug(f"Sybol {symbol.symbol_id} {upserted} candles updated")
         return candles
 
-    def db_get_today_candles(self, symbol:Symbol, db_cursor=None) -> List[Candle]:
+    def db_get_today_candles(self, symbol:Symbol, db_execute=None) -> List[Candle]:
         """
         Fetch from DB
 
@@ -708,7 +691,7 @@ class QuestradeAPI:
         :return:
         """
 
-        db_cursor = db_cursor or self.db_cursor
+        db_execute = db_execute or self.db_execute
         today = datetime.now(timezone.utc)
 
         if today.hour < 5:
@@ -720,8 +703,7 @@ class QuestradeAPI:
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
 
-
-        candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=utc_today_8pm, db_cursor=db_cursor)
+        candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=utc_today_8pm, db_execute=db_execute)
         return candles
 
     def api_get_symbol_candles(self, symbol: Symbol, start_time: datetime, end_time: datetime):
@@ -751,22 +733,22 @@ class QuestradeAPI:
         return [Candle(dict_src) for dict_src in position_candles["candles"]]
 
     @connected
-    def update_cheap_candles_with_today_data(self, symbol_name=None, db_cursor=None):
+    def update_cheap_candles_with_today_data(self, symbol_name=None, db_execute=None):
         """
         Update cheap symbols with today data
         :return:
         """
 
-        db_cursor = db_cursor or self.db_cursor
+        db_execute = db_execute or self.db_execute
 
         error_counter = 0
         cheapest_stocks = self.sort_cheapest_by_price()
         symbol_ids = [symbol[1] for symbol in cheapest_stocks if (symbol_name is None) or (symbol[0] == symbol_name)]
         for i, symbol_id in enumerate(symbol_ids):
-            symbol = self.db_get_symbol(symbol_id, db_cursor=db_cursor)
+            symbol = self.db_get_symbol(symbol_id, db_execute=db_execute)
             try:
                 logger.debug(f"Updating Symbol {i}/{len(symbol_ids)} {symbol.symbol}")
-                self.update_symbol_today_candles(symbol, db_cursor=db_cursor)
+                self.update_symbol_today_candles(symbol, db_execute=db_execute)
             except Exception:
                 self.connect_api(reconnect =True)
                 error_counter += 1
@@ -775,7 +757,7 @@ class QuestradeAPI:
         return True
 
     # pylint: disable = too-many-locals
-    def make_purchase_plan(self, symbol_name=None, db_cursor=None):
+    def make_purchase_plan(self, symbol_name=None, db_execute=None):
         """
         Plan purchase
 
@@ -784,7 +766,7 @@ class QuestradeAPI:
         
         logger.info("Making new purchase plan")
 
-        db_cursor = db_cursor or self.db_cursor
+        db_execute = db_execute or self.db_execute
         position_symbol_ids = [position.symbol_id for position in self.get_positions()]
 
         cheapest_stocks = self.sort_cheapest_by_price()
@@ -800,8 +782,8 @@ class QuestradeAPI:
         for i, symbol_id in enumerate(symbol_ids):
             logger.debug(f"Fetching {i}/{len_symbol_ids}")
 
-            symbol = self.db_get_symbol(symbol_id, db_cursor=db_cursor)
-            symbol.candles = self.db_get_today_candles(symbol, db_cursor=db_cursor)
+            symbol = self.db_get_symbol(symbol_id, db_execute=db_execute)
+            symbol.candles = self.db_get_today_candles(symbol, db_execute=db_execute)
             if not symbol.candles:
                 continue
             symbols.append(symbol)
@@ -998,8 +980,8 @@ class QuestradeAPI:
         :return:
         """
 
-        self.db_cursor.execute('SELECT * FROM candles')
-        rows = self.db_cursor.fetchall()
+        rows = self.db_execute('SELECT * FROM candles')
+
         if rows is None:
             return None
         ret = []
@@ -1025,8 +1007,7 @@ class QuestradeAPI:
         :return:
         """
 
-        self.db_cursor.execute('SELECT * FROM candles group by symbol_id')
-        rows = self.db_cursor.fetchall()
+        rows = self.db_execute('SELECT * FROM candles group by symbol_id')
 
         for row in rows:
             candles = self.db_get_symbol_candles(row[1])
@@ -1046,8 +1027,8 @@ class QuestradeAPI:
         :param candle:
         :return:
         """
-        self.db_cursor.execute('DELETE FROM candles WHERE id = ?', (candle.dict_src["id"],))
-        self.db_connection.commit()
+
+        self.db_execute('DELETE FROM candles WHERE id = ?', (candle.dict_src["id"],))
 
     @connected
     def api_get_activities(self, time_start=None, time_end=None):
@@ -1679,19 +1660,28 @@ return findInShadow();
         """
         Run the purchase plan async
         """
+        
+        if self.active_purchase_planning:
+            return True
 
         def async_make_purchase_plan_helper():
             """
             Thread task
             """
 
+            self.active_purchase_planning = True
             logger.info("Start working on Purchase Plan")
-            connection = sqlite3.connect(self.configuration.db_file_path)
-            cursor = connection.cursor()
-            self.update_cheap_candles_with_today_data(db_cursor=cursor)
-            self.make_purchase_plan(db_cursor=cursor)
-            cursor.close()
-            connection.close()
+            try:
+                connection = sqlite3.connect(self.configuration.db_file_path)
+                cursor = connection.cursor()
+
+                db_execute = lambda args, **kwargs: (self.db_execute(args, db_connection=connection, db_cursor=cursor, **kwargs))
+                self.update_cheap_candles_with_today_data(db_execute=db_execute)
+                self.make_purchase_plan(db_execute=db_execute)
+            finally:
+                self.active_purchase_planning = False
+                cursor.close()
+                connection.close()
 
         thread = threading.Thread(target=async_make_purchase_plan_helper)
         thread.start()
