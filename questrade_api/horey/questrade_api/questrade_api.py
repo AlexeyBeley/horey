@@ -753,6 +753,9 @@ class QuestradeAPI:
         if today.hour < 3:
             today -= timedelta(days=1)
 
+        # todo: remove
+        today -= timedelta(days=2)
+
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
 
