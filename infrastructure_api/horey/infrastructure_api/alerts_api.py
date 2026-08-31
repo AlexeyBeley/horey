@@ -22,6 +22,7 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPI, AWSLambdaAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI, CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.db_api import DBAPI, DBAPIConfigurationPolicy
+from horey.infrastructure_api.alerts_api_configuration_policy import AlertsAPIConfigurationPolicy
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -33,7 +34,7 @@ class AlertsAPI:
 
     """
 
-    def __init__(self, configuration, environment_api):
+    def __init__(self, configuration:AlertsAPIConfigurationPolicy, environment_api):
         self.configuration = configuration
         self.environment_api = environment_api
         self._aws_lambda_api = None

@@ -754,11 +754,10 @@ class QuestradeAPI:
             today -= timedelta(days=1)
 
         # todo: remove
-        today -= timedelta(days=2)
+        #today -= timedelta(days=2)
 
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
-
 
         candles = self.get_symbol_candles(symbol, utc_today_3am, utc_today_8pm)
         for candle in candles:
@@ -779,9 +778,12 @@ class QuestradeAPI:
 
         if today.hour < 5:
             today -= timedelta(days=1)
+        
+        # todo: remove
+        # today -= timedelta(days=2)
+
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
-
 
         candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=utc_today_8pm)
         return candles
@@ -856,8 +858,10 @@ class QuestradeAPI:
 
             symbol = self.db_get_symbol(symbol_id)
             symbol.candles = self.db_get_today_candles(symbol)
+
             if not symbol.candles:
                 continue
+
             symbols.append(symbol)
 
         filtered_symbols = []
