@@ -244,7 +244,7 @@ class AlertsAPI:
         return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
                                                           metric_name=metric_name)
 
-    def generate_alb_alarms(self, alb_name):
+    def generate_alb_alarms(self, alb_name, routing_tags):
         """
         Generate alerts per resource: Elastic load balancer
 
@@ -254,7 +254,7 @@ class AlertsAPI:
 
         all_metrics = self.environment_api.get_cloudwatch_metrics()
         alerts_builder = ELBAlertBuilder(load_balancer_name=alb_name)
-        return self.alert_system.generate_builder_filtered_resource_alarms(alerts_builder, all_metrics)
+        return self.alert_system.generate_builder_filtered_resource_alarms(alerts_builder, all_metrics, routing_tags)
 
     def get_all_dimensions(self, str_find):
         """
@@ -632,6 +632,7 @@ class AlertsAPI:
         """
 
         aws_lambda = self.aws_lambda_api.get_lambda(name=lambda_name)
+        # pylint: disable = unsubscriptable-object
         log_group_name = aws_lambda.logging_config["LogGroup"]
 
         # first
@@ -684,7 +685,7 @@ class AlertsAPI:
         )
 
         self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
-    
+
     def provision_rds_postgres_monitoring(self, cluster_name, routing_tags):
         """
         Provision Lambda monitoring.
@@ -694,14 +695,14 @@ class AlertsAPI:
         cluster = self.db_api.get_cluster(cluster_name=cluster_name)
         all_alarms, remove_alarms = self.generate_postgres_cluster_alarms(cluster, routing_tags)
         logger.info(f"todo: Remove alarms: {remove_alarms}")
-        
-        required_metric_names = ["ACUUtilization", 
-        "ActiveTransactions", 
-        "ConnectionAttempts", 
-        "CommitLatency", 
-        "CommitThroughput", 
-        "DatabaseConnections", 
-        "CPUUtilization", 
+
+        required_metric_names = ["ACUUtilization",
+        "ActiveTransactions",
+        "ConnectionAttempts",
+        "CommitLatency",
+        "CommitThroughput",
+        "DatabaseConnections",
+        "CPUUtilization",
         "InsertLatency",
         "InsertThroughput",
         "SelectLatency",
@@ -732,14 +733,12 @@ class AlertsAPI:
             add_alarm.desription = json.dumps(alarm_description)
             self.provision_cloudwatch_alarm_object(add_alarm)
 
-            added_metric_names.append(add_alarm.metric_name)
-        
         # trigger only first and last alarms
         self.environment_api.trigger_cloudwatch_alarm(add_alarms[0], "Explicitly changed state to ALARM")
         self.environment_api.trigger_cloudwatch_alarm(add_alarms[-1], "Explicitly changed state to ALARM")
-        
-        logger.info(f"Added {len(added_metric_names)} alarms")
-        if len(set(added_metric_names)) != len(required_metric_names):
+
+        logger.info(f"Added {len(add_alarms)} alarms")
+        if len(set(alarm.metric_name for alarm in add_alarms)) != len(required_metric_names):
             raise ValueError("Not all required metrics were added")
 
     def provision_self_monitoring_log_error_alarm(self):
@@ -915,3 +914,15 @@ class AlertsAPI:
 
         return {AlertSystemConfigurationPolicy.ALERT_SYSTEM_RAW_MESSAGE_KEY: "",
                 "type": notification_type}
+
+    def trigger_lambda_raw_event(self, payload_dict):
+        """
+        Trigger lamda
+        """
+
+        payload_dict[self.alert_system.configuration.ALERT_SYSTEM_RAW_MESSAGE_KEY] = True
+        request_dict = {"FunctionName": self.configuration.lambda_name,
+        "InvocationType": "RequestResponse",
+        "Payload": json.dumps(payload_dict).encode("utf-8")}
+
+        return self.environment_api.aws_api.lambda_client.invoke_raw(self.environment_api.region, request_dict)
