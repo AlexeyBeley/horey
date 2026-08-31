@@ -698,9 +698,6 @@ class QuestradeAPI:
         db_execute = db_execute or self.db_execute
         start_time, end_time = self.get_previous_trading_time_delta()
 
-
-        
-
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
 
@@ -1651,18 +1648,19 @@ return findInShadow();
                     sell_calculated_round += Decimal("0.01")
 
                 symbol = self.db_get_symbol(symbol_symbol=position.symbol)
-                if symbol is not None:
-                    symbol.candles = self.db_get_recent_candles(symbol)
-                    today_max = max(candle.high for candle in symbol.candles) if symbol.candles else "no_trades_yet"
-                else:
-                    today_max = "todo"
+                # todo: compare to current candles and if needed increase or decrease
+                #if symbol is not None:
+                #    symbol.candles = self.db_get_recent_candles(symbol)
+                #    today_max = max(candle.high for candle in symbol.candles) if symbol.candles else "no_trades_yet"
+                #else:
+                #    today_max = "todo"
 
                 order = Order({})
                 order.symbol = position.symbol
                 order.symbol_id = position.symbol_id
                 order.limit_price = sell_calculated_round
                 orders_to_place.append(order)
-                lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculated_round}, today_max={today_max} revenue={int(sell_calculated/( Decimal(str(position.average_entry_price))/100))}%")
+                # lines.append(f"Sell {position.symbol} count={position.open_quantity} price={sell_calculated_round}, today_max={today_max} revenue={int(sell_calculated/( Decimal(str(position.average_entry_price))/100))}%")
 
         for i, order_to_place in enumerate(orders_to_place):
             # https://www.questrade.com/api/documentation/rest-operations/market-calls/markets-quotes-options
