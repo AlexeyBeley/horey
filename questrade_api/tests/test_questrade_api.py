@@ -241,7 +241,7 @@ def test_generate_profit_review(questrade_api):
     assert questrade_api.generate_profit_review(time_start, time_end)
     breakpoint()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_fetch_symbols_by_max_price(questrade_api):
     assert questrade_api.fetch_symbols_by_price_range(0.001, 2)
 
