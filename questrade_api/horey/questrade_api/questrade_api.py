@@ -15,6 +15,7 @@ import json
 from pathlib import Path
 from typing import List
 from decimal import Decimal, ROUND_HALF_UP
+from zoneinfo import ZoneInfo
 from scipy import stats
 
 import requests
@@ -53,6 +54,7 @@ class QuestradeAPI:
         self._selenium_api = None
         self.skip_symbols = []
         self.clicked_on_ignore_night_sales = False
+        self.active_purchase_planning = False
 
     @property
     def selenium_api(self):
@@ -214,6 +216,7 @@ class QuestradeAPI:
 
         self.api_server = response['api_server'].rstrip("/")  # e.g., https://api01.iq.questrade.com/
         logger.info(f"Connected to Questtrade API, new server: {self.api_server}")
+        breakpoint()
         return True
 
     def connect_from_cache(self, response_file_path:Path, reconnect:bool=False):
@@ -654,7 +657,7 @@ class QuestradeAPI:
             }))
         return ret
 
-    def update_symbol_today_candles(self, symbol: Symbol, db_execute=None):
+    def update_symbol_latest_candles(self, symbol: Symbol, db_execute=None):
         """
         Update symbols today candles
         :param symbol:
@@ -663,7 +666,8 @@ class QuestradeAPI:
 
         db_execute = db_execute or self.db_execute
 
-        existing_candles = self.db_get_today_candles(symbol, db_execute=db_execute)
+        existing_candles = self.db_get_recent_candles(symbol, db_execute=db_execute)
+        breakpoint()
         existing_pairs = [(candle.float_start, candle.float_end) for candle in existing_candles]
         today = datetime.now(timezone.utc)
         if today.hour < 3:
@@ -683,7 +687,7 @@ class QuestradeAPI:
         logger.debug(f"Sybol {symbol.symbol_id} {upserted} candles updated")
         return candles
 
-    def db_get_today_candles(self, symbol:Symbol, db_execute=None) -> List[Candle]:
+    def db_get_recent_candles(self, symbol:Symbol, timedelta=24*60*60, db_execute=None) -> List[Candle]:
         """
         Fetch from DB
 
@@ -692,19 +696,45 @@ class QuestradeAPI:
         """
 
         db_execute = db_execute or self.db_execute
-        today = datetime.now(timezone.utc)
+        start_time, end_time = self.get_previous_trading_time_delta()
 
-        if today.hour < 5:
-            today -= timedelta(days=1)
 
-        # todo:
-        #today -= timedelta(days=2)
+        
 
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
 
-        candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=utc_today_8pm, db_execute=db_execute)
+        candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=end_time, db_execute=db_execute)
         return candles
+    
+    def get_previous_trading_time_delta(self):
+        """
+        Find start and end time.
+
+        """
+
+        utc_dt = datetime.now(timezone.utc)
+        eastern_dt = utc_dt.astimezone(ZoneInfo("America/New_York"))
+        end_time = self.get_nearest_previous_trading_hour(eastern_dt)
+        start_time = end_time - timedelta(seconds=timedelta)
+        breakpoint()
+
+    def get_nearest_previous_trading_hour(self, src_time: datetime):
+        """
+        Find time
+        Pre-Market	4:00 AM – 9:30 AM	Monday – Friday
+        Regular Market	9:30 AM – 4:00 PM	Monday – Friday
+        Post-Market (After-Hours)	4:00 PM – 8:00 PM	Monday – Friday
+        Overnight Trading	8:00 PM – 2:00 AM	Sunday – Friday
+        """
+        breakpoint()
+        if src_time.strftime("%A") == "Sunday":
+            if src_time.hour >= 20:
+                return src_time
+
+        return 
+
+        
 
     def api_get_symbol_candles(self, symbol: Symbol, start_time: datetime, end_time: datetime):
         """
@@ -733,12 +763,11 @@ class QuestradeAPI:
         return [Candle(dict_src) for dict_src in position_candles["candles"]]
 
     @connected
-    def update_cheap_candles_with_today_data(self, symbol_name=None, db_execute=None):
+    def update_cheap_candles_with_recent_data(self, symbol_name=None, db_execute=None):
         """
         Update cheap symbols with today data
         :return:
         """
-
         db_execute = db_execute or self.db_execute
 
         error_counter = 0
@@ -748,7 +777,7 @@ class QuestradeAPI:
             symbol = self.db_get_symbol(symbol_id, db_execute=db_execute)
             try:
                 logger.debug(f"Updating Symbol {i}/{len(symbol_ids)} {symbol.symbol}")
-                self.update_symbol_today_candles(symbol, db_execute=db_execute)
+                self.update_symbol_latest_candles(symbol, db_execute=db_execute)
             except Exception:
                 self.connect_api(reconnect =True)
                 error_counter += 1
@@ -783,7 +812,7 @@ class QuestradeAPI:
             logger.debug(f"Fetching {i}/{len_symbol_ids}")
 
             symbol = self.db_get_symbol(symbol_id, db_execute=db_execute)
-            symbol.candles = self.db_get_today_candles(symbol, db_execute=db_execute)
+            symbol.candles = self.db_get_recent_candles(symbol, db_execute=db_execute)
             if not symbol.candles:
                 continue
             symbols.append(symbol)
@@ -957,7 +986,7 @@ class QuestradeAPI:
 
                 symbol = self.db_get_symbol(symbol_symbol=position.symbol)
                 if symbol is not None:
-                    symbol.candles = self.db_get_today_candles(symbol)
+                    symbol.candles = self.db_get_recent_candles(symbol)
                     if symbol.candles:
                         today_max = max(candle.high for candle in symbol.candles)
                     else:
@@ -1619,7 +1648,7 @@ return findInShadow();
 
                 symbol = self.db_get_symbol(symbol_symbol=position.symbol)
                 if symbol is not None:
-                    symbol.candles = self.db_get_today_candles(symbol)
+                    symbol.candles = self.db_get_recent_candles(symbol)
                     today_max = max(candle.high for candle in symbol.candles) if symbol.candles else "no_trades_yet"
                 else:
                     today_max = "todo"
@@ -1664,7 +1693,10 @@ return findInShadow();
         if self.active_purchase_planning:
             return True
 
-        def async_make_purchase_plan_helper():
+        thread = threading.Thread(target=self.make_purchase_plan_helper)
+        thread.start()
+    
+    def make_purchase_plan_helper(self):
             """
             Thread task
             """
@@ -1675,13 +1707,10 @@ return findInShadow();
                 connection = sqlite3.connect(self.configuration.db_file_path)
                 cursor = connection.cursor()
 
-                db_execute = lambda args, **kwargs: (self.db_execute(args, db_connection=connection, db_cursor=cursor, **kwargs))
-                self.update_cheap_candles_with_today_data(db_execute=db_execute)
+                db_execute = lambda *args, **kwargs: (self.db_execute(*args, db_connection=connection, db_cursor=cursor, **kwargs))
+                self.update_cheap_candles_with_recent_data(db_execute=db_execute)
                 self.make_purchase_plan(db_execute=db_execute)
             finally:
                 self.active_purchase_planning = False
                 cursor.close()
                 connection.close()
-
-        thread = threading.Thread(target=async_make_purchase_plan_helper)
-        thread.start()

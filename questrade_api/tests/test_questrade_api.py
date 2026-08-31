@@ -286,6 +286,10 @@ def test_run_selenium_sell_routine(questrade_api):
     finally:
         questrade_api.selenium_api.disconnect()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_the_main_loop(questrade_api):
     assert questrade_api.run_the_main_loop()
+
+@pytest.mark.wip
+def test_make_purchase_plan_helper(questrade_api):
+    assert questrade_api.make_purchase_plan_helper()
