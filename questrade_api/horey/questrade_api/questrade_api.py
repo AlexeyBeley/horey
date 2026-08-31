@@ -687,7 +687,7 @@ class QuestradeAPI:
         logger.debug(f"Sybol {symbol.symbol_id} {upserted} candles updated")
         return candles
 
-    def db_get_recent_candles(self, symbol:Symbol, timedelta=24*60*60, db_execute=None) -> List[Candle]:
+    def db_get_recent_candles(self, symbol:Symbol, trading_timedelta=timedelta(seconds=24*60*60), db_execute=None) -> List[Candle]:
         """
         Fetch from DB
 
@@ -696,7 +696,10 @@ class QuestradeAPI:
         """
 
         db_execute = db_execute or self.db_execute
-        start_time, end_time = self.get_previous_trading_time_delta()
+
+        utc_dt = datetime.now(timezone.utc)
+        eastern_dt_now = utc_dt.astimezone(ZoneInfo("America/New_York"))
+        start_time, end_time = self.get_previous_trading_time_delta(eastern_dt_now, trading_timedelta)
 
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
@@ -704,7 +707,7 @@ class QuestradeAPI:
         candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=end_time, db_execute=db_execute)
         return candles
     
-    def get_previous_trading_time_delta(self):
+    def get_previous_trading_time_delta(self, end_time, trading_timedelta):
         """
         Find start and end time.
         Pre-Market	4:00 AM – 9:30 AM	Monday – Friday
@@ -712,15 +715,50 @@ class QuestradeAPI:
         Post-Market (After-Hours)	4:00 PM – 8:00 PM	Monday – Friday
         Overnight Trading	8:00 PM – 2:00 AM	Sunday – Friday
         """
+        
+        match end_time.strftime("%A"):
+            case "Sunday":
+                if end_time.hour >= 20:
+                    today_starting_time = end_time.replace(hour=20, minute=0, second=0, microsecond=0)
+                    prev_day_delta = end_time - today_starting_time 
+                    breakpoint() 
+                breakpoint()
+                logger.info("todo:")
+            case "Monday":
+                trading_start_hour = 4
+                trading_end_hour = 23
 
-        utc_dt = datetime.now(timezone.utc)
-        eastern_dt = utc_dt.astimezone(ZoneInfo("America/New_York"))
-        if eastern_dt.strftime("%A") == "Sunday":
-            breakpoint()
-            if eastern_dt.hour >= 20:
-                today_starting_time = eastern_dt.replace(hour=20, minute=0, second=0, microsecond=0)
-                prev_day_delta = eastern_dt - today_starting_time 
-                return eastern_dt
+                if end_time.hour >= trading_start_hour:
+                    if end_time.hour <= trading_end_hour: 
+                        end_day_trading_time = (end_time.hour - trading_start_hour) * 60 * 60 + end_time.minute * 60 + end_time.second
+                    else:
+                        breakpoint()
+                        logger.info("todo:")
+                    breakpoint()
+                    logger.info("todo:")
+                else:
+                    # 8:00 PM Friday
+                    breakpoint()
+                    return self.get_previous_trading_time_delta(end_time.replace(hour=0, minute=0, second=0)- timedelta(seconds=24*60*60 + 4*60*60), trading_timedelta) 
+            case "Tuesday":
+                breakpoint()
+                return "Internal Server Error"
+            case "Wednesday":
+                breakpoint()
+                return "Internal Server Error"
+            case "Thirsday":
+                breakpoint()
+                return "Internal Server Error"
+            case "Friday":
+                breakpoint()
+                return "Internal Server Error"
+            case "Saturday":
+                breakpoint()
+                return "Internal Server Error"
+            
+            case _:
+                return "Unknown Day"
+
 
         breakpoint()
 
@@ -769,6 +807,7 @@ class QuestradeAPI:
         Update cheap symbols with today data
         :return:
         """
+
         db_execute = db_execute or self.db_execute
 
         error_counter = 0
