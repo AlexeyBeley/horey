@@ -710,31 +710,35 @@ class QuestradeAPI:
     def get_previous_trading_time_delta(self):
         """
         Find start and end time.
-
-        """
-
-        utc_dt = datetime.now(timezone.utc)
-        eastern_dt = utc_dt.astimezone(ZoneInfo("America/New_York"))
-        end_time = self.get_nearest_previous_trading_hour(eastern_dt)
-        start_time = end_time - timedelta(seconds=timedelta)
-        breakpoint()
-
-    def get_nearest_previous_trading_hour(self, src_time: datetime):
-        """
-        Find time
         Pre-Market	4:00 AM – 9:30 AM	Monday – Friday
         Regular Market	9:30 AM – 4:00 PM	Monday – Friday
         Post-Market (After-Hours)	4:00 PM – 8:00 PM	Monday – Friday
         Overnight Trading	8:00 PM – 2:00 AM	Sunday – Friday
         """
+
+        utc_dt = datetime.now(timezone.utc)
+        eastern_dt = utc_dt.astimezone(ZoneInfo("America/New_York"))
+        if eastern_dt.strftime("%A") == "Sunday":
+            breakpoint()
+            if eastern_dt.hour >= 20:
+                today_starting_time = eastern_dt.replace(hour=20, minute=0, second=0, microsecond=0)
+                prev_day_delta = eastern_dt - today_starting_time 
+                return eastern_dt
+
         breakpoint()
-        if src_time.strftime("%A") == "Sunday":
-            if src_time.hour >= 20:
-                return src_time
+
+        end_time = self.get_nearest_previous_trading_hour(eastern_dt)
+        start_time = end_time - timedelta(seconds=timedelta)
+
+
+    def get_nearest_previous_trading_hour(self, src_time: datetime):
+        """
+
+        """
+        breakpoint()
+
 
         return 
-
-        
 
     def api_get_symbol_candles(self, symbol: Symbol, start_time: datetime, end_time: datetime):
         """
