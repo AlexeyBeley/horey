@@ -512,7 +512,7 @@ class AlertsAPI:
                              "lambda_name": monitored_lambda.name
                             }
 
-        threshold = 9.0
+        threshold = 8.0
 
         alarm = self.provision_cloudwatch_alarm(
             name=f"has3-alarm-{monitored_lambda.name}-scheduled-executions",
