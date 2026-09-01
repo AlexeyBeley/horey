@@ -55,6 +55,13 @@ class QuestradeAPI:
         self.skip_symbols = []
         self.clicked_on_ignore_night_sales = False
         self.active_purchase_planning = False
+        self.trading_hours_by_day = {"Sunday": [(4, 23)], 
+                                    "Monday": [(0, 1), (4, 23)], 
+                                    "Tuesday": [(0, 1), (4, 23)],
+                                    "Wednesday": [(0, 1), (4, 23)], 
+                                    "Thursday":[(0, 1), (4, 23)], 
+                                    "Friday": [(0, 1), (4, 19)], 
+                                    "Saturday": []}
 
     @property
     def selenium_api(self):
@@ -699,7 +706,7 @@ class QuestradeAPI:
 
         utc_dt = datetime.now(timezone.utc)
         eastern_dt_now = utc_dt.astimezone(ZoneInfo("America/New_York"))
-        start_time, end_time = self.get_previous_trading_time_delta(eastern_dt_now, trading_timedelta)
+        start_time, end_time = self.get_trading_start_time_by_timedelta(eastern_dt_now, trading_timedelta)
 
         utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
         utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
@@ -707,7 +714,7 @@ class QuestradeAPI:
         candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=end_time, db_execute=db_execute)
         return candles
     
-    def get_previous_trading_time_delta(self, end_time, trading_timedelta):
+    def get_trading_start_time_by_timedelta(self, end_time, trading_timedelta):
         """
         Find start and end time.
         Pre-Market	4:00 AM – 9:30 AM	Monday – Friday
@@ -715,57 +722,42 @@ class QuestradeAPI:
         Post-Market (After-Hours)	4:00 PM – 8:00 PM	Monday – Friday
         Overnight Trading	8:00 PM – 2:00 AM	Sunday – Friday
         """
-        
-        match end_time.strftime("%A"):
-            case "Sunday":
-                if end_time.hour >= 20:
-                    today_starting_time = end_time.replace(hour=20, minute=0, second=0, microsecond=0)
-                    prev_day_delta = end_time - today_starting_time 
-                    breakpoint() 
-                breakpoint()
-                logger.info("todo:")
-            case "Monday":
-                trading_start_hour = 4
-                trading_end_hour = 23
 
-                if end_time.hour >= trading_start_hour:
-                    if end_time.hour <= trading_end_hour: 
-                        end_day_trading_time = (end_time.hour - trading_start_hour) * 60 * 60 + end_time.minute * 60 + end_time.second
-                    else:
-                        breakpoint()
-                        logger.info("todo:")
-                    breakpoint()
-                    logger.info("todo:")
-                else:
-                    # 8:00 PM Friday
-                    breakpoint()
-                    return self.get_previous_trading_time_delta(end_time.replace(hour=0, minute=0, second=0)- timedelta(seconds=24*60*60 + 4*60*60), trading_timedelta) 
-            case "Tuesday":
-                breakpoint()
-                return "Internal Server Error"
-            case "Wednesday":
-                breakpoint()
-                return "Internal Server Error"
-            case "Thirsday":
-                breakpoint()
-                return "Internal Server Error"
-            case "Friday":
-                breakpoint()
-                return "Internal Server Error"
-            case "Saturday":
-                breakpoint()
-                return "Internal Server Error"
+        trading_time_frames = self.trading_hours_by_day[end_time.strftime("%A")]
             
-            case _:
-                return "Unknown Day"
+        for trading_frame_start_hour, trading_frame_end_hour in reversed(trading_time_frames): 
+            # the interesting time is before the tested time frame
+            if end_time.hour < trading_frame_start_hour:
+                continue
 
+            # the interesting time is after the trade frame finished - go to end of the time frame  
+            if end_time.hour > trading_frame_end_hour:
+                return self.get_trading_start_time_by_timedelta(end_time.replace(hour=trading_frame_end_hour, minute=59, second=59), trading_timedelta)
 
+            breakpoint()
+            # time available in the frame to trade till end_time
+            frame_start_dt = end_time.replace(hour=trading_frame_start_hour, minute=0, second=0)
+            available_frame_trading_time = end_time - frame_start_dt
+            # available time frame larger than the requested timedelta
+            if available_frame_trading_time > trading_timedelta:
+                return end_time - trading_timedelta 
+                
+            # 'spent' all the available time in the frame, the leftover is taken to previous trading frame
+            end_time = end_time.replace(hour=trading_frame_start_hour, minute=0, second=0) - timedelta(seconds=1)
+            trading_timedelta -= available_frame_trading_time
+            break
+        else:
+            end_time -= timedelta(days=1) 
+            end_time = end_time.replace(hour=23, minute=59, second=59)
+
+        return self.get_trading_start_time_by_timedelta(end_time, trading_timedelta)
+
+    def get_previous_trading_day_end(self, date_src):
+        """
+        Get previous
+        """
         breakpoint()
-
-        end_time = self.get_nearest_previous_trading_hour(eastern_dt)
-        start_time = end_time - timedelta(seconds=timedelta)
-
-
+        
     def get_nearest_previous_trading_hour(self, src_time: datetime):
         """
 
