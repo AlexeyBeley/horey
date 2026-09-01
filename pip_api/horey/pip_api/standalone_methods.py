@@ -740,10 +740,13 @@ class StandaloneMethods:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
 
-        return self.run_raw(command, file_name,
+        try:
+            return self.run_raw(command, file_name,
                             ignore_on_error_callback=ignore_on_error_callback,
                             timeout=timeout,
                             debug=debug)
+        finally:
+            Path(file_name).unlink()
 
     def run_bat(self, command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
         """

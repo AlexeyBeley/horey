@@ -1020,7 +1020,7 @@ class QuestradeAPI:
 
 
         # todo:
-        skip_symbols = ["CCG.50480827", "PRPL.20419024"]
+        skip_symbols = ["FEED"]
 
 
         order_by_symbol_id = {order.symbol_id: order for order in orders if order.side == "Sell"}
