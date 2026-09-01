@@ -693,6 +693,7 @@ class StandaloneMethods:
                 "stderr": "TimeoutExpired: " + repr(error),
                 "code": 1,
             }
+            os.remove(file_name)
             raise RuntimeError(json.dumps(return_dict)) from error
 
         os.remove(file_name)
@@ -740,13 +741,10 @@ class StandaloneMethods:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
 
-        try:
-            return self.run_raw(command, file_name,
-                            ignore_on_error_callback=ignore_on_error_callback,
-                            timeout=timeout,
-                            debug=debug)
-        finally:
-            Path(file_name).unlink()
+        return self.run_raw(command, file_name,
+                        ignore_on_error_callback=ignore_on_error_callback,
+                        timeout=timeout,
+                        debug=debug)
 
     def run_bat(self, command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
         """
