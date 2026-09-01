@@ -52,7 +52,7 @@ class QuestradeAPI:
         self._db_connection = None
         self._db_cursor = None
         self._selenium_api = None
-        self.skip_symbols = []
+        self.skip_symbols = ["FEED"]
         self.clicked_on_ignore_night_sales = False
         self.active_purchase_planning = False
         self.trading_hours_by_day = {"Sunday": [(20, 23)], 

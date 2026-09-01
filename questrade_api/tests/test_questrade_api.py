@@ -280,7 +280,7 @@ def test_get_positions_without_sell_orders_loop(questrade_api):
         logger.info("Sleeping 60 seconds...")
         time.sleep(60)
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_run_selenium_sell_routine(questrade_api):
     try:
         assert questrade_api.run_selenium_sell_routine()
