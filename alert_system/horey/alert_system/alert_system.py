@@ -36,8 +36,6 @@ from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeT
 from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
-from horey.pip_api.pip_api import PipAPI
-from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
 
 from horey.alert_system.lambda_package.notification import Notification
 
@@ -65,8 +63,6 @@ class AlertSystem:
         except configuration.UndefinedValueError:
             pass
 
-        self._pip_api = None
-
         self._lambda_arn = None
         if self.configuration.routing_tags is None:
             self.configuration.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
@@ -76,21 +72,10 @@ class AlertSystem:
         return Path(__file__).parent / "build"
 
     @property
-    def pip_api(self):
-        if self._pip_api is None:
-            pip_api_configuration = PipAPIConfigurationPolicy()
-            try:
-                pip_api_configuration.multi_package_repositories = {"horey.": self.configuration.horey_repo_path}
-                pip_api_configuration.horey_parent_dir_path = os.path.dirname(self.configuration.horey_repo_path)
-            except self.configuration.UndefinedValueError:
-                pass
-            pip_api_configuration.venv_dir_path = self.configuration.deployment_venv_path
-            pip_api_configuration.system_site_packages = False
-            self._pip_api = PipAPI(configuration=pip_api_configuration)
-        return self._pip_api
-
-    @property
     def lambda_arn(self):
+        """
+        Generate arn
+        """
         if self._lambda_arn is None:
             aws_lambda = AWSLambda({})
             aws_lambda.name = self.configuration.lambda_name
@@ -688,9 +673,6 @@ class AlertSystem:
         :param filter_text:
         :param message_dict: extensive data to be stored in alert description
         :param log_group_name:
-        """
-        # todo: Migrate this logic to infrastructure_api
-        return True
         if not alarm_description:
             alarm_description = {}
         alarm_description["log_group_name"] = log_group_name
@@ -726,6 +708,10 @@ class AlertSystem:
         self.trigger_log_filter_text_alarm(log_group_name, [f"{filter_text}: Neo, the Horey has you!"])
         # todo: self.test_end_to_end_log_pattern_alert()
         return alarm
+
+        """
+
+        raise DeprecationWarning("Migrate this logic to infrastructure_api")
 
     def provision_log_group_metric_filter(self, log_group_name, metric_uid, filter_text):
         """
@@ -1018,35 +1004,6 @@ class AlertSystem:
         self.aws_api.provision_events_rule(rule)
         return rule
 
-    def trigger_lambda_with_raw_event(self, event_dict):
-        """
-        Trigger the deployed lambda.
-
-        :param event_dict:
-        :return:
-        """
-
-        errors = []
-        mandatory = {
-            "routing_tags": list,
-            "type": list,
-            "text": str,
-            "header": str,
-        }
-        optional = {"link": str,
-                    "link_href": str}
-
-        for key in mandatory:
-            if key not in event_dict:
-                errors.append(f"Mandatory key {key} is not present in {event_dict}")
-
-        if errors:
-            raise ValueError("\n".join(errors))
-
-        breakpoint()
-        request = {"": ""}
-        ret = self.aws_api.lambda_client.invoke_raw(self.region, request)
-
     def generate_resource_alarms(self, resource_alarms_builder,
                                  routing_tags,
                                  metric_data_start_time=None,
@@ -1092,8 +1049,8 @@ class AlertSystem:
                                                  metric_data_start_time=metric_data_start_time,
                                                  metric_data_end_time=metric_data_end_time)
 
-    def generate_alarms_from_metrics(self, resource_alarms_builder, metrics, 
-                                     routing_tags, 
+    def generate_alarms_from_metrics(self, resource_alarms_builder, metrics,
+                                     routing_tags,
                                      metric_data_start_time=None,
                                      metric_data_end_time=None):
         """
@@ -1271,10 +1228,12 @@ class AlertSystem:
 
         ret = self.aws_api.cloud_watch_client.get_metric_data_raw(self.region, filters_req)
         max_values = ret[0]["MetricDataResults"][0]["Values"]
+        # pylint: disable = import-outside-toplevel
         import matplotlib.pyplot as plt
         values_range = max(max_values) - min(max_values)
         bins = [min(max_values) + (i * values_range) / 10000 for i in range(10000)]
         ret, bins, patches = plt.hist(max_values, bins=bins)
+        logger.info(f"Unuzed {patches=}")
         plt.show()
 
     @staticmethod
@@ -1289,8 +1248,7 @@ class AlertSystem:
         :return:
         """
 
-        if routing_tags is None:
-            routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
+        routing_tags = routing_tags or [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
 
         if not alarm_description:
             alarm_description = {}

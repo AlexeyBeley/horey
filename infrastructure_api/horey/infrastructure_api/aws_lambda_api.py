@@ -331,7 +331,8 @@ class AWSLambdaAPI:
 
             """)
 
-        self.provision_monitoring(alerts_api, aws_lambda)
+        if alerts_api:
+            self.provision_monitoring(alerts_api, aws_lambda)
         return aws_lambda
 
     def lambda_resource_policies_callback(self):
@@ -385,7 +386,7 @@ class AWSLambdaAPI:
         self.aws_iam_api.provision_role(assume_role_policy=json.dumps(assume_role_policy),
                                         managed_policies_arns=managed_policies_arns, policies=inline_policies)
 
-    def provision_monitoring(self, alerts_api, aws_lambda):
+    def provision_monitoring(self, alerts_api, aws_lambda, routing_tags=None):
         """
         Provision alert system and alerts.
 
@@ -398,17 +399,17 @@ class AWSLambdaAPI:
         alerts_api.provision_cloudwatch_logs_alarm(log_group_name,
                                                    '"[ERROR]"',
                                                    "error",
-                                                   None
+                                                   routing_tags
                                                    )
         alerts_api.provision_cloudwatch_logs_alarm(log_group_name,
                                                    '"Runtime exited with error"',
                                                    "runtime_exited",
-                                                   None
+                                                   routing_tags
                                                    )
         alerts_api.provision_cloudwatch_logs_alarm(log_group_name,
                                                    f'"{alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"',
                                                    "timeout",
-                                                   None
+                                                   routing_tags
                                                    )
         if self.configuration.schedule_expression:
             period = self.get_alarm_period()
