@@ -207,6 +207,7 @@ class AWSIAMAPI:
         Generate lambda role name
         """
 
+        # todo: use clean_slug_for_role_name
         lambda_name = lambda_name.replace(self.environment_api.configuration.environment_level, "")
         for replace_me in ["--", "__", "-_", "_-"]:
             lambda_name = lambda_name.replace(replace_me, "-")
@@ -216,3 +217,31 @@ class AWSIAMAPI:
             return f"role_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.region}-{lambda_name}"
 
         return f"role_{self.environment_api.configuration.environment_level}-{lambda_name}"
+
+    def generate_ecs_role_name(self, cluter_slug, app_slug, role_type):
+        """
+        Generate lambda role name
+        """
+
+        possible_types = ["tsk", "exc"]
+        if role_type not in possible_types:
+            raise ValueError(f"{role_type} not in {possible_types}" )
+
+        cluter_slug = self.clean_slug_for_role_name(cluter_slug)
+        app_slug = self.clean_slug_for_role_name(app_slug)
+        if self.environment_api.configuration.environment_name in [self.environment_api.configuration.EnvironmentLevel.PRODUCTION.value,
+                    self.environment_api.configuration.EnvironmentLevel.STAGING.value]:
+            return f"role_{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.region.replace('-', '')}-{cluter_slug}-{app_slug}-{role_type}"
+
+        return f"role_{self.environment_api.configuration.environment_level}-{cluter_slug}-{app_slug}-{role_type}"
+
+    def clean_slug_for_role_name(self, slug):
+        """
+        Clean from env level
+        """
+
+        slug = slug.replace(self.environment_api.configuration.environment_level, "")
+        for replace_me in ["--", "__", "-_", "_-"]:
+            slug = slug.replace(replace_me, "-")
+        slug = slug.strip("-").strip("_")
+        return slug

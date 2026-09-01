@@ -763,17 +763,13 @@ class ECSAPI:
 
         if not role_name:
             try:
-                slug = self.configuration.service_name
+                app_slug = self.configuration.service_name
             except self.configuration.UndefinedValueError:
-                slug = self.configuration.slug
+                app_slug = self.configuration.slug
 
-            if self.environment_api.configuration.environment_level in slug:
-                # pylint: disable = raise-missing-from
-                raise NotImplementedError(f"To delete excessive information - clean the env level from slug: {slug} ")
+            cluster_name_slug = self.get_cluster_name_slug(remove_environment_level=True)
+            role_name = self.iam_api.generate_ecs_role_name(cluster_name_slug, app_slug)
 
-            cluster_name_clean = self.get_cluster_name_slug(remove_environment_level=True)
-
-            role_name = f"role_{self.environment_api.configuration.environment_level}-{cluster_name_clean}-{slug}-tsk"
         self.configuration.ecs_task_role_name = role_name
 
     def provision_task_role(self, role_name=None, inline_policies=None):
