@@ -6,6 +6,7 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.base_entities.region import Region
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -62,6 +63,16 @@ class CloudWatchClient(Boto3Client):
         return list(self.regional_service_entities_generator(regional_fetcher_generator, CloudWatchAlarm,
                                                              update_info=update_info,
                                                              regions=regions))
+
+    def yield_alarms(self, region: Region):
+        """
+        Yield alarms
+        """
+
+        yield from self.regional_service_entities_generator(self.regional_fetcher_generator_alarms,
+                                                             CloudWatchAlarm,
+                                                             update_info=True,
+                                                             regions=[region])
 
     def regional_fetcher_generator_alarms(self, region, filters_req=None):
         """

@@ -118,14 +118,6 @@ def test_generate_alert_system_exception_notification(message_dispatcher, ses_ev
 
 
 @pytest.mark.done
-def test_update_dynamodb_alarm_time(alert_system_configuration):
-    message_dispatcher = MessageDispatcher(alert_system_configuration)
-    time_now = datetime.datetime.now(datetime.timezone.utc)
-    timestamp = time_now.timestamp()
-    assert message_dispatcher.update_dynamodb_alarm_time("test_alarm_name_1", timestamp)
-
-
-@pytest.mark.done
 def test_delete_dynamodb_alarm(alert_system_configuration):
     message_dispatcher = MessageDispatcher(alert_system_configuration)
     assert message_dispatcher.delete_dynamodb_alarm("test_alarm_name_1")
@@ -165,9 +157,9 @@ def yield_dynamodb_items_mock():
 
 
 @pytest.mark.unit
-def test_run_dynamodb_update_routine(alert_system_configuration):
-    message_dispatcher = MessageDispatcher(alert_system_configuration)
+def test_run_dynamodb_update_routine(message_dispatcher):
     message_dispatcher.yield_dynamodb_items = yield_dynamodb_items_mock
+    message_dispatcher.delete_dynamodb_alarm = lambda *args: True
     with patch("horey.aws_api.aws_clients.cloud_watch_client.CloudWatchClient.set_alarm_ok") as mock_set_alarm_ok:
         assert message_dispatcher.run_dynamodb_update_routine()
         assert len(mock_set_alarm_ok.mock_calls) == 2

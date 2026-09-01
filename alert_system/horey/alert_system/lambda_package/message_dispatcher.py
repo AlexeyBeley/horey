@@ -16,7 +16,6 @@ from horey.h_logger import get_logger
 from horey.aws_api.aws_clients.dynamodb_client import DynamoDBClient
 from horey.aws_api.aws_services_entities.dynamodb_table import DynamoDBTable
 from horey.aws_api.aws_clients.cloud_watch_client import CloudWatchClient
-from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.aws_api.base_entities.region import Region
 
 logger = get_logger()
@@ -167,30 +166,40 @@ class MessageDispatcher:
         client = CloudWatchClient()
         time_now = datetime.datetime.now(datetime.timezone.utc)
         timestamp_now = time_now.timestamp()
-        for item in self.yield_dynamodb_items():
 
-            alarm = CloudWatchAlarm({"AlarmName": item["alarm_name"]})
-            alarm.region = self.region
+        dynamodb_item_by_name = {item["alarm_name"]: item for item in self.yield_dynamodb_items()}
+        existing_alarm_names = []
+        for alarm in client.yield_alarms(self.region):
+            if len(existing_alarm_names) == len(dynamodb_item_by_name):
+                return True
 
-            if not client.update_alarm_information(alarm):
-                self.delete_dynamodb_alarm(item["alarm_name"])
+            if alarm.name not in dynamodb_item_by_name:
                 continue
+
+            existing_alarm_names.append(alarm.name)
+
             if alarm.state_value != "ALARM":
                 continue
             # todo: check if too old: cleanup report
             # todo: cleanup report check alarm state never changed, check if alarm needed/tested
             # if alarm.state_updated_timestamp < time_now - 300:
             #    logger.warning(f"Unhandled state for alarm {alarm.name}: {alarm.state_updated_timestamp=} {alarm.state_transitioned_timestamp=}")
-            if timestamp_now - alarm.state_transitioned_timestamp.timestamp() < item["alarm_state"]["cooldown_time"]:
+            if timestamp_now - alarm.state_transitioned_timestamp.timestamp() < dynamodb_item_by_name[alarm.name]["alarm_state"]["cooldown_time"]:
                 continue
 
-            try:
-                client.set_alarm_ok(alarm)
-            except Exception as inst_error:
-                if "ResourceNotFound" not in repr(inst_error):
-                    raise
-                self.delete_dynamodb_alarm(item["alarm_name"])
-                continue
+            client.set_alarm_ok(alarm)
+            # check if needed. This is old logic:
+            #try:
+            #    client.set_alarm_ok(alarm)
+            #except Exception as inst_error:
+            #    if "ResourceNotFound" not in repr(inst_error):
+            #        raise
+            #    self.delete_dynamodb_alarm(item["alarm_name"])
+            #    continue
 
-            self.update_dynamodb_alarm(item["alarm_name"], alarm.state_transitioned_timestamp.timestamp())
+            self.update_dynamodb_alarm(alarm.name, alarm.state_transitioned_timestamp.timestamp())
+
+        for alarm_name in dynamodb_item_by_name:
+            if alarm_name not in existing_alarm_names:
+                self.delete_dynamodb_alarm(alarm_name)
         return True
