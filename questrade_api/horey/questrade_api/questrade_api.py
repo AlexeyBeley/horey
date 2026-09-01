@@ -55,7 +55,7 @@ class QuestradeAPI:
         self.skip_symbols = []
         self.clicked_on_ignore_night_sales = False
         self.active_purchase_planning = False
-        self.trading_hours_by_day = {"Sunday": [(4, 23)], 
+        self.trading_hours_by_day = {"Sunday": [(20, 23)], 
                                     "Monday": [(0, 1), (4, 23)], 
                                     "Tuesday": [(0, 1), (4, 23)],
                                     "Wednesday": [(0, 1), (4, 23)], 
@@ -223,7 +223,6 @@ class QuestradeAPI:
 
         self.api_server = response['api_server'].rstrip("/")  # e.g., https://api01.iq.questrade.com/
         logger.info(f"Connected to Questtrade API, new server: {self.api_server}")
-        breakpoint()
         return True
 
     def connect_from_cache(self, response_file_path:Path, reconnect:bool=False):
@@ -706,12 +705,9 @@ class QuestradeAPI:
 
         utc_dt = datetime.now(timezone.utc)
         eastern_dt_now = utc_dt.astimezone(ZoneInfo("America/New_York"))
-        start_time, end_time = self.get_trading_start_time_by_timedelta(eastern_dt_now, trading_timedelta)
+        end_time = self.get_trading_start_time_by_timedelta(eastern_dt_now, trading_timedelta)
 
-        utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
-        utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
-
-        candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=utc_today_3am, end_time=end_time, db_execute=db_execute)
+        candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=eastern_dt_now, end_time=end_time, db_execute=db_execute)
         return candles
     
     def get_trading_start_time_by_timedelta(self, end_time, trading_timedelta):
@@ -734,7 +730,6 @@ class QuestradeAPI:
             if end_time.hour > trading_frame_end_hour:
                 return self.get_trading_start_time_by_timedelta(end_time.replace(hour=trading_frame_end_hour, minute=59, second=59), trading_timedelta)
 
-            breakpoint()
             # time available in the frame to trade till end_time
             frame_start_dt = end_time.replace(hour=trading_frame_start_hour, minute=0, second=0)
             available_frame_trading_time = end_time - frame_start_dt
