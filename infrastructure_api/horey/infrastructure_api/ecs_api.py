@@ -768,7 +768,7 @@ class ECSAPI:
                 app_slug = self.configuration.slug
 
             cluster_name_slug = self.get_cluster_name_slug(remove_environment_level=True)
-            role_name = self.iam_api.generate_ecs_role_name(cluster_name_slug, app_slug)
+            role_name = self.iam_api.generate_ecs_role_name(cluster_name_slug, app_slug, "tsk")
 
         self.configuration.ecs_task_role_name = role_name
 
@@ -805,23 +805,16 @@ class ECSAPI:
         :return:
         """
 
-        try:
-            if self.configuration.ecs_task_execution_role_name and role_name:
-                raise ValueError("Pass repo name via 'role_name' OR via 'configuration.ecs_task_execution_role_name'")
-        except self.configuration.UndefinedValueError:
-            if role_name:
-                self.configuration.ecs_task_execution_role_name = role_name
-            else:
-                try:
-                    slug = self.configuration.service_name
-                except self.configuration.UndefinedValueError:
-                    slug = self.configuration.slug
+        if not role_name:
+            try:
+                app_slug = self.configuration.service_name
+            except self.configuration.UndefinedValueError:
+                app_slug = self.configuration.slug
 
-                if self.environment_api.configuration.environment_level in slug:
-                    # pylint: disable = raise-missing-from
-                    raise NotImplementedError(self.configuration.cluster_name)
-                cluster_name_clean = self.get_cluster_name_slug(remove_environment_level=True)
-                self.configuration.ecs_task_execution_role_name = f"role_{self.environment_api.configuration.environment_level}-{cluster_name_clean}-{slug}-exc"
+            cluster_name_slug = self.get_cluster_name_slug(remove_environment_level=True)
+            role_name = self.iam_api.generate_ecs_role_name(cluster_name_slug, app_slug, "exc")
+
+        self.configuration.ecs_task_execution_role_name = role_name 
 
     def provision_task_execution_role(self, role_name=None):
         """
