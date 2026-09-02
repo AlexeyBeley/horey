@@ -280,7 +280,7 @@ def test_get_positions_without_sell_orders_loop(questrade_api):
         logger.info("Sleeping 60 seconds...")
         time.sleep(60)
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_selenium_sell_routine(questrade_api):
     try:
         assert questrade_api.run_selenium_sell_routine()
@@ -291,7 +291,7 @@ def test_run_selenium_sell_routine(questrade_api):
 def test_run_the_main_loop(questrade_api):
     assert questrade_api.run_the_main_loop()
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_make_purchase_plan_helper(questrade_api):
     assert questrade_api.make_purchase_plan_helper()
 
@@ -300,4 +300,5 @@ def test_make_purchase_plan_helper(questrade_api):
 def test_get_trading_start_time_by_timedelta(questrade_api):
     utc_dt = datetime.now(timezone.utc)
     eastern_dt_now = utc_dt.astimezone(ZoneInfo("America/New_York"))
-    assert questrade_api.get_trading_start_time_by_timedelta(eastern_dt_now, timedelta(seconds=24*60*60))
+    ret = questrade_api.get_trading_start_time_by_timedelta(eastern_dt_now, timedelta(seconds=24*60*60))
+    assert ret

@@ -704,10 +704,9 @@ class QuestradeAPI:
         db_execute = db_execute or self.db_execute
 
         utc_dt = datetime.now(timezone.utc)
-        eastern_dt_now = utc_dt.astimezone(ZoneInfo("America/New_York"))
-        end_time = self.get_trading_start_time_by_timedelta(eastern_dt_now, trading_timedelta)
-
-        candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=eastern_dt_now, end_time=end_time, db_execute=db_execute)
+        end_time = utc_dt.astimezone(ZoneInfo("America/New_York"))
+        start_time = self.get_trading_start_time_by_timedelta(end_time, trading_timedelta)
+        candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=start_time, end_time=end_time, db_execute=db_execute)
         return candles
     
     def get_trading_start_time_by_timedelta(self, end_time, trading_timedelta):
