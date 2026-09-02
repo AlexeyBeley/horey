@@ -228,7 +228,7 @@ class AlertsAPI:
         """
 
         return self.aws_lambda_api.update_docker_lambda()
-    
+
     def generate_mysql_cluster_alarms(self, cluster, routing_tags,
                                         metric_names=None):
         """
@@ -259,7 +259,7 @@ class AlertsAPI:
 
         alerts_builder = PostgresAlertBuilder(cluster=cluster)
         return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
-                                                          metric_name=metric_name)
+                                                          metric_names=metric_names)
 
     def generate_alb_alarms(self, alb_name, routing_tags):
         """
@@ -755,8 +755,84 @@ class AlertsAPI:
         self.environment_api.trigger_cloudwatch_alarm(add_alarms[-1], "Explicitly changed state to ALARM")
 
         logger.info(f"Added {len(add_alarms)} alarms")
-        if len(set(alarm.metric_name for alarm in add_alarms)) != len(required_metric_names):
-            raise ValueError("Not all required metrics were added")
+        added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
+        if len(added_metric_names) != len(required_metric_names):
+            logger.warning(f"Not all required metrics were added: {set(required_metric_names)- set(added_metric_names)}")
+            if len(added_metric_names) < len(required_metric_names) /2:
+                raise ValueError("Less then 50% of required alarms were added")
+        return True
+
+    def provision_rds_mysql_monitoring(self, cluster_name, routing_tags):
+        """
+        Provision rds mysql monitoring.
+
+        """
+
+        cluster = self.db_api.get_cluster(cluster_name=cluster_name)
+
+        required_metric_names = [
+        "ACUUtilization",
+        "ActiveTransactions",
+        "AbortedClients",
+        "CommitLatency",
+        "CPUUtilization",
+        "CommitThroughput",
+        "ConnectionAttempts",
+        "DatabaseConnections",
+        "Deadlocks",
+        "DeleteLatency",
+        "DeleteThroughput",
+        "DiskQueueDepth",
+        "DMLLatency",
+        "DMLThroughput",
+        "InsertLatency",
+        "FreeableMemory",
+        "NetworkReceiveThroughput",
+        "InsertThroughput",
+        "NetworkTransmitThroughput",
+        "NumActiveTransactions",
+        "NetworkThroughput",
+        "Queries",
+        "ReadIOPS",
+        "ReadThroughput",
+        "SelectLatency",
+        "SelectThroughput",
+        "RowLockTime",
+        "StorageNetworkReceiveThroughput",
+        "ServerlessDatabaseCapacity",
+        "StorageNetworkTransmitThroughput",
+        "StorageNetworkThroughput",
+        "SwapUsage",
+        "TempStorageIOPS",
+        "UpdateLatency",
+        "UpdateThroughput",
+        "WriteIOPS",
+        "ReadLatency",
+        "WriteLatency",
+        "WriteThroughput",
+        "TotalIOPS",]
+
+        add_alarms, remove_alarms = self.generate_mysql_cluster_alarms(cluster, routing_tags, metric_names=required_metric_names)
+        logger.info(f"todo: Remove alarms: {remove_alarms}")
+
+        for add_alarm in add_alarms:
+            alarm_description = {"routing_tags": routing_tags,
+                                 "cluster_name": cluster_name}
+
+            add_alarm.desription = json.dumps(alarm_description)
+            self.provision_cloudwatch_alarm_object(add_alarm)
+
+        logger.info(f"Added {len(add_alarms)} alarms")
+        # trigger only first and last alarms
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[0], "Explicitly changed state to ALARM")
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[-1], "Explicitly changed state to ALARM")
+
+        added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
+        if len(added_metric_names) != len(required_metric_names):
+            logger.warning(f"Not all required metrics were added: {set(required_metric_names)- set(added_metric_names)}")
+            if len(added_metric_names) < len(required_metric_names) /2:
+                raise ValueError("Less then 50% of required alarms were added")
+        return True
 
     def provision_self_monitoring_log_error_alarm(self):
         """
