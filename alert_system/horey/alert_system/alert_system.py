@@ -1,3 +1,4 @@
+# pylint: disable = too-many-lines
 """
 AlertSystem deployment and testing module.
 It is responsible to Manage all parts of the system:
@@ -69,6 +70,9 @@ class AlertSystem:
 
     @property
     def build_dir_path(self):
+        """
+        Build directory
+        """
         return Path(__file__).parent / "build"
 
     @property
@@ -103,8 +107,7 @@ class AlertSystem:
         @param lambda_files: Files needed by AlertSystemLambda - new dispatcher or SlackAPI configuration.
         @return:
         :param tags:
-        """
-        # todo: Migrate this logic to infrastructure_api
+        # todo:
         return True
         self.tags = tags
         self.validate_input(lambda_files)
@@ -118,6 +121,9 @@ class AlertSystem:
         self.provision_log_group()
 
         self.provision_self_monitoring()
+        """
+
+        raise DeprecationWarning("Migrate this logic to infrastructure_api")
 
     def validate_input(self, lambda_files):
         """
@@ -147,17 +153,16 @@ class AlertSystem:
         log_group.tags["name"] = log_group.name
         self.aws_api.provision_cloudwatch_log_group(log_group)
 
-    def provision_lambda(self, files):
+    def provision_lambda(self):
         """
         Provision alert system receiving side lambda.
 
         @param files:
         @return:
+        return self.deploy_lambda()
         """
 
-        self.build_and_validate(files)
-
-        return self.deploy_lambda()
+        raise DeprecationWarning("Use alerts_api")
 
     def provision_self_monitoring(self):
         """
@@ -920,6 +925,7 @@ class AlertSystem:
         email_identity.headers_in_delivery_notifications_enabled = True
         self.aws_api.provision_ses_domain_email_identity(email_identity)
 
+    # pylint: disable = too-many-locals
     def test_end_to_end_log_pattern_alert(self, log_group_name, line, alarm):
         """
         Check the
@@ -1008,11 +1014,11 @@ class AlertSystem:
                                  routing_tags,
                                  metric_data_start_time=None,
                                  metric_data_end_time=None,
-                                 metric_name=None):
+                                 metric_names=None):
         """
         Generate alarms based on 2 weeks data
 
-        :param metric_name:
+        :param metric_names:
         :param metric_data_end_time:
         :param metric_data_start_time:
         :param resource_alarms_builder:
@@ -1038,10 +1044,10 @@ class AlertSystem:
             if not metrics_fetched_from_aws_filtered_by_request_dimensions:
                 raise RuntimeError(f"Was not able to find metrics: {filters_req}")
 
-            if metric_name:
+            if metric_names:
                 metrics_fetched_from_aws_filtered_by_request_dimensions = [metric_raw for metric_raw in
                                                                            metrics_fetched_from_aws_filtered_by_request_dimensions \
-                                                                           if metric_raw["MetricName"] == metric_name]
+                                                                           if metric_raw["MetricName"] in metric_names]
 
             all_metrics += metrics_fetched_from_aws_filtered_by_request_dimensions
 
