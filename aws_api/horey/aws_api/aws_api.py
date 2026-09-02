@@ -481,7 +481,7 @@ class AWSAPI:
         self.sesv2_email_identities = self.sesv2_client.get_all_email_identities(region=region)
 
     def init_ses_identities(
-            self, region=None
+            self, region=None, update_info=None
     ):
         """
         Standard
@@ -490,7 +490,7 @@ class AWSAPI:
         @return:
         """
 
-        self.ses_identities = list(self.ses_client.yield_identities(region=region, full_information=True))
+        self.ses_identities = list(self.ses_client.yield_identities(region=region, full_information=True, update_info=update_info))
 
     def init_sesv2_accounts(
             self, region=None
@@ -3019,7 +3019,7 @@ class AWSAPI:
         """
 
         request = {"AllocationId": elastic_address.id, "InstanceId": ec2_instance.id}
-        self.ec2_client.associate_elastic_address_raw(request)
+        self.ec2_client.associate_elastic_address_raw(ec2_instance.region, request)
 
     def find_route_table_by_subnet(self, subnet):
         """
