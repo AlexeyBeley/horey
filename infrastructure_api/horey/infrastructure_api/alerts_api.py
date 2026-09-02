@@ -15,6 +15,7 @@ from horey.alert_system.notification_channels.notification_channel_slack import 
 from horey.alert_system.lambda_package.notification import Notification
 from horey.alert_system.postgres.postgres_alert_builder import \
     PostgresAlertBuilder
+from horey.alert_system.mysql.mysql_alert_builder import MysqlAlertBuilder
 from horey.alert_system.elb_alert_builder import ELBAlertBuilder
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
