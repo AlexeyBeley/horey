@@ -62,6 +62,7 @@ class QuestradeAPI:
                                     "Thursday":[(0, 1), (4, 23)], 
                                     "Friday": [(0, 1), (4, 19)], 
                                     "Saturday": []}
+        self.interesting_symbols = {}
 
     @property
     def selenium_api(self):
@@ -581,26 +582,19 @@ class QuestradeAPI:
         :return:
         """
 
-        logger.debug(f"Fetching symbol {symbol_ids} from {self.configuration.db_file_path}' database")
+        logger.debug(f"Fetching symbols {symbol_ids} from {self.configuration.db_file_path}' database")
         db_execute = db_execute or self.db_execute
 
-        if symbol_symbol: 
-            # todo: check
+        if symbol_symbols: 
+            placeholders = ', '.join(['?'] * len(symbol_symbols))
+            query = f'SELECT * FROM symbols WHERE symbol IN ({placeholders})'
+            rows = db_execute(query, tuple(symbol_ids))
+        else:
             placeholders = ', '.join(['?'] * len(symbol_ids))
             query = f'SELECT * FROM symbols WHERE symbol_id IN ({placeholders})'
+            rows = db_execute(query, tuple(symbol_ids))
 
-            srows = db_execute(query, tuple(symbol_ids))
-            rows = db_execute('SELECT * FROM symbols WHERE symbol = ?', (symbol_symbols,))
-            # todo: check
-        else:
-            rows = db_execute('SELECT * FROM symbols WHERE symbol_id = ?', (symbol_ids,))
-
-        if len(rows) == 0:
-            return None
-        if len(rows) > 1:
-            raise NotImplementedError("Implement me")
-        row = rows[0]
-        return Symbol({
+        symbols = [Symbol({
             "id": row[0],
             "symbolId": row[1],
             "symbol": row[2],
@@ -610,7 +604,9 @@ class QuestradeAPI:
             "isTradable": row[6],
             "isQuotable": row[7],
             "currency": row[8]
-        })
+        }) for row in rows]
+        
+        return symbols
     
 
     def db_get_symbol_raw(self, symbol_id, db_execute, symbol_symbol=None):
@@ -704,7 +700,7 @@ class QuestradeAPI:
             }))
         return ret
 
-    def update_symbol_latest_candles(self, symbol: Symbol, db_execute=None):
+    def api_update_symbol_candles(self, symbol: Symbol, db_execute=None):
         """
         Update symbols today candles
         :param symbol:
@@ -713,7 +709,7 @@ class QuestradeAPI:
 
         db_execute = db_execute or self.db_execute
 
-        existing_candles = self.db_get_recent_candles(symbol, db_execute=db_execute)
+        existing_candles = self.db_get_symbol_candles(symbol, start_time=start_time, end_time=end_time, db_execute=db_execute)
         breakpoint()
         existing_pairs = [(candle.float_start, candle.float_end) for candle in existing_candles]
         today = datetime.now(timezone.utc)
@@ -829,31 +825,50 @@ class QuestradeAPI:
         return [Candle(dict_src) for dict_src in position_candles["candles"]]
 
     @connected
-    def update_cheap_candles_with_recent_data(self, symbol_name=None, db_execute=None):
+    def update_ineresting_symbols_market_data(self, symbol_name=None, db_execute=None):
         """
         Update cheap symbols with today data
         :return:
         """
 
-        db_execute = db_execute or self.db_execute
-
-        error_counter = 0
-        cheapest_stocks = self.sort_cheapest_by_price()
-        symbol_ids = [symbol[1] for symbol in cheapest_stocks if (symbol_name is None) or (symbol[0] == symbol_name)]
-
-        symbols = self.db_get_symbols(symbol_ids, db_execute=db_execute) 
+        self.update_interesting_symbols_in_ram(db_execute=db_execute)
+        self.api_update_interesting_symbols_candles(db_execute=db_execute)
+        return True
 
         breakpoint()
-        for i, symbol_id in enumerate(symbol_ids):
-            symbol = self.db_get_symbol(symbol_id, db_execute=db_execute)
+
+    def api_update_interesting_symbols_candles(self, db_execute=None): 
+        """
+        Update candles from API
+        """
+
+        error_counter = 0
+        for i, symbol in enumerate(self.interesting_symbols.values()):
             try:
-                logger.debug(f"Updating Symbol {i}/{len(symbol_ids)} {symbol.symbol}")
-                self.update_symbol_latest_candles(symbol, db_execute=db_execute)
+                logger.debug(f"Updating Symbol {i}/{len(self.interesting_symbols)} {symbol.symbol}")
+                self.api_update_symbol_candles(symbol, db_execute=db_execute)
             except Exception:
-                self.connect_api(reconnect =True)
                 error_counter += 1
-        if error_counter > len(symbol_ids)/2:
-            raise ValueError(f"Too many errors {error_counter} out of {len(symbol_ids)}")
+                if error_counter > len(self.interesting_symbols)/2:
+                    raise ValueError(f"Too many errors {error_counter} out of {len(self.interesting_symbols)}")
+        return True
+
+    def update_interesting_symbols_in_ram(self, db_execute=None):
+        """
+        Update the symbols in RAM from db/api
+        """
+        new_interesting_symbol_ids = [symbol[1] for symbol in self.sort_cheapest_by_price()]
+
+        to_del = []
+        for symbol_id in self.interesting_symbols:
+            if symbol_id not in new_interesting_symbol_ids:
+                to_del.append(symbol_id)
+        for symbol_id in to_del:
+            del self.interesting_symbols[symbol_id] 
+
+        missing_new_symbol_ids = [symbol_id for symbol_id in new_interesting_symbol_ids if symbol_id not in self.interesting_symbols]
+        for symbol in self.db_get_symbols(missing_new_symbol_ids, db_execute=db_execute):
+            self.interesting_symbols[symbol.symbol_id] = symbol
         return True
 
     # pylint: disable = too-many-locals
@@ -1780,7 +1795,7 @@ return findInShadow();
                 cursor = connection.cursor()
 
                 db_execute = lambda *args, **kwargs: (self.db_execute(*args, db_connection=connection, db_cursor=cursor, **kwargs))
-                self.update_cheap_candles_with_recent_data(db_execute=db_execute)
+                self.update_ineresting_symbols_market_data(db_execute=db_execute)
                 self.make_purchase_plan(db_execute=db_execute)
             finally:
                 self.active_purchase_planning = False

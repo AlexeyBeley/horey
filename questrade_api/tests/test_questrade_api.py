@@ -281,20 +281,19 @@ def test_get_positions_without_sell_orders_loop(questrade_api):
         time.sleep(60)
 
 @pytest.mark.unit
-def test_run_selenium_sell_routine(questrade_api):
-    try:
-        assert questrade_api.run_selenium_sell_routine()
-    finally:
-        questrade_api.selenium_api.disconnect()
+def test_update_interesting_symbols_in_ram(questrade_api):
+    assert questrade_api.update_interesting_symbols_in_ram()
+    assert questrade_api.update_interesting_symbols_in_ram()
+
 
 @pytest.mark.unit
-def test_run_the_main_loop(questrade_api):
-    assert questrade_api.run_the_main_loop()
+def test_update_interesting_symbols_in_ram(questrade_api):
+    assert questrade_api.update_ineresting_symbols_market_data()
 
-@pytest.mark.wip
+
+@pytest.mark.unit
 def test_make_purchase_plan_helper(questrade_api):
     assert questrade_api.make_purchase_plan_helper()
-
 
 @pytest.mark.unit
 def test_get_trading_start_time_by_timedelta(questrade_api):
@@ -302,3 +301,15 @@ def test_get_trading_start_time_by_timedelta(questrade_api):
     eastern_dt_now = utc_dt.astimezone(ZoneInfo("America/New_York"))
     ret = questrade_api.get_trading_start_time_by_timedelta(eastern_dt_now, timedelta(seconds=24*60*60))
     assert ret
+
+
+@pytest.mark.unit
+def test_run_the_main_loop(questrade_api):
+    assert questrade_api.run_the_main_loop()
+
+@pytest.mark.wip
+def test_run_selenium_sell_routine(questrade_api):
+    try:
+        assert questrade_api.run_selenium_sell_routine()
+    finally:
+        questrade_api.selenium_api.disconnect()
