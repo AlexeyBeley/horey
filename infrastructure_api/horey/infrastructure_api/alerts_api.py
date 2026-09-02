@@ -1,3 +1,4 @@
+# pylint: disable = too-many-lines
 """
 Alerts maintainer.
 
@@ -246,7 +247,7 @@ class AlertsAPI:
                                                           metric_names=metric_names)
 
     def generate_postgres_cluster_alarms(self, cluster, routing_tags,
-                                         metric_name=None):
+                                         metric_names=None):
         """
         Generate alerts per resource: RDS Postgres Cluster
 
