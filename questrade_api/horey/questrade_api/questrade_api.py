@@ -571,6 +571,47 @@ class QuestradeAPI:
         db_execute = db_execute or self.db_execute
 
         return self.db_get_symbol_raw(symbol_id, db_execute, symbol_symbol=symbol_symbol)
+    
+    def db_get_symbols(self, symbol_ids, db_execute=None, symbol_symbols=None):
+        """
+        Get symbols from DB
+
+        :param db_execute:
+        :param symbol_id:
+        :return:
+        """
+
+        logger.debug(f"Fetching symbol {symbol_ids} from {self.configuration.db_file_path}' database")
+        db_execute = db_execute or self.db_execute
+
+        if symbol_symbol: 
+            # todo: check
+            placeholders = ', '.join(['?'] * len(symbol_ids))
+            query = f'SELECT * FROM symbols WHERE symbol_id IN ({placeholders})'
+
+            srows = db_execute(query, tuple(symbol_ids))
+            rows = db_execute('SELECT * FROM symbols WHERE symbol = ?', (symbol_symbols,))
+            # todo: check
+        else:
+            rows = db_execute('SELECT * FROM symbols WHERE symbol_id = ?', (symbol_ids,))
+
+        if len(rows) == 0:
+            return None
+        if len(rows) > 1:
+            raise NotImplementedError("Implement me")
+        row = rows[0]
+        return Symbol({
+            "id": row[0],
+            "symbolId": row[1],
+            "symbol": row[2],
+            "description": row[3],
+            "securityType": row[4],
+            "listingExchange": row[5],
+            "isTradable": row[6],
+            "isQuotable": row[7],
+            "currency": row[8]
+        })
+    
 
     def db_get_symbol_raw(self, symbol_id, db_execute, symbol_symbol=None):
         """
@@ -799,6 +840,10 @@ class QuestradeAPI:
         error_counter = 0
         cheapest_stocks = self.sort_cheapest_by_price()
         symbol_ids = [symbol[1] for symbol in cheapest_stocks if (symbol_name is None) or (symbol[0] == symbol_name)]
+
+        symbols = self.db_get_symbols(symbol_ids, db_execute=db_execute) 
+
+        breakpoint()
         for i, symbol_id in enumerate(symbol_ids):
             symbol = self.db_get_symbol(symbol_id, db_execute=db_execute)
             try:
