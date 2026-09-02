@@ -228,6 +228,22 @@ class AlertsAPI:
         """
 
         return self.aws_lambda_api.update_docker_lambda()
+    
+    def generate_mysql_cluster_alarms(self, cluster, routing_tags,
+                                        metric_names=None):
+        """
+        Generate alerts per resource: RDS Mysql Cluster
+
+        :param metric_nams:
+        :param metric_data_end_time:
+        :param metric_data_start_time:
+        :param cluster_id:
+        :return:
+        """
+
+        alerts_builder = MysqlAlertBuilder(self.environment_api.aws_api, cluster=cluster)
+        return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
+                                                          metric_names=metric_names)
 
     def generate_postgres_cluster_alarms(self, cluster, routing_tags,
                                          metric_name=None):
