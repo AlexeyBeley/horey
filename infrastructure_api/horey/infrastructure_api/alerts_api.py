@@ -46,6 +46,7 @@ class AlertsAPI:
         self._alert_system = None
         self._cloudwatch_api = None
         self._db_api = None
+        self._lambda_arn = None
 
     @property
     def alert_system(self):
@@ -135,6 +136,16 @@ class AlertsAPI:
             self._db_api = DBAPI(config, self.environment_api)
 
         return self._db_api
+    
+    @property
+    def lambda_arn(self):
+        """
+        Alert system lambda ARN
+        """
+
+        if self._lambda_arn is None:
+            self._lambda_arn = self.aws_lambda_api.get_lambda(name=self.configuration.lambda_name).arn
+        return self._lambda_arn
 
     def prepare_docker_image_build_directory(self, source_code_directory_path: Path, build_number):
         """
@@ -884,7 +895,6 @@ class AlertsAPI:
             for metric in metrics:
                 metric_values = self.get_metric_statistics(metric)
                 add_alarms_tmp, remove_alarms_tmp = self.generate_metric_alarms(alerts_builder, metric, metric_values, alarm_description)
-                breakpoint()
                 add_alarms += add_alarms_tmp
                 remove_alarms += remove_alarms_tmp
 
@@ -997,7 +1007,7 @@ class AlertsAPI:
             lst_del.append(alarm)
 
         alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_max", metric, max_value,
-                                        "GreaterThanThreshold", routing_tags, alarm_description)
+                                        "GreaterThanThreshold", alarm_description)
         if max_value is not None:
             lst_ret.append(alarm)
         else:
@@ -1006,18 +1016,18 @@ class AlertsAPI:
         logger.info(f"Generated alarms from metrics. To add: {len(lst_ret)}, to delete: {len(lst_del)}")
         return lst_ret, lst_del
     
-    def get_base_alarm(self, name, metric, threshold, comparison_operator, alarm_description):
+    def get_base_alarm(self, alarm_name, metric, threshold, comparison_operator, alarm_description):
         """
         Generate template alarm.
 
         :return:
         """
 
-        if len(name) > 255:
-            raise ValueError(f"Alarm name can be up to 255 chars: {len(name)=} {name=}")
+        if len(alarm_name) > 255:
+            raise ValueError(f"Alarm name can be up to 255 chars: {len(alarm_name)=} {alarm_name=}")
         
         alarm = CloudWatchAlarm({})
-        alarm.name = name
+        alarm.name = alarm_name
         alarm.actions_enabled = True
         alarm.insufficient_data_actions = []
         alarm.metric_name = metric.name
