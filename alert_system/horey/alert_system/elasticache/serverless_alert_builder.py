@@ -66,18 +66,20 @@ class ServerlessAlertBuilder:
         match metric.name:
             case "NewConnections":
                 return absolute_min_value, absolute_max_value*max_multiplier
-            case "NetworkBytesIn" | "NetworkBytesOut" | "NonKeyTypeCmdsECPUs" | "NonKeyTypeCmds":
+            case "NetworkBytesIn" | "NetworkBytesOut" | "NonKeyTypeCmdsECPUs" | "NonKeyTypeCmds" | "CurrItems" | "CurrVolatileItems" | "CacheHits":
                 return absolute_min_value * min_multiplier, absolute_max_value * max_multiplier
             case "AuthenticationFailures":
                 return None, absolute_max_value
-            case "Reclaimed" | "CacheHitRate" | "DB0AverageTTL":
+            case "Reclaimed" | "CacheHitRate" | "DB0AverageTTL", "IamAuthenticationExpirations":
                 return absolute_min_value * min_multiplier or None, absolute_max_value * max_multiplier or None
             case "TotalCmdsCount" | "ElastiCacheProcessingUnits" | "BytesUsedForCache":
                 return absolute_min_value, absolute_max_value * max_multiplier
             case "CurrConnections":
                 return median_min * min_multiplier, absolute_max_value * max_multiplier
-            case "ChannelAuthorizationFailures":
+            case "ChannelAuthorizationFailures" | "Evictions" | "ThrottledCmds" | "IamAuthenticationThrottling" | "KeyAuthorizationFailures" | "CommandAuthorizationFailures":
                 return None, 0
+            case "CacheMisses":
+                None, absolute_max_value * max_multiplier
             case _:
                 logger.info(f"{metric.name=}, {absolute_min_value=}, {absolute_max_value=}, {median_min=}, {mean_min=}, {median_max=}, {mean_max=}, {median_average=}, {mean_average=}")
                 breakpoint()
