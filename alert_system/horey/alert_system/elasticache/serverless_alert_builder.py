@@ -70,7 +70,7 @@ class ServerlessAlertBuilder:
                 return absolute_min_value * min_multiplier, absolute_max_value * max_multiplier
             case "AuthenticationFailures":
                 return None, absolute_max_value
-            case "Reclaimed" | "CacheHitRate" | "DB0AverageTTL", "IamAuthenticationExpirations":
+            case "Reclaimed" | "CacheHitRate" | "DB0AverageTTL" | "IamAuthenticationExpirations":
                 return absolute_min_value * min_multiplier or None, absolute_max_value * max_multiplier or None
             case "TotalCmdsCount" | "ElastiCacheProcessingUnits" | "BytesUsedForCache":
                 return absolute_min_value, absolute_max_value * max_multiplier
