@@ -2012,7 +2012,7 @@ class EnvironmentAPI:
         :return:
         """
 
-        return list(self.aws_api.cloud_watch_client.yield_client_metrics(self.region))
+        return list(self.aws_api.cloud_watch_client.yield_metrics_raw(self.region))
 
     def generate_inline_policy(self, name=None, description=None, statements=None):
         """

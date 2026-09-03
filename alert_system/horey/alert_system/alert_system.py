@@ -1030,7 +1030,7 @@ class AlertSystem:
         all_metrics = []
         for filters_req in metric_filters:
             metrics_fetched_from_aws = list(
-                self.aws_api.cloud_watch_client.yield_client_metrics(self.region,
+                self.aws_api.cloud_watch_client.yield_metrics_raw(self.region,
                                                                      filters_req=filters_req))
 
             if not metrics_fetched_from_aws:

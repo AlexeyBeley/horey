@@ -8,6 +8,7 @@ import json
 import shutil
 import sys
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
 
 from horey.alert_system.alert_system import AlertSystem
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
@@ -16,6 +17,8 @@ from horey.alert_system.notification_channels.notification_channel_slack import 
 from horey.alert_system.lambda_package.notification import Notification
 from horey.alert_system.postgres.postgres_alert_builder import \
     PostgresAlertBuilder
+from horey.alert_system.elasticache.serverless_alert_builder import \
+    ServerlessAlertBuilder as ElasticacheServerlessAlertBuilder
 from horey.alert_system.mysql.mysql_alert_builder import MysqlAlertBuilder
 from horey.alert_system.elb_alert_builder import ELBAlertBuilder
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
@@ -511,7 +514,7 @@ class AlertsAPI:
         """
         Schedule alarm - makes sure the lambda is triggered correctly
 
-        ret = list(self.environment_api.aws_api.cloud_watch_client.yield_client_metrics(monitored_lambda.region, filters_req={"Dimensions": [
+        ret = list(self.environment_api.aws_api.cloud_watch_client.yield_metrics_raw(monitored_lambda.region, filters_req={"Dimensions": [
                 {"Name": "FunctionName", "Value": monitored_lambda.name,
                  }
             ]}))
@@ -763,7 +766,7 @@ class AlertsAPI:
                 raise ValueError("Less then 50% of required alarms were added")
         return True
 
-    def provision_rds_mysql_monitoring(self, cluster_name, routing_tags):
+    def provision_rds_mysql_monitoring(self, cache_name, routing_tags):
         """
         Provision rds mysql monitoring.
 
@@ -834,6 +837,228 @@ class AlertsAPI:
             if len(added_metric_names) < len(required_metric_names) /2:
                 raise ValueError("Less then 50% of required alarms were added")
         return True
+    
+    def provision_elasticache_serverless_monitoring(self, serverless_name, routing_tags):
+        """
+        Provision Elasticache serverless monitoring.
+
+        """
+        cache = self.db_api.get_serverless_cache(name=serverless_name)
+
+        alarm_description = json.dumps({"routing_tags": routing_tags, "cache": serverless_name})
+
+        required_metric_names = ["CurrConnections",
+                                "CacheHitRate",
+                                "NetworkBytesIn",
+                                "NonKeyTypeCmdsECPUs",
+                                "AuthenticationFailures",
+                                "NonKeyTypeCmds",
+                                "ElastiCacheProcessingUnits",
+                                "NetworkBytesOut",
+                                "TotalCmdsCount",
+                                "NewConnections",
+                                "Reclaimed",
+                                "IamAuthenticationThrottling",
+                                "CacheHits",
+                                "CommandAuthorizationFailures",
+                                "KeyAuthorizationFailures",
+                                "IamAuthenticationExpirations",
+                                "CacheMisses",
+                                "CurrVolatileItems",
+                                "ThrottledCmds",
+                                "CurrItems",
+                                "BytesUsedForCache",
+                                "ChannelAuthorizationFailures",
+                                "Evictions",
+                                "DB0AverageTTL"]
+
+        alerts_builder = ElasticacheServerlessAlertBuilder(cache)
+        alarm_description = {"routing_tags": routing_tags,
+                            "serverless_name": serverless_name}
+
+        metric_filters = alerts_builder.generate_metric_filters()
+        add_alarms, remove_alarms = [], []
+        for filters_req in metric_filters:
+            metrics = self.get_resource_metrics(filters_req, metric_names=required_metric_names)
+
+            for metric in metrics:
+                metric_values = self.get_metric_statistics(metric)
+                add_alarms_tmp, remove_alarms_tmp = self.generate_metric_alarms(alerts_builder, metric, metric_values, alarm_description)
+                breakpoint()
+                add_alarms += add_alarms_tmp
+                remove_alarms += remove_alarms_tmp
+
+        logger.info(f"todo: Remove alarms: {remove_alarms}")
+        breakpoint()
+        for add_alarm in add_alarms:
+            add_alarm.desription = json.dumps(alarm_description)
+            self.provision_cloudwatch_alarm_object(add_alarm)
+
+        logger.info(f"Added {len(add_alarms)} alarms")
+        # trigger only first and last alarms
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[0], "Explicitly changed state to ALARM")
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[-1], "Explicitly changed state to ALARM")
+
+        added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
+        if len(added_metric_names) != len(required_metric_names):
+            logger.warning(f"Not all required metrics were added: {set(required_metric_names)- set(added_metric_names)}")
+            if len(added_metric_names) < len(required_metric_names) /2:
+                raise ValueError("Less then 50% of required alarms were added")
+        return True
+    
+    def get_metric_statistics(self, metric, start_time=None, end_time=None):
+        """
+        Find proper value
+        Start time between 3 hours and 15 days ago - Use a multiple of 60 seconds (1 minute).
+        Start time between 15 and 63 days ago - Use a multiple of 300 seconds (5 minutes).
+        Start time greater than 63 days ago - Use a multiple of 3600 seconds (1 hour).
+
+        :return:
+        """
+
+        now = datetime.now(timezone.utc)
+        if end_time and end_time > now:
+            raise ValueError("Maximal end time can be now or less")
+        end_time = end_time or now
+
+        # about 8 seconds to the end of 15 days
+        minimal_possible_time = now - timedelta(seconds=int(14.9999 * 24 * 60 * 60))
+        if start_time and start_time < minimal_possible_time:
+            raise ValueError("Minimal start time must be greater then 15 days from now")
+        if end_time < minimal_possible_time:
+            raise ValueError("Maximal end time must be greater then 15 days from now")
+
+        start_time = start_time or minimal_possible_time
+        seconds = int((end_time - start_time).total_seconds())
+
+        statistics = ["SampleCount", "Average", "Sum", "Minimum", "Maximum"]
+        period = 60
+        all_metric_values = self.get_metric_statistics_helper(metric, statistics, end_time, seconds, period)
+
+        return all_metric_values
+    
+    def get_metric_statistics_helper(self, metric, statistics, end_time, seconds, period):
+        """
+        Loop over metric statistics:
+        'You have requested up to 10800 datapoints, which exceeds the limit of 1440. You may reduce the datapoints requested by increasing Period, or decreasing the time range.'
+
+        :param metric_raw:
+        :param statistics:
+        :param end_time:
+        :param seconds:
+        :param period:
+        :return:
+        """
+
+        ret = []
+        while seconds > 0:
+            seconds_delta = min(period * 1440, seconds)
+            start_time = end_time - timedelta(seconds=seconds_delta)
+            request_dict = {"Namespace": metric.namespace,
+                            "MetricName": metric.name,
+                            "Statistics": statistics,
+                            "StartTime": start_time,
+                            "EndTime": end_time,
+                            "Dimensions": metric.dimensions,
+                            "Period": period
+                            }
+            for response in self.environment_api.aws_api.cloud_watch_client.get_metric_statistics_raw(
+                    self.environment_api.region, request_dict):
+                ret += response["Datapoints"]
+
+            seconds -= seconds_delta
+            end_time = start_time
+
+        return ret
+
+    def generate_metric_alarms(self, resource_alerts_builder, metric,
+                                     all_metric_values, alarm_description):
+        """
+        Filtered resource metrics transformed into alarms.
+
+        :param metric_data_start_time:
+        :param metric_data_end_time:
+        :param resource_alarms_builder:
+        :param metrics:
+        :return:
+        """
+
+        lst_ret = []
+        lst_del = []
+
+        min_value, max_value = resource_alerts_builder.generate_metric_alarm_limits(metric, all_metric_values)
+        slug = resource_alerts_builder.generate_metric_alarm_slug(metric)
+        
+        alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_min", metric, min_value,
+                                        "LessThanThreshold", alarm_description)
+        if min_value is not None:
+            lst_ret.append(alarm)
+        else:
+            lst_del.append(alarm)
+
+        alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_max", metric, max_value,
+                                        "GreaterThanThreshold", routing_tags, alarm_description)
+        if max_value is not None:
+            lst_ret.append(alarm)
+        else:
+            lst_del.append(alarm)
+
+        logger.info(f"Generated alarms from metrics. To add: {len(lst_ret)}, to delete: {len(lst_del)}")
+        return lst_ret, lst_del
+    
+    def get_base_alarm(self, name, metric, threshold, comparison_operator, alarm_description):
+        """
+        Generate template alarm.
+
+        :return:
+        """
+
+        if len(name) > 255:
+            raise ValueError(f"Alarm name can be up to 255 chars: {len(name)=} {name=}")
+        
+        alarm = CloudWatchAlarm({})
+        alarm.name = name
+        alarm.actions_enabled = True
+        alarm.insufficient_data_actions = []
+        alarm.metric_name = metric.name
+        alarm.namespace = metric.namespace
+        alarm.statistic = "Average"
+        alarm.dimensions = metric.dimensions
+        alarm.period = 60
+        alarm.evaluation_periods = 3
+        alarm.datapoints_to_alarm = 3
+        alarm.threshold = threshold
+        alarm.comparison_operator = comparison_operator
+        alarm.treat_missing_data = "notBreaching"
+
+        alarm.alarm_description = alarm_description
+        alarm.region = self.environment_api.region
+        alarm.ok_actions = [self.lambda_arn]
+        alarm.alarm_actions = [self.lambda_arn]
+        return alarm
+    
+    def get_resource_metrics(self, filters_req, metric_names=None):
+        """
+        Fetch resource metrics by filters - Namespace and dimentions
+        """
+        
+        metrics_fetched_from_aws = list(
+                self.environment_api.aws_api.cloud_watch_client.yield_metrics(self.environment_api.region,
+                                                                     filters_req=filters_req))
+        filter_dimensions = {dim["Name"]: dim["Value"] for dim in filters_req["Dimensions"]}
+        filtered_metrics = [metric for metric in metrics_fetched_from_aws if
+                                                                       {dim["Name"]: dim["Value"] for dim in
+                                                                        metric.dimensions} == filter_dimensions]
+
+        if not filtered_metrics:
+            raise RuntimeError(f"Was not able to find metrics: {filters_req}")
+
+        if metric_names:
+            return [metric for metric in filtered_metrics \
+                                       if metric.name in metric_names]
+        
+        return filtered_metrics
+
 
     def provision_self_monitoring_log_error_alarm(self):
         """
@@ -991,7 +1216,7 @@ class AlertsAPI:
         :param namespace:
         :return:
         """
-        return list(self.environment_api.aws_api.cloud_watch_client.yield_client_metrics(self.environment_api.region,
+        return list(self.environment_api.aws_api.cloud_watch_client.yield_metrics_raw(self.environment_api.region,
                                                                                          {"Namespace": namespace}))
 
     @staticmethod

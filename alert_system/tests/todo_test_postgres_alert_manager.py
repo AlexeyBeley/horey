@@ -69,7 +69,7 @@ def test_get_instance_metric_names(alert_system_configuration):
     @return:
     """
     alert_system = AlertSystem(alert_system_configuration)
-    metrics = alert_system.aws_api.cloud_watch_client.yield_client_metrics(alert_system.region)
+    metrics = alert_system.aws_api.cloud_watch_client.yield_metrics_raw(alert_system.region)
     rds_metrics = [metric for metric in metrics if metric["Namespace"] == "AWS/RDS"]
     instance_metrics = [metric for metric in rds_metrics if "instance-aurora-postgres-demo-us-0" in str(metric["Dimensions"])]
     assert len(instance_metrics) == 33

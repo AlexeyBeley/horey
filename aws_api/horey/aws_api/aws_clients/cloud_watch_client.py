@@ -29,7 +29,7 @@ class CloudWatchClient(Boto3Client):
         for region in AWSAccount.get_aws_account().regions.values():
             yield from self.execute(self.get_session_client(region=region).list_metrics, "Metrics")
 
-    def yield_client_metrics(self, region, filters_req=None):
+    def yield_metrics_raw(self, region, filters_req=None):
         """
         Generator for standard region fetcher
 
@@ -37,8 +37,21 @@ class CloudWatchClient(Boto3Client):
         :param filters_req:
         :return:
         """
+
         yield from self.execute(self.get_session_client(region=region).list_metrics, "Metrics",
                                      filters_req=filters_req)
+    
+    def yield_metrics(self, region, filters_req=None):
+        """
+        Yield metric objects
+
+        :param region:
+        :param filters_req:
+        :return:
+        """
+
+        for metric_raw in self.yield_metrics_raw(region, filters_req=filters_req):
+            yield CloudWatchMetric(metric_raw)
 
     def get_all_metrics(self, update_info=False):
         """
@@ -47,7 +60,7 @@ class CloudWatchClient(Boto3Client):
         :return:
         """
 
-        regional_fetcher_generator = self.yield_client_metrics
+        regional_fetcher_generator = self.yield_metrics_raw
         return list(self.regional_service_entities_generator(regional_fetcher_generator, CloudWatchMetric,
                                                              update_info=update_info))
 

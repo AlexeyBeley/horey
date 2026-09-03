@@ -477,7 +477,7 @@ def test_provision_event_bridge_rule(alert_system_configuration):
 @pytest.mark.unit
 def test_init_cloudwatch_metrics(alert_system_configuration):
     alert_system = AlertSystem(alert_system_configuration)
-    metrics = list(alert_system.aws_api.cloud_watch_client.yield_client_metrics(region=alert_system.region))
+    metrics = list(alert_system.aws_api.cloud_watch_client.yield_metrics_raw(region=alert_system.region))
     all_namespaces = {x["Namespace"] for x in metrics}
     metrics_events = [x for x in metrics if x["Namespace"] == "AWS/Events"]
     metrics_dynamodb = [x for x in metrics if x["Namespace"] == "aws/dynamodb"]
