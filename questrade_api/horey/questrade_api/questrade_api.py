@@ -835,8 +835,6 @@ class QuestradeAPI:
         self.api_update_interesting_symbols_candles(db_execute=db_execute)
         return True
 
-        breakpoint()
-
     def api_update_interesting_symbols_candles(self, db_execute=None): 
         """
         Update candles from API
