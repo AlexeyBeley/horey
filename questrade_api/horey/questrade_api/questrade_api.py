@@ -46,6 +46,7 @@ class QuestradeAPI:
     THREADING_LOCK = Lock()
 
     def __init__(self, configuration: QuestradeAPIConfigurationPolicy = None):
+        self.stopped = False
         self.configuration = configuration
         self.access_token = self.configuration.token
         self.api_server = configuration.api_server
@@ -246,8 +247,9 @@ class QuestradeAPI:
         response_file_path.unlink()
         refresh_token = response["refresh_token"]
         auth_url = f"https://login.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token={refresh_token}"
-        response = requests.get(auth_url, timeout=60).json()
-        return response
+        response = requests.get(auth_url, timeout=60)
+        response.raise_for_status()
+        return response.json()
 
     def get_accounts(self):
         """
@@ -384,7 +386,7 @@ class QuestradeAPI:
             if not symbol:
                 logger.error(f"Symbol {line[0]} not found in DB")
                 continue
-            symbol.candles = self.db_get_symbol_candles(symbol.symbol_id)
+            symbol.candles = self.db_get_symbol_candles(symbol)
             if len(symbol.candles) < 5:
                 continue
             symbols.append(symbol)
@@ -639,7 +641,7 @@ class QuestradeAPI:
             "currency": row[8]
         })
 
-    def db_get_symbol_candles(self, symbol_id, limit=None, start_time:datetime=None, end_time:datetime=None, db_execute=None):
+    def db_get_symbol_candles(self, symbol, limit=None, start_time:datetime=None, end_time:datetime=None, db_execute=None):
         """
         Get symbol candles from DB
 
@@ -647,19 +649,17 @@ class QuestradeAPI:
         :param start_time:
         :param db_execute:
         :param limit:
-        :param symbol_id:
+        :param symbol:
         :return:
         """
-
-        db_execute = db_execute or self.db_execute
 
         end_timestamp = end_time.timestamp() if end_time else None
 
         start_timestamp = start_time.timestamp() if start_time else None
 
-        return self.db_get_symbol_candles_raw(symbol_id, db_execute, limit=limit, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
+        return self.db_get_symbol_candles_raw(symbol.symbol_id, db_execute=db_execute, limit=limit, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
 
-    def db_get_symbol_candles_raw(self, symbol_id, db_execute, limit=None, start_timestamp:float=None, end_timestamp:float=None):
+    def db_get_symbol_candles_raw(self, symbol_id, db_execute=None, limit=None, start_timestamp:float=None, end_timestamp:float=None):
         """
         Get symbol candles from DB
         :param end_timestamp:
@@ -670,6 +670,7 @@ class QuestradeAPI:
         :return:
         """
 
+        db_execute = db_execute or self.db_execute
         if limit is not None:
             limit_string = f" LIMIT {limit}"
         else:
@@ -709,18 +710,27 @@ class QuestradeAPI:
 
         db_execute = db_execute or self.db_execute
 
-        existing_candles = self.db_get_symbol_candles(symbol, start_time=start_time, end_time=end_time, db_execute=db_execute)
-        breakpoint()
+        utc_dt = datetime.now(timezone.utc)
+        end_time_db = utc_dt.astimezone(ZoneInfo("America/New_York"))
+        start_time_db = end_time_db - timedelta(days=30) 
+        if symbol.candles:
+            breakpoint()
+            logger.info("implement start time change")
+
+        existing_candles = self.db_get_symbol_candles(symbol, start_time=start_time_db, end_time=end_time_db, db_execute=db_execute)
         existing_pairs = [(candle.float_start, candle.float_end) for candle in existing_candles]
-        today = datetime.now(timezone.utc)
-        if today.hour < 3:
-            today -= timedelta(days=1)
+        
+        start_time_api = max(candle.float_end for candle in existing_candles) 
+        # todo: remove this converion in favor of "end" property in candle itself after migrating all DB items to
+        # correct format instead of UTC
+        start_time_api = datetime.fromtimestamp(start_time_api, tz=ZoneInfo("America/New_York"))
 
-        utc_today_3am = today.replace(hour=3, minute=0, second=0, microsecond=0)
-        utc_today_8pm = today.replace(hour=20, minute=0, second=0, microsecond=0)
+        end_time_api = end_time_db.replace(hour=23, minute=59, second=59, microsecond=999)
 
-        candles = self.api_get_symbol_candles(symbol, utc_today_3am, utc_today_8pm)
+        # Need to reduce one hour because exact time raises 401 - unauthorized.
+        candles = self.api_get_symbol_candles(symbol, start_time_api, end_time_api)
         upserted = 0
+        breakpoint()
         for candle in candles:
             if (candle.float_start, candle.float_end) in existing_pairs:
                 continue
@@ -743,7 +753,7 @@ class QuestradeAPI:
         utc_dt = datetime.now(timezone.utc)
         end_time = utc_dt.astimezone(ZoneInfo("America/New_York"))
         start_time = self.get_trading_start_time_by_timedelta(end_time, trading_timedelta)
-        candles = self.db_get_symbol_candles(symbol.symbol_id, start_time=start_time, end_time=end_time, db_execute=db_execute)
+        candles = self.db_get_symbol_candles(symbol, start_time=start_time, end_time=end_time, db_execute=db_execute)
         return candles
     
     def get_trading_start_time_by_timedelta(self, end_time, trading_timedelta):
@@ -807,14 +817,13 @@ class QuestradeAPI:
         :return:
         """
 
-
-        start_time = self.convert_time_to_request_format(start_time)
-        end_time = self.convert_time_to_request_format(end_time)
+        start_time_str = self.convert_time_to_request_format(start_time)
+        end_time_str = self.convert_time_to_request_format(end_time)
 
         logger.debug(f"Fetching Symbol's {symbol.symbol} candles from API")
         try:
             position_candles = self.get(
-            f"v1/markets/candles/{symbol.symbol_id}?startTime={start_time}&endTime={end_time}&interval=OneMinute")
+            f"v1/markets/candles/{symbol.symbol_id}?startTime={start_time_str}&endTime={end_time_str}&interval=OneMinute")
         except Exception as inst:
             if "Not Found for url" in repr(inst):
                 logger.error(f"Failed to fetch candles for symbol {symbol.symbol}")
@@ -842,10 +851,19 @@ class QuestradeAPI:
 
         error_counter = 0
         for i, symbol in enumerate(self.interesting_symbols.values()):
+            # todo: remove 
+            if symbol.symbol != "HZEN":
+                continue
+
+            if self.stopped:
+                raise RuntimeError("Stopped execution")
             try:
                 logger.debug(f"Updating Symbol {i}/{len(self.interesting_symbols)} {symbol.symbol}")
                 self.api_update_symbol_candles(symbol, db_execute=db_execute)
-            except Exception:
+            except Exception as inst:
+                # todo: remove
+                raise 
+                logger.exception(inst)
                 error_counter += 1
                 if error_counter > len(self.interesting_symbols)/2:
                     raise ValueError(f"Too many errors {error_counter} out of {len(self.interesting_symbols)}")
@@ -1123,7 +1141,9 @@ class QuestradeAPI:
         rows = self.db_execute('SELECT * FROM candles group by symbol_id')
 
         for row in rows:
-            candles = self.db_get_symbol_candles(row[1])
+            symbol = Symbol()
+            symbol.symbol_id = row[1]
+            candles = self.db_get_symbol_candles(symbol)
             del_candles = []
             for i, candle_a in enumerate(candles):
                 for candle_b in candles[i+1:]:
@@ -1799,3 +1819,10 @@ return findInShadow();
                 self.active_purchase_planning = False
                 cursor.close()
                 connection.close()
+
+    def stop(self):
+        """
+        Stop self
+        """
+
+        self.stopped = True

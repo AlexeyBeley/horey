@@ -54,7 +54,6 @@ class Candle(Base):
 
         if isinstance(value, str):
             _date = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            _date = _date.replace(tzinfo=timezone.utc)
             self._start = _date
         elif isinstance(value, datetime):
             self._start = value
@@ -82,9 +81,9 @@ class Candle(Base):
 
         if isinstance(value, str):
             _date = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            _date = _date.replace(tzinfo=timezone.utc)
             self._end = _date
         elif isinstance(value, datetime):
+            breakpoint()
             self._end = value
         elif isinstance(value, float):
             self._end = datetime.fromtimestamp(value)
@@ -96,6 +95,7 @@ class Candle(Base):
     def float_start(self):
         """
         Convert date to float timestamp
+        dt = datetime.fromtimestamp(timestamp, tz=ZoneInfo("America/New_York"))
         :return:
         """
 
@@ -107,6 +107,7 @@ class Candle(Base):
     def float_end(self):
         """
         Convert date to float timestamp
+        dt = datetime.fromtimestamp(timestamp, tz=ZoneInfo("America/New_York"))
         :return:
         """
 
