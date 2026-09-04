@@ -1,6 +1,7 @@
 """
 logging handler
 """
+import os
 import logging
 
 from horey.h_logger.formatter import MultilineFormatter
@@ -57,6 +58,8 @@ def get_logger(configuration_file_full_path=None, name="horey", add_handler=True
     Reuse logger
     :return:
     """
+    
+    level = os.environ.get("HOREY_LOG_LEVEL", level)
 
     if StaticData.logger is None:
         StaticData.logger = logging.getLogger(name)

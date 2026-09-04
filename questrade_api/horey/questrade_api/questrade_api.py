@@ -64,6 +64,8 @@ class QuestradeAPI:
                                     "Friday": [(0, 1), (4, 19)], 
                                     "Saturday": []}
         self.interesting_symbols = {}
+        self.server_time = None
+        self.server_update_time = None
 
     @property
     def selenium_api(self):
@@ -133,9 +135,15 @@ class QuestradeAPI:
         :param request_path:
         :return:
         """
+
         try:
             return self._get(request_path, params=params)
         except Exception as inst:
+            if "401" in repr(inst):
+                response = self._get("v1/time")
+                breakpoint()
+                raise self.UnknownServerError(request_path)
+
             if not reconnect:
                 raise
 

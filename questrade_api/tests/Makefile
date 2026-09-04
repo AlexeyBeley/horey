@@ -5,6 +5,7 @@ HOREY_DIR_PATH := $(realpath ${CURRENT_DIR}/../..)
 BUILD_DIR := ${HOREY_DIR_PATH}/build
 BUILD_TMP_DIR := ${BUILD_DIR}/_build
 VENV_BIN_DIR := $(realpath ${BUILD_TMP_DIR}/_venv/bin)
+HOREY_LOG_LEVEL := "DEBUG"
 
 
 echo:
@@ -17,7 +18,7 @@ build_ng:
 
 wip: FORCE build_ng
 	source ${VENV_BIN_DIR}/activate &&\
-	python3 -m pytest -m wip --full-trace ${CURRENT_DIR}/ -v -s
+	HOREY_LOG_LEVEL="${HOREY_LOG_LEVEL}" python3 -m pytest -m wip --full-trace ${CURRENT_DIR}/ -v -s
 
 
 
