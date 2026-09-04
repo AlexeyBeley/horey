@@ -128,7 +128,7 @@ class QuestradeAPI:
         except Exception:
             return response.text
 
-    def get(self, request_path, params=None, reconnect=True):
+    def get(self, request_path, params=None, reconnect=True, retry=False):
         """
         Compose and send GET request.
 
@@ -141,9 +141,12 @@ class QuestradeAPI:
         except Exception as inst:
             if "401" in repr(inst):
                 time.sleep(1)
+                breakpoint()
                 response = self._get("v1/time", params=params)
                 self.server_time = datetime.fromisoformat(response["time"]).astimezone(ZoneInfo("America/New_York"))
                 self.server_update_time = datetime.now(timezone.utc).astimezone(ZoneInfo("America/New_York"))
+                if retry:
+                    return self._get(request_path, params=params)
                 raise self.UnknownServerError(request_path)
 
             if not reconnect:
@@ -1034,7 +1037,7 @@ class QuestradeAPI:
         :return:
         """
 
-        response = self.get(f"v1/accounts/{self.configuration.account}/positions")
+        response = self.get(f"v1/accounts/{self.configuration.account}/positions", retry=True)
         return [Position(dict_src) for dict_src in response["positions"] if dict_src["currentMarketValue"] is not None]
 
     @connected

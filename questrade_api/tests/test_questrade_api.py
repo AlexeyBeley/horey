@@ -290,7 +290,7 @@ def test_update_interesting_symbols_in_ram(questrade_api):
 def test_update_ineresting_symbols_market_data(questrade_api):
     assert questrade_api.update_ineresting_symbols_market_data()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_update_ineresting_symbols_market_data_symbol_name(questrade_api):
     assert questrade_api.update_ineresting_symbols_market_data(symbol_name="CAN")
     time.sleep(10)
@@ -313,7 +313,7 @@ def test_get_trading_start_time_by_timedelta(questrade_api):
 def test_run_the_main_loop(questrade_api):
     assert questrade_api.run_the_main_loop()
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_run_selenium_sell_routine(questrade_api):
     try:
         assert questrade_api.run_selenium_sell_routine()
