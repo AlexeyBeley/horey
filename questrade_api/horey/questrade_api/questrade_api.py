@@ -34,7 +34,7 @@ from horey.questrade_api.questrade_api_configuration_policy import (
 )
 from horey.questrade_api.items import Symbol, Candle, Position, Order
 
-logger = get_logger(level="DEBUG")
+logger = get_logger()
 
 
 class QuestradeAPI:
@@ -730,6 +730,7 @@ class QuestradeAPI:
 
         # todo: Need to reduce one hour because exact time raises 401 - unauthorized.
         candles = self.api_get_symbol_candles(symbol, start_time_api, dt_now_new_yourk)
+        logger.info(f"Fetched {symbol.symbol} {len(candles)} candles from API")
         upserted = 0
         for candle in candles:
             if (candle.float_start, candle.float_end) in existing_pairs:
@@ -825,11 +826,16 @@ class QuestradeAPI:
             position_candles = self.get(
             f"v1/markets/candles/{symbol.symbol_id}?startTime={start_time_str}&endTime={end_time_str}&interval=OneMinute", reconnect=False)
         except Exception as inst:
-            breakpoint()
-            if "Not Found for url" in repr(inst):
+            if "401" in  str(inst):
+                start_time_str = self.convert_time_to_request_format(start_time-timedelta(hours=1))
+                position_candles = self.get(
+                f"v1/markets/candles/{symbol.symbol_id}?startTime={start_time_str}&endTime={end_time_str}&interval=OneMinute", reconnect=False)
+                logger.debug(f"Retry with - hour: Fetching Symbol's {symbol.symbol} candles from API")
+            elif "Not Found for url" in repr(inst):
                 logger.error(f"Failed to fetch candles for symbol {symbol.symbol}")
                 return []
-            raise
+            else:
+                raise
         logger.debug(f"Fetched Symbol's {symbol.symbol} candles from API")
 
         return [Candle(dict_src) for dict_src in position_candles["candles"]]
@@ -841,6 +847,8 @@ class QuestradeAPI:
         :return:
         """
 
+        logger.info("Start updating the interestimg symbols based on market data")
+
         self.update_interesting_symbols_in_ram(db_execute=db_execute)
         self.api_update_interesting_symbols_candles(db_execute=db_execute)
         return True
@@ -850,8 +858,10 @@ class QuestradeAPI:
         Update candles from API
         """
 
+        logger.info("Start updating interestimg symbols market history")
         error_counter = 0
         for i, symbol in enumerate(self.interesting_symbols.values()):
+            logger.info(f"Fetching symbol's {symbol.symbol} market history {i}/{len(self.interesting_symbols)}")
             if self.stopped:
                 raise RuntimeError("Stopped execution")
             try:
@@ -870,6 +880,8 @@ class QuestradeAPI:
         """
         Update the symbols in RAM from db/api
         """
+
+        logger.info("Start updating interestimg symbols in RAM")
         new_interesting_symbol_ids = [symbol[1] for symbol in self.sort_cheapest_by_price()]
 
         to_del = []

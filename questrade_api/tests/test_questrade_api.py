@@ -287,7 +287,7 @@ def test_update_interesting_symbols_in_ram(questrade_api):
 
 
 @pytest.mark.wip
-def test_update_interesting_symbols_in_ram(questrade_api):
+def test_update_ineresting_symbols_market_data(questrade_api):
     assert questrade_api.update_ineresting_symbols_market_data()
 
 
