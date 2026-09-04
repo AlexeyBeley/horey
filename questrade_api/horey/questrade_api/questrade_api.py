@@ -126,7 +126,7 @@ class QuestradeAPI:
         except Exception:
             return response.text
 
-    def get(self, request_path, params=None):
+    def get(self, request_path, params=None, reconnect=True):
         """
         Compose and send GET request.
 
@@ -136,6 +136,9 @@ class QuestradeAPI:
         try:
             return self._get(request_path, params=params)
         except Exception as inst:
+            if not reconnect:
+                raise
+
             if "401" not in repr(inst):
                 raise
             self.connect_api(reconnect=True)
@@ -711,13 +714,13 @@ class QuestradeAPI:
         db_execute = db_execute or self.db_execute
 
         utc_dt = datetime.now(timezone.utc)
-        end_time_db = utc_dt.astimezone(ZoneInfo("America/New_York"))
-        start_time_db = end_time_db - timedelta(days=30) 
+        dt_now_new_yourk = utc_dt.astimezone(ZoneInfo("America/New_York"))
+        start_time_db = dt_now_new_yourk - timedelta(days=30) 
         if symbol.candles:
             breakpoint()
             logger.info("implement start time change")
 
-        existing_candles = self.db_get_symbol_candles(symbol, start_time=start_time_db, end_time=end_time_db, db_execute=db_execute)
+        existing_candles = self.db_get_symbol_candles(symbol, start_time=start_time_db, end_time=dt_now_new_yourk, db_execute=db_execute)
         existing_pairs = [(candle.float_start, candle.float_end) for candle in existing_candles]
         
         start_time_api = max(candle.float_end for candle in existing_candles) 
@@ -725,12 +728,9 @@ class QuestradeAPI:
         # correct format instead of UTC
         start_time_api = datetime.fromtimestamp(start_time_api, tz=ZoneInfo("America/New_York"))
 
-        end_time_api = end_time_db.replace(hour=23, minute=59, second=59, microsecond=999)
-
-        # Need to reduce one hour because exact time raises 401 - unauthorized.
-        candles = self.api_get_symbol_candles(symbol, start_time_api, end_time_api)
+        # todo: Need to reduce one hour because exact time raises 401 - unauthorized.
+        candles = self.api_get_symbol_candles(symbol, start_time_api, dt_now_new_yourk)
         upserted = 0
-        breakpoint()
         for candle in candles:
             if (candle.float_start, candle.float_end) in existing_pairs:
                 continue
@@ -823,8 +823,9 @@ class QuestradeAPI:
         logger.debug(f"Fetching Symbol's {symbol.symbol} candles from API")
         try:
             position_candles = self.get(
-            f"v1/markets/candles/{symbol.symbol_id}?startTime={start_time_str}&endTime={end_time_str}&interval=OneMinute")
+            f"v1/markets/candles/{symbol.symbol_id}?startTime={start_time_str}&endTime={end_time_str}&interval=OneMinute", reconnect=False)
         except Exception as inst:
+            breakpoint()
             if "Not Found for url" in repr(inst):
                 logger.error(f"Failed to fetch candles for symbol {symbol.symbol}")
                 return []
@@ -851,10 +852,6 @@ class QuestradeAPI:
 
         error_counter = 0
         for i, symbol in enumerate(self.interesting_symbols.values()):
-            # todo: remove 
-            if symbol.symbol != "HZEN":
-                continue
-
             if self.stopped:
                 raise RuntimeError("Stopped execution")
             try:
