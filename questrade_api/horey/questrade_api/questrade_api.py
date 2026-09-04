@@ -140,8 +140,10 @@ class QuestradeAPI:
             return self._get(request_path, params=params)
         except Exception as inst:
             if "401" in repr(inst):
-                response = self._get("v1/time")
-                breakpoint()
+                time.sleep(1)
+                response = self._get("v1/time", params=params)
+                self.server_time = datetime.fromisoformat(response["time"]).astimezone(ZoneInfo("America/New_York"))
+                self.server_update_time = datetime.now(timezone.utc).astimezone(ZoneInfo("America/New_York"))
                 raise self.UnknownServerError(request_path)
 
             if not reconnect:
@@ -833,13 +835,13 @@ class QuestradeAPI:
         try:
             position_candles = self.get(
             f"v1/markets/candles/{symbol.symbol_id}?startTime={start_time_str}&endTime={end_time_str}&interval=OneMinute", reconnect=False)
+        except self.UnknownServerError as inst:
+            start_time_str = self.convert_time_to_request_format(start_time-timedelta(hours=1))
+            position_candles = self.get(
+            f"v1/markets/candles/{symbol.symbol_id}?startTime={start_time_str}&endTime={end_time_str}&interval=OneMinute", reconnect=False)
+            logger.debug(f"Retry with - hour: Fetching Symbol's {symbol.symbol} candles from API")
         except Exception as inst:
-            if "401" in  str(inst):
-                start_time_str = self.convert_time_to_request_format(start_time-timedelta(hours=1))
-                position_candles = self.get(
-                f"v1/markets/candles/{symbol.symbol_id}?startTime={start_time_str}&endTime={end_time_str}&interval=OneMinute", reconnect=False)
-                logger.debug(f"Retry with - hour: Fetching Symbol's {symbol.symbol} candles from API")
-            elif "Not Found for url" in repr(inst):
+            if "Not Found for url" in repr(inst):
                 logger.error(f"Failed to fetch candles for symbol {symbol.symbol}")
                 return []
             else:
@@ -1843,3 +1845,6 @@ return findInShadow();
         """
 
         self.stopped = True
+
+    class UnknownServerError(RuntimeError):
+        pass
