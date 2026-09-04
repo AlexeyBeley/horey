@@ -859,8 +859,8 @@ class QuestradeAPI:
 
         logger.info("Start updating the interestimg symbols based on market data")
 
-        self.update_interesting_symbols_in_ram(db_execute=db_execute)
-        self.api_update_interesting_symbols_candles(db_execute=db_execute)
+        self.update_interesting_symbols_in_ram(symbol_name=symbol_name, db_execute=db_execute)
+        self.api_update_interesting_symbols_candles(symbol_name=symbol_name, db_execute=db_execute)
         return True
 
     def api_update_interesting_symbols_candles(self, db_execute=None): 
@@ -886,7 +886,7 @@ class QuestradeAPI:
                     raise ValueError(f"Too many errors {error_counter} out of {len(self.interesting_symbols)}")
         return True
 
-    def update_interesting_symbols_in_ram(self, db_execute=None):
+    def update_interesting_symbols_in_ram(self, symbol_name=None, db_execute=None):
         """
         Update the symbols in RAM from db/api
         """
@@ -898,8 +898,10 @@ class QuestradeAPI:
         for symbol_id in self.interesting_symbols:
             if symbol_id not in new_interesting_symbol_ids:
                 to_del.append(symbol_id)
-        for symbol_id in to_del:
-            del self.interesting_symbols[symbol_id] 
+        
+        if symbol_name is None:
+            for symbol_id in to_del:
+                del self.interesting_symbols[symbol_id] 
 
         missing_new_symbol_ids = [symbol_id for symbol_id in new_interesting_symbol_ids if symbol_id not in self.interesting_symbols]
         for symbol in self.db_get_symbols(missing_new_symbol_ids, db_execute=db_execute):
