@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TypeVar
 import pytest
 from zoneinfo import ZoneInfo
+from unittest.mock import Mock
 
 from horey.questrade_api.items import Candle
 from horey.questrade_api.questrade_api import QuestradeAPI, QuestradeAPIConfigurationPolicy
@@ -287,20 +288,32 @@ def test_update_interesting_symbols_in_ram(questrade_api):
 
 
 @pytest.mark.unit
+def test_db_get_symbol_candles_raw(questrade_api):
+    symbol_ids = "30758709, 42513463, 52629140, 15408, 56110632, 55222450".split(", ")
+    assert questrade_api.db_get_symbol_candles_raw(symbol_ids)
+
+@pytest.mark.unit
+def test_db_get_symbol_candles_raw(questrade_api):
+    symbol_ids = "30758709, 42513463, 52629140, 15408, 56110632, 55222450".split(", ")
+    time_now = datetime.now(ZoneInfo("America/New_York"))
+
+    end_timestamp = time_now.timestamp()
+    start_timestamp = end_timestamp - 7*24*60*60
+
+    ret = questrade_api.db_get_symbol_candles_raw(symbol_ids, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
+    assert ret
+
+@pytest.mark.unit
 def test_update_ineresting_symbols_market_data(questrade_api):
-    assert questrade_api.update_ineresting_symbols_market_data()
+    # questrade_api.connect_api = Mock()
+    assert questrade_api.update_ineresting_symbols_market_data(symbol_names= ["CAN"])
 
 @pytest.mark.unit
 def test_update_ineresting_symbols_market_data_symbol_name(questrade_api):
-    assert questrade_api.update_ineresting_symbols_market_data(symbol_name="CAN")
+    assert questrade_api.update_ineresting_symbols_market_data(symbol_names=["CAN"])
     time.sleep(10)
-    breakpoint()
-    questrade_api.update_ineresting_symbols_market_data(symbol_name="CAN")
+    assert questrade_api.update_ineresting_symbols_market_data(symbol_names=["CAN"])
 
-
-@pytest.mark.unit
-def test_make_purchase_plan_helper(questrade_api):
-    assert questrade_api.make_purchase_plan_helper()
 
 @pytest.mark.unit
 def test_get_trading_start_time_by_timedelta(questrade_api):
@@ -310,10 +323,28 @@ def test_get_trading_start_time_by_timedelta(questrade_api):
     assert ret
 
 @pytest.mark.unit
+def test_update_ineresting_symbols_market_data(questrade_api):
+    assert questrade_api.update_ineresting_symbols_market_data(symbol_names= ["CAN"])
+    assert questrade_api.prepare_candles_for_purchase_planning(questrade_api.interesting_symbols[27995787]) 
+
+
+@pytest.mark.wip
+def test_make_purhcase_plan_item(questrade_api):
+    assert questrade_api.update_ineresting_symbols_market_data(symbol_names= ["CAN"])
+    symbol = questrade_api.interesting_symbols[27995787]
+    assert questrade_api.prepare_candles_for_purchase_planning(symbol) 
+    assert questrade_api.make_purhcase_plan_item(symbol)
+
+@pytest.mark.unit
 def test_run_the_main_loop(questrade_api):
     assert questrade_api.run_the_main_loop()
 
-@pytest.mark.wip
+@pytest.mark.unit
+def test_make_purchase_plan_helper(questrade_api):
+    assert questrade_api.make_purchase_plan_helper()
+
+
+@pytest.mark.unit
 def test_run_selenium_sell_routine(questrade_api):
     try:
         assert questrade_api.run_selenium_sell_routine()

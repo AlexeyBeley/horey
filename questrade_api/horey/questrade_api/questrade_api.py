@@ -4,7 +4,7 @@ https://questrade.com/lukecyca/pyslack
 """
 
 # pylint: disable = too-many-lines
-
+from collections import defaultdict
 import sqlite3
 import platform
 import time
@@ -32,7 +32,7 @@ from horey.selenium_api.selenium_api import SeleniumAPI
 from horey.questrade_api.questrade_api_configuration_policy import (
     QuestradeAPIConfigurationPolicy,
 )
-from horey.questrade_api.items import Symbol, Candle, Position, Order
+from horey.questrade_api.items import Symbol, Candle, Position, Order, PurchasePlan, PurchasePlanItem
 
 logger = get_logger()
 
@@ -63,6 +63,14 @@ class QuestradeAPI:
                                     "Thursday":[(0, 1), (4, 23)], 
                                     "Friday": [(0, 1), (4, 19)], 
                                     "Saturday": []}
+        
+        self.trading_frame_start_by_day = {"Sunday": [20], 
+                                    "Monday": [4, 20], 
+                                    "Tuesday": [4, 20],
+                                    "Wednesday": [4, 20], 
+                                    "Thursday":[4, 20], 
+                                    "Friday": [4]}
+
         self.interesting_symbols = {}
         self.server_time = None
         self.server_update_time = None
@@ -260,11 +268,11 @@ class QuestradeAPI:
 
         logger.info(f"Reconnecting to api: {reconnect=}, {timestamp_now=}, expires_at - 5min = {response['expires_at'] - 5 * 60}")
 
-        response_file_path.unlink()
         refresh_token = response["refresh_token"]
         auth_url = f"https://login.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token={refresh_token}"
         response = requests.get(auth_url, timeout=60)
         response.raise_for_status()
+        response_file_path.unlink()
         return response.json()
 
     def get_accounts(self):
@@ -402,7 +410,7 @@ class QuestradeAPI:
             if not symbol:
                 logger.error(f"Symbol {line[0]} not found in DB")
                 continue
-            symbol.candles = self.db_get_symbol_candles(symbol)
+            symbol.candles = self.db_get_symbol_candles([symbol])
             if len(symbol.candles) < 5:
                 continue
             symbols.append(symbol)
@@ -591,7 +599,7 @@ class QuestradeAPI:
 
         return self.db_get_symbol_raw(symbol_id, db_execute, symbol_symbol=symbol_symbol)
     
-    def db_get_symbols(self, symbol_ids, db_execute=None, symbol_symbols=None):
+    def db_get_symbols(self, symbol_ids=None, db_execute=None, symbol_symbols=None):
         """
         Get symbols from DB
 
@@ -600,17 +608,20 @@ class QuestradeAPI:
         :return:
         """
 
-        logger.debug(f"Fetching symbols {symbol_ids} from {self.configuration.db_file_path}' database")
         db_execute = db_execute or self.db_execute
 
         if symbol_symbols: 
+            logger.debug(f"Fetching symbols {symbol_symbols} from {self.configuration.db_file_path}' database")
             placeholders = ', '.join(['?'] * len(symbol_symbols))
             query = f'SELECT * FROM symbols WHERE symbol IN ({placeholders})'
-            rows = db_execute(query, tuple(symbol_ids))
-        else:
+            rows = db_execute(query, tuple(symbol_symbols))
+        elif symbol_ids:
+            logger.debug(f"Fetching symbols {symbol_ids} from {self.configuration.db_file_path}' database")
             placeholders = ', '.join(['?'] * len(symbol_ids))
             query = f'SELECT * FROM symbols WHERE symbol_id IN ({placeholders})'
             rows = db_execute(query, tuple(symbol_ids))
+        else:
+            raise ValueError("Either Symbol ids or symbols must present")
 
         symbols = [Symbol({
             "id": row[0],
@@ -657,7 +668,7 @@ class QuestradeAPI:
             "currency": row[8]
         })
 
-    def db_get_symbol_candles(self, symbol, limit=None, start_time:datetime=None, end_time:datetime=None, db_execute=None):
+    def db_get_symbol_candles(self, symbols, limit=None, start_time:datetime=None, end_time:datetime=None, db_execute=None):
         """
         Get symbol candles from DB
 
@@ -665,7 +676,7 @@ class QuestradeAPI:
         :param start_time:
         :param db_execute:
         :param limit:
-        :param symbol:
+        :param symbols:
         :return:
         """
 
@@ -673,9 +684,9 @@ class QuestradeAPI:
 
         start_timestamp = start_time.timestamp() if start_time else None
 
-        return self.db_get_symbol_candles_raw(symbol.symbol_id, db_execute=db_execute, limit=limit, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
+        return self.db_get_symbol_candles_raw([symbol.symbol_id for symbol in symbols], db_execute=db_execute, limit=limit, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
 
-    def db_get_symbol_candles_raw(self, symbol_id, db_execute=None, limit=None, start_timestamp:float=None, end_timestamp:float=None):
+    def db_get_symbol_candles_raw(self, symbol_ids, db_execute=None, limit=None, start_timestamp:float=None, end_timestamp:float=None):
         """
         Get symbol candles from DB
         :param end_timestamp:
@@ -687,17 +698,23 @@ class QuestradeAPI:
         """
 
         db_execute = db_execute or self.db_execute
+
+        values = tuple(symbol_ids)
+        placeholders = ', '.join(['?'] * len(symbol_ids))
+
         if limit is not None:
-            limit_string = f" LIMIT {limit}"
+            limit_string = " LIMIT ?"
+            values += (limit,)
         else:
             limit_string = ""
 
         where_string = ""
         if start_timestamp:
-            where_string += f" AND start >= {start_timestamp}"
-            where_string += f" AND end <= {end_timestamp}"
-
-        rows = db_execute(f'SELECT * FROM candles WHERE symbol_id = ?{where_string}{limit_string}', (symbol_id,))
+            where_string += " AND start >= ?"
+            values += (start_timestamp,)
+            where_string += " AND end <= ?"
+            values += (end_timestamp,)
+        rows = db_execute(f'SELECT * FROM candles WHERE symbol_id IN ({placeholders}){where_string}{limit_string}', values)
 
         if rows is None:
             return None
@@ -724,34 +741,24 @@ class QuestradeAPI:
         :return:
         """
 
-        db_execute = db_execute or self.db_execute
-
-        utc_dt = datetime.now(timezone.utc)
-        dt_now_new_yourk = utc_dt.astimezone(ZoneInfo("America/New_York"))
-        start_time_db = dt_now_new_yourk - timedelta(days=30) 
-        if symbol.candles:
-            breakpoint()
-            logger.info("implement start time change")
-
-        existing_candles = self.db_get_symbol_candles(symbol, start_time=start_time_db, end_time=dt_now_new_yourk, db_execute=db_execute)
-        existing_pairs = [(candle.float_start, candle.float_end) for candle in existing_candles]
+        existing_pairs = [(candle.float_start, candle.float_end) for candle in symbol.get_candles()]
         
-        start_time_api = max(candle.float_end for candle in existing_candles) 
+        start_time_api = max(candle.float_end for candle in symbol.get_candles()) 
         # todo: remove this converion in favor of "end" property in candle itself after migrating all DB items to
         # correct format instead of UTC
         start_time_api = datetime.fromtimestamp(start_time_api, tz=ZoneInfo("America/New_York"))
 
         # todo: Need to reduce one hour because exact time raises 401 - unauthorized.
+        utc_dt = datetime.now(timezone.utc)
+        dt_now_new_yourk = utc_dt.astimezone(ZoneInfo("America/New_York"))
         candles = self.api_get_symbol_candles(symbol, start_time_api, dt_now_new_yourk)
         logger.info(f"Fetched {symbol.symbol} {len(candles)} candles from API")
-        upserted = 0
-        for candle in candles:
-            if (candle.float_start, candle.float_end) in existing_pairs:
-                continue
-            upserted += 1 
+        added_candles = symbol.add_candles(candles)
+        
+        for candle in added_candles:
             self.db_upsert_candle(symbol.symbol_id, candle, db_execute=db_execute)
         
-        logger.debug(f"Sybol {symbol.symbol_id} {upserted} candles updated")
+        logger.debug(f"Sybol {symbol.symbol_id} {len(added_candles)} candles updated")
         return candles
 
     def db_get_recent_candles(self, symbol:Symbol, trading_timedelta=timedelta(seconds=24*60*60), db_execute=None) -> List[Candle]:
@@ -767,7 +774,7 @@ class QuestradeAPI:
         utc_dt = datetime.now(timezone.utc)
         end_time = utc_dt.astimezone(ZoneInfo("America/New_York"))
         start_time = self.get_trading_start_time_by_timedelta(end_time, trading_timedelta)
-        candles = self.db_get_symbol_candles(symbol, start_time=start_time, end_time=end_time, db_execute=db_execute)
+        candles = self.db_get_symbol_candles([symbol], start_time=start_time, end_time=end_time, db_execute=db_execute)
         return candles
     
     def get_trading_start_time_by_timedelta(self, end_time, trading_timedelta):
@@ -854,7 +861,7 @@ class QuestradeAPI:
         return [Candle(dict_src) for dict_src in position_candles["candles"]]
 
     @connected
-    def update_ineresting_symbols_market_data(self, symbol_name=None, db_execute=None):
+    def update_ineresting_symbols_market_data(self, symbol_names=None, db_execute=None):
         """
         Update cheap symbols with today data
         :return:
@@ -862,39 +869,76 @@ class QuestradeAPI:
 
         logger.info("Start updating the interestimg symbols based on market data")
 
-        self.update_interesting_symbols_in_ram(symbol_name=symbol_name, db_execute=db_execute)
-        self.api_update_interesting_symbols_candles(symbol_name=symbol_name, db_execute=db_execute)
+        self.update_interesting_symbols_in_ram(symbol_names=symbol_names, db_execute=db_execute)
+        self.db_update_interesting_symbols_candles(symbol_names=symbol_names, db_execute=db_execute)
+        self.api_update_interesting_symbols_candles(symbol_names=symbol_names, db_execute=db_execute)
         return True
+    
+    def db_update_interesting_symbols_candles(self, symbol_names=None, db_execute=None):
+        """
+        Fetch candles from db and add the to the objects in RAM
+        """
 
-    def api_update_interesting_symbols_candles(self, db_execute=None): 
+        utc_dt = datetime.now(timezone.utc)
+        dt_now_new_yourk = utc_dt.astimezone(ZoneInfo("America/New_York"))
+        start_time_db = dt_now_new_yourk - timedelta(days=30) 
+        if symbol_names:
+            requested_symbols = [symbol for symbol in self.interesting_symbols.values() if symbol.symbol in symbol_names]
+        else:
+            requested_symbols = self.interesting_symbols.values()
+
+        all_candles = self.db_get_symbol_candles(requested_symbols, db_execute=db_execute, start_time=start_time_db, end_time=dt_now_new_yourk)
+        requested_symbols_new_candles_by_symbol_id = defaultdict(list)
+        for candle in all_candles:
+            requested_symbols_new_candles_by_symbol_id[candle.symbol_id].append(candle)
+        for symbol_id in requested_symbols_new_candles_by_symbol_id:
+            self.interesting_symbols[symbol_id].add_candles(requested_symbols_new_candles_by_symbol_id[symbol_id])
+
+    def api_update_interesting_symbols_candles(self, symbol_names=None, db_execute=None): 
         """
         Update candles from API
         """
+        
+        if symbol_names:
+            interesting_symbols = [symbol for symbol in self.interesting_symbols.values() if symbol.symbol in symbol_names]
+        else:
+            interesting_symbols = self.interesting_symbols.values()
 
         logger.info("Start updating interestimg symbols market history")
         error_counter = 0
-        for i, symbol in enumerate(self.interesting_symbols.values()):
-            logger.info(f"Fetching symbol's {symbol.symbol} market history {i}/{len(self.interesting_symbols)}")
+        for i, symbol in enumerate(interesting_symbols):
+            logger.info(f"Fetching symbol's {symbol.symbol} market history {i}/{len(interesting_symbols)}")
             if self.stopped:
                 raise RuntimeError("Stopped execution")
             try:
-                logger.debug(f"Updating Symbol {i}/{len(self.interesting_symbols)} {symbol.symbol}")
+                logger.debug(f"Updating Symbol {i}/{len(interesting_symbols)} {symbol.symbol}")
                 self.api_update_symbol_candles(symbol, db_execute=db_execute)
             except Exception as inst:
                 # todo: remove
                 raise 
                 logger.exception(inst)
                 error_counter += 1
-                if error_counter > len(self.interesting_symbols)/2:
-                    raise ValueError(f"Too many errors {error_counter} out of {len(self.interesting_symbols)}")
+                if error_counter > len(interesting_symbols)/2:
+                    raise ValueError(f"Too many errors {error_counter} out of {len(interesting_symbols)}")
         return True
 
-    def update_interesting_symbols_in_ram(self, symbol_name=None, db_execute=None):
+    def update_interesting_symbols_in_ram(self, symbol_names=None, db_execute=None):
         """
         Update the symbols in RAM from db/api
         """
 
+        if symbol_names:
+            logger.info(f"Start updating interestimg symbols {symbol_names=} in RAM")
+            existing_names = [symbol.name for symbol in self.interesting_symbols.values()]
+            missing_symbol_names = [symbol_name for symbol_name in symbol_names if symbol_name not in existing_names]
+            if not missing_symbol_names:
+                return True
+            for symbol in self.db_get_symbols(symbol_symbols=missing_symbol_names, db_execute=db_execute):
+                self.interesting_symbols[symbol.symbol_id] = symbol
+            return True 
+
         logger.info("Start updating interestimg symbols in RAM")
+
         new_interesting_symbol_ids = [symbol[1] for symbol in self.sort_cheapest_by_price()]
 
         to_del = []
@@ -902,62 +946,53 @@ class QuestradeAPI:
             if symbol_id not in new_interesting_symbol_ids:
                 to_del.append(symbol_id)
         
-        if symbol_name is None:
-            for symbol_id in to_del:
-                del self.interesting_symbols[symbol_id] 
 
         missing_new_symbol_ids = [symbol_id for symbol_id in new_interesting_symbol_ids if symbol_id not in self.interesting_symbols]
-        for symbol in self.db_get_symbols(missing_new_symbol_ids, db_execute=db_execute):
+        for symbol in self.db_get_symbols(symbol_ids=missing_new_symbol_ids, db_execute=db_execute):
             self.interesting_symbols[symbol.symbol_id] = symbol
         return True
 
     # pylint: disable = too-many-locals
-    def make_purchase_plan(self, symbol_name=None, db_execute=None):
+    def make_purchase_plan(self, db_execute=None):
         """
         Plan purchase
 
         :return:
         """
-        
+
+        purchase_plan = PurchasePlan()
+
         logger.info("Making new purchase plan")
 
-        db_execute = db_execute or self.db_execute
-        position_symbol_ids = [position.symbol_id for position in self.get_positions()]
-
-        cheapest_stocks = self.sort_cheapest_by_price()
-        symbol_ids = [symbol[1] for symbol in cheapest_stocks if symbol[1] not in position_symbol_ids and
-                      ((symbol_name is None) or (symbol[0] == symbol_name))]
         orders = self.api_get_orders()
         order_symbol_ids = [order.symbol_id for order in orders]
-        symbol_ids = [symbol_id for symbol_id in symbol_ids if symbol_id not in order_symbol_ids]
-
-        symbols = []
-
-        len_symbol_ids = len(symbol_ids)
-        for i, symbol_id in enumerate(symbol_ids):
-            logger.debug(f"Fetching {i}/{len_symbol_ids}")
-
-            symbol = self.db_get_symbol(symbol_id, db_execute=db_execute)
-            symbol.candles = self.db_get_recent_candles(symbol, db_execute=db_execute)
-            if not symbol.candles:
-                continue
-            symbols.append(symbol)
+        symbol_ids = [symbol_id for symbol_id in self.interesting_symbols if symbol_id not in order_symbol_ids]
 
         filtered_symbols = []
-        for symbol in symbols:
-            # todo: Check low and high instead vwap
-            #symbol.price_change = self.calculate_vwap_change(symbol.candles)
-            symbol.price_change = self.calculate_low_change(symbol.candles)
-            symbol.slope = self.calculate_price_slope(symbol.candles, lambda x: x.low)
+        for symbol in self.interesting_symbols.values():
+            self.prepare_candles_for_purchase_planning(symbol)
 
+        purchase_items = []
+        for symbol in self.interesting_symbols.values():
+            purchase_plan_item = self.make_purhcase_plan_item(symbol)
+            if purchase_plan_item is not None:
+                purchase_plan.add_item(purchase_plan_item)
+        breakpoint()
+    
+    def make_purhcase_plan_item(self, symbol): 
+        # Maybe check high instead vwap and low. Vwap was checked, worked worse then low.
+        #symbol.price_change = self.calculate_vwap_change(symbol.candles)
+        breakpoint()
+        symbol.price_change = self.calculate_low_change(symbol.candles)
+        symbol.slope = self.calculate_price_slope(symbol.candles, lambda x: x.low)
 
-            symbol.absolute_low = min(candle.low for candle in symbol.candles)
-            symbol.absolute_high = max(candle.high for candle in symbol.candles)
-            if symbol.price_change <= 0:
-                continue
-            if len(symbol.candles) < 10:
-                continue
-            filtered_symbols.append(symbol)
+        symbol.absolute_low = min(candle.low for candle in symbol.candles)
+        symbol.absolute_high = max(candle.high for candle in symbol.candles)
+        if symbol.price_change <= 0:
+            return None
+        if len(symbol.candles) < 10:
+                return None
+        filtered_symbols.append(symbol)
 
         str_ret = ""
         # todo: old
@@ -968,6 +1003,44 @@ class QuestradeAPI:
         with open(self.configuration.data_directory/ "purchase_plan.txt", "w", encoding="utf-8") as file:
             file.write(str_ret)
         print(f"Purchase_plan is ready: {self.configuration.data_directory/ 'purchase_plan.txt'}")
+        return True
+    
+    def prepare_candles_for_purchase_planning(self, symbol:Symbol):
+        """
+        Filter anomalies and split to day, week, month
+        """
+
+        now = datetime.now(timezone.utc).astimezone(ZoneInfo("America/New_York")) 
+        now_frame_start = None
+        if now.hour in self.trading_frame_start_by_day[now.strftime("%A")] and now.minute < 45:
+            now_frame_start = now.strftime("%A"), now.hour 
+
+        symbol.monthly_clean_candles  = []
+        for candle in symbol.get_candles():
+            if now_frame_start and candle.end.strftime("%A") == now_frame_start[0] and candle.end.hour == now_frame_start[1]: 
+                symbol.monthly_clean_candles.append(candle)
+                continue
+
+            trading_start_frame_hours = self.trading_frame_start_by_day[candle.end.strftime("%A")]
+            if candle.end.hour in trading_start_frame_hours and candle.end.minute < 30:
+                continue
+            symbol.monthly_clean_candles.append(candle)
+
+        week_limit = now - timedelta(days=7)
+        today_limit = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        symbol.weekly_clean_candles = []
+        symbol.daily_clean_candles = []
+        for candle in symbol.monthly_clean_candles:
+            if candle.start >= today_limit:
+                symbol.daily_clean_candles.append(candle)
+                symbol.weekly_clean_candles.append(candle)
+                continue
+            if candle.start >= week_limit:
+                symbol.weekly_clean_candles.append(candle)
+        
+        if not symbol.daily_clean_candles:
+            last_day = max(candle.start for candle in symbol.weekly_clean_candles).day
+            symbol.daily_clean_candles = [candle for candle in symbol.weekly_clean_candles if candle.start.day == last_day] 
         return True
 
     @staticmethod
@@ -1167,7 +1240,7 @@ class QuestradeAPI:
         for row in rows:
             symbol = Symbol()
             symbol.symbol_id = row[1]
-            candles = self.db_get_symbol_candles(symbol)
+            candles = self.db_get_symbol_candles([symbol])
             del_candles = []
             for i, candle_a in enumerate(candles):
                 for candle_b in candles[i+1:]:

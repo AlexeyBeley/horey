@@ -1,5 +1,11 @@
+"""
+Base items.
+
+"""
+
 from datetime import datetime, timezone
 from horey.common_utils.common_utils import CommonUtils
+from zoneinfo import ZoneInfo
 
 class Base:
     def __init__(self, dict_src):
@@ -58,7 +64,7 @@ class Candle(Base):
         elif isinstance(value, datetime):
             self._start = value
         elif isinstance(value, float):
-            self._start = datetime.fromtimestamp(value)
+            self._start = datetime.fromtimestamp(value, tz=ZoneInfo("America/New_York"))
         else:
 
             raise NotImplementedError("Implement me")
@@ -128,7 +134,37 @@ class Symbol(Base):
         self.listing_exchange = dict_src["listingExchange"]
         self.description = dict_src["description"]
 
-        self.candles = []
+        self._candles = []
+        self.monthly_clean_candles = []
+        self.weekly_clean_candles = []
+        self.daily_clean_candles = []
+    
+    def add_candles(self, src_candles):
+        """
+        Add candles if does not exist
+        """
+
+        if not self._candles:
+            self._candles = src_candles
+            return src_candles
+
+        existing_pairs = [(candle.float_start, candle.float_end) for candle in self._candles]
+
+        lst_ret = []        
+        for src_candle in src_candles:
+            if (src_candle.float_start, src_candle.float_end) in existing_pairs:
+                continue
+            lst_ret.append(src_candle)
+            self._candles.append(src_candle)
+        return lst_ret
+    
+    def get_candles(self):
+        """
+        Get candles
+        """
+
+        return self._candles
+
 
 class Position(Base):
     def __init__(self, dict_src):
@@ -575,3 +611,19 @@ class Order(Base):
     @order_group_id.setter
     def order_group_id(self, value):
         self._order_group_id = value
+    
+class PurchasePlanItem:
+    def __init__(self, symbol:Symbol):
+        self.symbol = symbol
+
+class PurchasePlan:
+    def __init__(self):
+        self._items = []
+    
+    def add_item(self, item:PurchasePlanItem):
+        """
+        Add item.
+
+        """
+
+        self._items.append(item)
