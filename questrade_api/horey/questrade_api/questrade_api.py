@@ -979,20 +979,26 @@ class QuestradeAPI:
                 purchase_plan.add_item(purchase_plan_item)
         breakpoint()
     
-    def make_purhcase_plan_item(self, symbol): 
+    def make_purhcase_plan_item(self, symbol: Symbol): 
         # Maybe check high instead vwap and low. Vwap was checked, worked worse then low.
         #symbol.price_change = self.calculate_vwap_change(symbol.candles)
-        breakpoint()
-        symbol.price_change = self.calculate_low_change(symbol.candles)
-        symbol.slope = self.calculate_price_slope(symbol.candles, lambda x: x.low)
-
-        symbol.absolute_low = min(candle.low for candle in symbol.candles)
-        symbol.absolute_high = max(candle.high for candle in symbol.candles)
-        if symbol.price_change <= 0:
-            return None
-        if len(symbol.candles) < 10:
+        if len(symbol.daily_clean_candles) < 10:
                 return None
-        filtered_symbols.append(symbol)
+
+        breakpoint()
+        item  = PurchasePlanItem(symbol)
+        item.daily_price_change = self.calculate_low_change(symbol.daily_clean_candles)
+        if item.daily_price_change <= 0:
+            return None
+        
+        item.daily_slope = self.calculate_price_slope(symbol.daily_clean_candles, lambda x: x.low)
+        
+        item.weekly_slope = self.calculate_price_slope(symbol.weekly_clean_candles, lambda x: x.low)
+        
+        item.monthly_slope = self.calculate_price_slope(symbol.monthly_clean_candles, lambda x: x.low)
+
+        item.absolute_daily_low = min(candle.low for candle in symbol.candles)
+        symbol.absolute_daily_high = max(candle.high for candle in symbol.candles)
 
         str_ret = ""
         # todo: old
@@ -1000,7 +1006,7 @@ class QuestradeAPI:
         for i, symbol in enumerate(sorted(filtered_symbols, key=lambda x: abs(x.slope), reverse=True)):
             str_ret += f"[{i+1}] {symbol.symbol}, abs_low={symbol.absolute_low}, price_change={symbol.price_change}, deals={len(symbol.candles)}\n"
 
-        with open(self.configuration.data_directory/ "purchase_plan.txt", "w", encoding="utf-8") as file:
+        with open(self.configuration.data_directory/ "purchase_plan_ng.txt", "w", encoding="utf-8") as file:
             file.write(str_ret)
         print(f"Purchase_plan is ready: {self.configuration.data_directory/ 'purchase_plan.txt'}")
         return True
