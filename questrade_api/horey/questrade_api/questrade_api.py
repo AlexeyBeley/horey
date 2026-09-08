@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import List
 from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
-from scipy import stats
+
 
 import requests
 from selenium.webdriver.common.by import By
@@ -326,6 +326,7 @@ class QuestradeAPI:
         symbols = symbols["symbols"]
         return symbols
 
+    @connected
     def get_prefix_symbols(self, prefix):
         """
         Get position history.
@@ -333,15 +334,25 @@ class QuestradeAPI:
         :return:
         """
 
-        symbols = []
+        symbol_dicts = []
         offset = 0
         while True:
             logger.info(f"Fetching symbols for prefix: {prefix}" + f" offset: {offset}" if offset else "")
             symbols_tmp = self.get_symbols_raw(prefix, offset=offset)
             if not symbols_tmp:
                 break
-            symbols += symbols_tmp
-            offset = len(symbols)
+            symbol_dicts += symbols_tmp
+            
+            # todo: remove
+            break
+            
+            offset = len(symbol_dicts)
+        breakpoint()
+        symbol_dicts = [symbol_dict for symbol_dict in symbol_dicts if symbol_dict["isTradable"]]
+        symbols = [Symbol(symbol_dict) for symbol_dict in symbol_dicts]
+        for symbol in symbols: 
+            self.db_upsert_symbol(symbol)
+        
         with open(self.configuration.data_directory / f"symbols_{prefix}.json", "w", encoding="utf-8") as file_handler:
             json.dump(symbols, file_handler, indent=2)
         return symbols
@@ -984,32 +995,18 @@ class QuestradeAPI:
         #symbol.price_change = self.calculate_vwap_change(symbol.candles)
         if len(symbol.daily_clean_candles) < 10:
                 return None
-
-        breakpoint()
+        
         item  = PurchasePlanItem(symbol)
-        item.daily_price_change = self.calculate_low_change(symbol.daily_clean_candles)
-        if item.daily_price_change <= 0:
+        if item.daily_slope <= 0:
             return None
-        
-        item.daily_slope = self.calculate_price_slope(symbol.daily_clean_candles, lambda x: x.low)
-        
-        item.weekly_slope = self.calculate_price_slope(symbol.weekly_clean_candles, lambda x: x.low)
-        
-        item.monthly_slope = self.calculate_price_slope(symbol.monthly_clean_candles, lambda x: x.low)
 
-        item.absolute_daily_low = min(candle.low for candle in symbol.candles)
-        symbol.absolute_daily_high = max(candle.high for candle in symbol.candles)
+        if item.weekly_slope <= 0:
+            return None
 
-        str_ret = ""
-        # todo: old
-        #for i, symbol in enumerate(sorted(filtered_symbols, key=lambda x: abs(x.price_change))):
-        for i, symbol in enumerate(sorted(filtered_symbols, key=lambda x: abs(x.slope), reverse=True)):
-            str_ret += f"[{i+1}] {symbol.symbol}, abs_low={symbol.absolute_low}, price_change={symbol.price_change}, deals={len(symbol.candles)}\n"
-
-        with open(self.configuration.data_directory/ "purchase_plan_ng.txt", "w", encoding="utf-8") as file:
-            file.write(str_ret)
-        print(f"Purchase_plan is ready: {self.configuration.data_directory/ 'purchase_plan.txt'}")
-        return True
+        if item.monthly_slope <= 0:
+            return None
+   
+        return item
     
     def prepare_candles_for_purchase_planning(self, symbol:Symbol):
         """
@@ -1045,24 +1042,11 @@ class QuestradeAPI:
                 symbol.weekly_clean_candles.append(candle)
         
         if not symbol.daily_clean_candles:
+            if not symbol.weekly_clean_candles:
+                return False
             last_day = max(candle.start for candle in symbol.weekly_clean_candles).day
             symbol.daily_clean_candles = [candle for candle in symbol.weekly_clean_candles if candle.start.day == last_day] 
         return True
-
-    @staticmethod
-    def calculate_low_change(candles):
-        """
-        Calculate vwap change
-        :param candles:
-        :return:
-        """
-        candles_lows = [candle.low for candle in candles]
-        min_price = min(candles_lows)
-        max_price = max(candles_lows)
-        if min_price == max_price:
-            return 0
-        price_change = min_price / max_price * 100
-        return QuestradeAPI.calculate_price_incline(candles, lambda x: x.low) * price_change
 
     @staticmethod
     def calculate_vwap_change(candles):
@@ -1080,33 +1064,6 @@ class QuestradeAPI:
         vwap_change = min_vwap / max_vwap * 100
         return QuestradeAPI.calculate_price_incline(candles, lambda x: x.vwap) * vwap_change
 
-    @staticmethod
-    def calculate_price_incline(candles, callback_price):
-        """
-        Create a line on the vwap change and calculate incline.
-        :param callback_price:
-        :param candles:
-        :return:
-        """
-
-        slope = QuestradeAPI.calculate_price_slope(candles, callback_price)
-        return 1 if (slope > 0) else -1
-
-    @staticmethod
-    def calculate_price_slope(candles, callback_price):
-        """
-        Create a line on the vwap change and calculate incline.
-        :param callback_price:
-        :param candles:
-        :return:
-        """
-
-        x_data = [(candle.float_end + candle.float_start) / 2 for candle in candles]
-        y_data = [callback_price(candle) for candle in candles]
-        slope, intercept, r_value, p_value, std_err = stats.linregress(x_data, y_data)
-        if (intercept, r_value, p_value, std_err):
-            pass
-        return slope
 
     @connected
     def get_positions(self):

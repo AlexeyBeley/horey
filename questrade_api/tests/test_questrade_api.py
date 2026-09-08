@@ -131,9 +131,9 @@ def test_get_position_history(questrade_api):
     questrade_api.connect()
     assert questrade_api.get_position_history("43620897")
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_get_prefix_symbols(questrade_api):
-    questrade_api.connect()
+    assert questrade_api.get_prefix_symbols("A")
     assert questrade_api.get_prefix_symbols("B")
     assert questrade_api.get_prefix_symbols("C")
     assert questrade_api.get_prefix_symbols("D")
@@ -244,10 +244,6 @@ def test_generate_profit_review(questrade_api):
 
     assert questrade_api.generate_profit_review(time_start, time_end)
 
-@pytest.mark.unit
-def test_fetch_symbols_by_max_price(questrade_api):
-    assert questrade_api.fetch_symbols_by_price_range(0.001, 2)
-
 
 @pytest.mark.unit
 def test_selenium_open_symbol_page(questrade_api):
@@ -328,7 +324,7 @@ def test_update_ineresting_symbols_market_data(questrade_api):
     assert questrade_api.prepare_candles_for_purchase_planning(questrade_api.interesting_symbols[27995787]) 
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_make_purhcase_plan_item(questrade_api):
     assert questrade_api.update_ineresting_symbols_market_data(symbol_names= ["CAN"])
     symbol = questrade_api.interesting_symbols[27995787]
@@ -338,6 +334,12 @@ def test_make_purhcase_plan_item(questrade_api):
 @pytest.mark.unit
 def test_run_the_main_loop(questrade_api):
     assert questrade_api.run_the_main_loop()
+
+
+@pytest.mark.unit
+def test_fetch_symbols_by_max_price(questrade_api):
+    assert questrade_api.fetch_symbols_by_price_range(0.0001, 10)
+
 
 @pytest.mark.unit
 def test_make_purchase_plan_helper(questrade_api):

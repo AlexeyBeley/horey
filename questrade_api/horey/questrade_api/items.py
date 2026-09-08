@@ -6,6 +6,7 @@ Base items.
 from datetime import datetime, timezone
 from horey.common_utils.common_utils import CommonUtils
 from zoneinfo import ZoneInfo
+from scipy import stats
 
 class Base:
     def __init__(self, dict_src):
@@ -615,6 +616,101 @@ class Order(Base):
 class PurchasePlanItem:
     def __init__(self, symbol:Symbol):
         self.symbol = symbol
+        self._daily_slope = None
+        self._weekly_slope = None
+        self._monthly_slope = None
+
+    @property
+    def daily_price_change(self):
+        if self._daily_price_change is None:
+            self._daily_price_change = self.calculate_low_change(self.symbol.daily_clean_candles)
+        return self._daily_price_change
+    
+    @property
+    def weekly_price_change(self):
+        if self._weekly_price_change is None:
+            self._weekly_price_change = self.calculate_low_change(self.symbol.weekly_clean_candles)
+        return self._weekly_price_change
+    
+    @property
+    def monthly_price_change(self):
+        if self._monthly_price_change is None:
+            self._monthly_price_change = self.calculate_low_change(self.symbol.monthly_clean_candles)
+        return self._monthly_price_change
+
+    @property
+    def daily_absolute_low(self):
+        if self._absolute_daily_low is None: 
+            self._absolute_daily_low = min(candle.low for candle in self.symbol.daily_clean_candles)
+        return self._absolute_daily_low
+
+    @property
+    def daily_absolute_high(self):   
+        if self._absolute_daily_high is None:
+            self._absolute_daily_high = max(candle.high for candle in self.symbol.daily_clean_candles)
+        return self._absolute_daily_high
+
+    @property
+    def daily_slope(self):
+        if self._daily_slope is None:
+            self._daily_slope = self.calculate_price_slope(self.symbol.daily_clean_candles, lambda x: x.low)
+        return self._daily_slope
+
+    @property
+    def weekly_slope(self):
+        if self._weekly_slope is None:
+            self._weekly_slope = self.calculate_price_slope(self.symbol.weekly_clean_candles, lambda x: x.low)
+        return self._weekly_slope
+
+    @property
+    def monthly_slope(self):
+        if self._monthly_slope is None:
+            self._monthly_slope = self.calculate_price_slope(self.symbol.monthly_clean_candles, lambda x: x.low)
+        return self._monthly_slope
+
+    @staticmethod
+    def calculate_low_change(candles):
+        """
+        Calculate vwap change
+        :param candles:
+        :return:
+        """
+
+        candles_lows = [candle.low for candle in candles]
+        min_price = min(candles_lows)
+        max_price = max(candles_lows)
+        if min_price == max_price:
+            return 0
+        return round(min_price / max_price * 100)
+    
+    @staticmethod
+    def calculate_price_incline(candles, callback_price):
+        """
+        Create a line on the vwap change and calculate incline.
+        :param callback_price:
+        :param candles:
+        :return:
+        """
+
+        slope = PurchasePlanItem.calculate_price_slope(candles, callback_price)
+        return 1 if (slope > 0) else -1
+    
+
+    @staticmethod
+    def calculate_price_slope(candles, callback_price):
+        """
+        Create a line on the vwap change and calculate incline.
+        :param callback_price:
+        :param candles:
+        :return:
+        """
+
+        x_data = [(candle.float_end + candle.float_start) / 2 for candle in candles]
+        y_data = [callback_price(candle) for candle in candles]
+        slope, intercept, r_value, p_value, std_err = stats.linregress(x_data, y_data)
+        if (intercept, r_value, p_value, std_err):
+            pass
+        return slope
 
 class PurchasePlan:
     def __init__(self):
