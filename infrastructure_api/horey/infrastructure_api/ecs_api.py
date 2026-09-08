@@ -1788,7 +1788,6 @@ class ECSAPI:
         else:
             ecr_image = self.fetch_latest_artifact_metadata()
             image_reference = f"{self.build_api.configuration.docker_repository_uri}:{ecr_image.image_tags[0]}"
-            breakpoint()
 
         task_definition = self.generate_ecs_task_definition(image_reference)
         
@@ -1822,7 +1821,6 @@ class ECSAPI:
     def jenkins_master_deploy():
         """
         build_number = self.get_next_build_number()
-        breakpoint()
         image = self.build_api.run_build_and_upload_image_routine(branch_name, build_number)
         for image_registry_reference in image.tags:
             if self.configuration.ecr_repository_name in image_registry_reference:
