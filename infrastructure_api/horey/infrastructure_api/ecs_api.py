@@ -859,6 +859,11 @@ class ECSAPI:
         :return:
         """
 
+        if self.configuration._ecr_repository_name is not None:
+            if repository_name is None:
+                return True
+            raise NotImplemented("Check why here")
+
         if repository_name is None:
             try:
                 slug = self.configuration.service_name
@@ -868,6 +873,7 @@ class ECSAPI:
             repository_name = f"repo_{self.configuration.cluster_name}_{slug}"
 
         self.configuration.ecr_repository_name = repository_name
+        return True
 
     def provision_service_ecr_repository(self, repository_name=None, repository_policy=None):
         """
