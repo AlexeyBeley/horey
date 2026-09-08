@@ -1770,13 +1770,20 @@ class ECSAPI:
 
         :return:
         """
-        build_numer = self.get_next_build_number()
-        image = self.build_api.run_build_and_upload_image_routine(branch_name, build_numer)
-        for image_reference in image.tags:
-            if self.configuration.ecr_repository_name in image_reference:
-                break
+
+        if branch_name:
+            build_numer = self.get_next_build_number()
+            image = self.build_api.run_build_and_upload_image_routine(branch_name, build_numer)
+            for image_reference in image.tags:
+                if self.configuration.ecr_repository_name in image_reference:
+                    break
+            else:
+                raise ValueError(f"Was not able to find image with repo {self.configuration.ecr_repository_name}")
         else:
-            raise ValueError(f"Was not able to find image with repo {self.configuration.ecr_repository_name}")
+            ecr_image = self.fetch_latest_artifact_metadata()
+            image_reference = f"{self.build_api.configuration.docker_repository_uri}:{ecr_image.image_tags[0]}"
+            breakpoint()
+
         task_definition = self.generate_ecs_task_definition(image_reference)
         
         # task_definition.set_environment_variables()
