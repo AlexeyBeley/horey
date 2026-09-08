@@ -1049,6 +1049,8 @@ class ECSAPI:
         """
 
         max_build_ecr_image = self.fetch_latest_artifact_metadata()
+        if max_build_ecr_image is None:
+            return None
 
         return self.environment_api.download_ecr_image(self.ecr_repo_uri, max_build_ecr_image.image_tags)
 
@@ -1789,9 +1791,6 @@ class ECSAPI:
     def provision_service(self, branch_name, public_dns_prefix=None, private_dns_prefix=None):
         """
 
-        :return:
-        """
-
         self.validate_input()
         ecr_image_tag = self.get_build_tag()
         ecs_task_definition = self.provision_ecs_task_definition(ecr_image_tag)
@@ -1803,31 +1802,35 @@ class ECSAPI:
             raise ValueError("Unknown status")
 
         return self.provision_ecs_service(ecs_task_definition)
+        :return:
+        """
+        raise DeprecationWarning("Use provision_ecs_service")
 
-
+    def jenkins_master_deploy():
+        """
         build_number = self.get_next_build_number()
         breakpoint()
-        image = self.jenkins_master_ecs_api.build_api.run_build_and_upload_image_routine(branch_name, build_number)
+        image = self.build_api.run_build_and_upload_image_routine(branch_name, build_number)
         for image_registry_reference in image.tags:
-            if self.jenkins_master_ecs_api.configuration.ecr_repository_name in image_registry_reference:
+            if self.configuration.ecr_repository_name in image_registry_reference:
                 break
         else:
             raise ValueError(f"Was not able to find image with repo {self.jenkins_master_ecs_api.configuration.ecr_repository_name}")
-        td = self.jenkins_master_ecs_api.generate_ecs_task_definition(image_registry_reference,
+        td = self.generate_ecs_task_definition(image_registry_reference,
                                                                       slug="jenkins-master",
                                                                       requires_compatibilities=["FARGATE"])
 
         td.set_roles(task_role=task_role.arn, execution_role=exec_role.arn)
         td.set_ports(container_port=self.configuration.container_definition_port_mappings, host_port=8080)
-        self.jenkins_master_ecs_api.provision_ecs_task_definition_ng(td)
+        self.provision_ecs_task_definition_ng(td)
         target_groups = []
         if public_dns_prefix:
-            tg_public = self.jenkins_master_ecs_api.configuration.service_public_target_group_name
+            tg_public = self.configuration.service_public_target_group_name
             target_groups.append(self.loadbalancer_api.get_targetgroup(tg_public))
         if private_dns_prefix:
-            tg_private = self.jenkins_master_ecs_api.configuration.service_private_target_group_name
+            tg_private = self.configuration.service_private_target_group_name
             target_groups.append(self.loadbalancer_api.get_targetgroup(tg_private))
-        self.jenkins_master_ecs_api.provision_ecs_service(td, target_groups=target_groups)
+        self.provision_ecs_service(td, target_groups=target_groups)
 
         ecr_image_tag = self.get_build_tag()
         ecs_task_definition = self.provision_ecs_task_definition(ecr_image_tag)
@@ -1839,6 +1842,8 @@ class ECSAPI:
             raise ValueError("Unknown status")
 
         return self.provision_ecs_service(ecs_task_definition)
+        """
+        raise NotImplementedError("Old code. Refactor")
 
     def get_task_logs(self, task: ECSTask):
         """
