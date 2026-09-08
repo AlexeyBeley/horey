@@ -4,6 +4,7 @@ https://questrade.com/lukecyca/pyslack
 """
 
 # pylint: disable = too-many-lines
+import string
 from collections import defaultdict
 import sqlite3
 import platform
@@ -322,12 +323,26 @@ class QuestradeAPI:
         :return:
         """
         offset= offset or 0
-        symbols = self.get(f"v1/symbols/search?prefix={prefix}&offset={offset}")
+        try:
+            symbols = self.get(f"v1/symbols/search?prefix={prefix}&offset={offset}")
+        except Exception:
+            symbols = []
+            breakpoint()
+            return symbols 
         symbols = symbols["symbols"]
         return symbols
 
+    def populate_db_with_new_symbols(self):
+        """
+        Fetch and update in db.
+        """
+
+        for letter in string.ascii_uppercase:
+            self.populate_db_with_new_symbols_by_prefix(letter)
+        return True
+
     @connected
-    def get_prefix_symbols(self, prefix):
+    def populate_db_with_new_symbols_by_prefix(self, prefix):
         """
         Get position history.
 
@@ -336,25 +351,24 @@ class QuestradeAPI:
 
         symbol_dicts = []
         offset = 0
+        symbols = []
+        
+        all_db_symbol_names = [symbol.symbol for symbol in self.db_get_symbols()]
+
         while True:
             logger.info(f"Fetching symbols for prefix: {prefix}" + f" offset: {offset}" if offset else "")
-            symbols_tmp = self.get_symbols_raw(prefix, offset=offset)
-            if not symbols_tmp:
+            symbol_dicts_tmp = self.get_symbols_raw(prefix, offset=offset)
+            if not symbol_dicts_tmp:
                 break
-            symbol_dicts += symbols_tmp
+
+            offset += len(symbol_dicts_tmp) 
             
-            # todo: remove
-            break
-            
-            offset = len(symbol_dicts)
-        breakpoint()
-        symbol_dicts = [symbol_dict for symbol_dict in symbol_dicts if symbol_dict["isTradable"]]
-        symbols = [Symbol(symbol_dict) for symbol_dict in symbol_dicts]
-        for symbol in symbols: 
-            self.db_upsert_symbol(symbol)
-        
-        with open(self.configuration.data_directory / f"symbols_{prefix}.json", "w", encoding="utf-8") as file_handler:
-            json.dump(symbols, file_handler, indent=2)
+            symbols_tmp_filtered = [Symbol(symbol_dict) for symbol_dict in symbol_dicts_tmp if symbol_dict["isTradable"] and symbol_dict["symbol"] not in all_db_symbol_names]
+            for symbol in symbols_tmp_filtered:
+                self.db_upsert_symbol(symbol)
+
+            symbols += symbols_tmp_filtered 
+
         return symbols
 
     def get_all_symbols_from_files(self):
@@ -632,7 +646,9 @@ class QuestradeAPI:
             query = f'SELECT * FROM symbols WHERE symbol_id IN ({placeholders})'
             rows = db_execute(query, tuple(symbol_ids))
         else:
-            raise ValueError("Either Symbol ids or symbols must present")
+            logger.debug(f"Fetching all symbols from {self.configuration.db_file_path}' database")
+            query = 'SELECT * FROM symbols'
+            rows = db_execute(query, tuple())
 
         symbols = [Symbol({
             "id": row[0],
