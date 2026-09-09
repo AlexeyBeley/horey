@@ -136,7 +136,7 @@ class AlertsAPI:
             self._db_api = DBAPI(config, self.environment_api)
 
         return self._db_api
-    
+
     @property
     def lambda_arn(self):
         """
@@ -758,11 +758,11 @@ class AlertsAPI:
         "TotalIOPS"]
 
         add_alarms = [alarm for alarm in all_alarms if alarm.metric_name in required_metric_names]
-        for add_alarm in add_alarms:
-            alarm_description = {"routing_tags": routing_tags,
-                                 "cluster_name": cluster_name}
+        alarm_description = json.dumps({"routing_tags": routing_tags,
+                                 "cluster_name": cluster_name})
 
-            add_alarm.desription = json.dumps(alarm_description)
+        for add_alarm in add_alarms:
+            add_alarm.alarm_description = alarm_description
             self.provision_cloudwatch_alarm_object(add_alarm)
 
         # trigger only first and last alarms
@@ -777,7 +777,7 @@ class AlertsAPI:
                 raise ValueError("Less then 50% of required alarms were added")
         return True
 
-    def provision_rds_mysql_monitoring(self, cache_name, routing_tags):
+    def provision_rds_mysql_monitoring(self, cluster_name, routing_tags):
         """
         Provision rds mysql monitoring.
 
@@ -830,11 +830,11 @@ class AlertsAPI:
         add_alarms, remove_alarms = self.generate_mysql_cluster_alarms(cluster, routing_tags, metric_names=required_metric_names)
         logger.info(f"todo: Remove alarms: {remove_alarms}")
 
-        for add_alarm in add_alarms:
-            alarm_description = {"routing_tags": routing_tags,
-                                 "cluster_name": cluster_name}
+        alarm_description = json.dumps({"routing_tags": routing_tags,
+                                 "cluster_name": cluster_name})
 
-            add_alarm.desription = json.dumps(alarm_description)
+        for add_alarm in add_alarms:
+            add_alarm.alarm_description = alarm_description
             self.provision_cloudwatch_alarm_object(add_alarm)
 
         logger.info(f"Added {len(add_alarms)} alarms")
@@ -848,15 +848,19 @@ class AlertsAPI:
             if len(added_metric_names) < len(required_metric_names) /2:
                 raise ValueError("Less then 50% of required alarms were added")
         return True
-    
-    def provision_elasticache_serverless_monitoring(self, serverless_name, routing_tags):
+
+    # pylint: disable = too-many-locals
+    def provision_elasticache_serverless_monitoring(self, routing_tags, cache=None, name=None):
         """
         Provision Elasticache serverless monitoring.
 
         """
-        cache = self.db_api.get_serverless_cache(name=serverless_name)
-
-        alarm_description = json.dumps({"routing_tags": routing_tags, "cache": serverless_name})
+        if name:
+            cache = self.db_api.get_serverless_cache(name=name)
+        elif cache:
+            name = cache.name
+        else:
+            raise ValueError("Either name or ")
 
         required_metric_names = ["CurrConnections",
                                 "CacheHitRate",
@@ -884,11 +888,11 @@ class AlertsAPI:
                                 "DB0AverageTTL"]
 
         alerts_builder = ElasticacheServerlessAlertBuilder(cache)
-        alarm_description = {"routing_tags": routing_tags,
-                            "serverless_name": serverless_name}
 
         metric_filters = alerts_builder.generate_metric_filters()
         add_alarms, remove_alarms = [], []
+        alarm_description = json.dumps({"routing_tags": routing_tags,
+                            "serverless_name": name})
         for filters_req in metric_filters:
             metrics = self.get_resource_metrics(filters_req, metric_names=required_metric_names)
 
@@ -899,9 +903,8 @@ class AlertsAPI:
                 remove_alarms += remove_alarms_tmp
 
         logger.info(f"todo: Remove alarms: {remove_alarms}")
-        breakpoint()
+
         for add_alarm in add_alarms:
-            add_alarm.desription = json.dumps(alarm_description)
             self.provision_cloudwatch_alarm_object(add_alarm)
 
         logger.info(f"Added {len(add_alarms)} alarms")
@@ -915,7 +918,7 @@ class AlertsAPI:
             if len(added_metric_names) < len(required_metric_names) /2:
                 raise ValueError("Less then 50% of required alarms were added")
         return True
-    
+
     def get_metric_statistics(self, metric, start_time=None, end_time=None):
         """
         Find proper value
@@ -946,7 +949,7 @@ class AlertsAPI:
         all_metric_values = self.get_metric_statistics_helper(metric, statistics, end_time, seconds, period)
 
         return all_metric_values
-    
+
     def get_metric_statistics_helper(self, metric, statistics, end_time, seconds, period):
         """
         Loop over metric statistics:
@@ -998,7 +1001,7 @@ class AlertsAPI:
 
         min_value, max_value = resource_alerts_builder.generate_metric_alarm_limits(metric, all_metric_values)
         slug = resource_alerts_builder.generate_metric_alarm_slug(metric)
-        
+
         alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_min", metric, min_value,
                                         "LessThanThreshold", alarm_description)
         if min_value is not None:
@@ -1015,7 +1018,7 @@ class AlertsAPI:
 
         logger.info(f"Generated alarms from metrics. To add: {len(lst_ret)}, to delete: {len(lst_del)}")
         return lst_ret, lst_del
-    
+
     def get_base_alarm(self, alarm_name, metric, threshold, comparison_operator, alarm_description):
         """
         Generate template alarm.
@@ -1025,7 +1028,7 @@ class AlertsAPI:
 
         if len(alarm_name) > 255:
             raise ValueError(f"Alarm name can be up to 255 chars: {len(alarm_name)=} {alarm_name=}")
-        
+
         alarm = CloudWatchAlarm({})
         alarm.name = alarm_name
         alarm.actions_enabled = True
@@ -1046,12 +1049,12 @@ class AlertsAPI:
         alarm.ok_actions = [self.lambda_arn]
         alarm.alarm_actions = [self.lambda_arn]
         return alarm
-    
+
     def get_resource_metrics(self, filters_req, metric_names=None):
         """
         Fetch resource metrics by filters - Namespace and dimentions
         """
-        
+
         metrics_fetched_from_aws = list(
                 self.environment_api.aws_api.cloud_watch_client.yield_metrics(self.environment_api.region,
                                                                      filters_req=filters_req))
@@ -1066,7 +1069,7 @@ class AlertsAPI:
         if metric_names:
             return [metric for metric in filtered_metrics \
                                        if metric.name in metric_names]
-        
+
         return filtered_metrics
 
 

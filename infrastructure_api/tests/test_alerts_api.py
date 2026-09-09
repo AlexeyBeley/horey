@@ -45,8 +45,8 @@ def test_provision_alert_system(alerts_api):
     assert ret
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_provision_elasticache_serverless_monitoring(alerts_api):
     serverless_name, routing_tags = "svs-cache-dev-demo-us", []
-    ret = alerts_api.provision_elasticache_serverless_monitoring(serverless_name, routing_tags)
+    ret = alerts_api.provision_elasticache_serverless_monitoring(routing_tags, name=serverless_name)
     assert ret
