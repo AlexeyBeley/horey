@@ -785,7 +785,7 @@ class QuestradeAPI:
         dt_now_new_yourk = utc_dt.astimezone(ZoneInfo("America/New_York")) 
 
         if candles:=symbol.get_candles():
-            start_time_api = max(candle.float_end for candle in candles) 
+            start_time_api = max(candle.start for candle in candles) 
         else:
             start_time_api = dt_now_new_yourk - timedelta(days=14)
         # todo: remove this converion in favor of "end" property in candle itself after migrating all DB items to
