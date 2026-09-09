@@ -477,6 +477,7 @@ class MAauction(Provider):
 
             auction_event.start_time = MAauction.extract_time(auction_event, line)
         else:
+            breakpoint()
             logger.error(f"Was not able to find start time in description: {auction_event.description}")
             return
 
@@ -515,9 +516,10 @@ class MAauction(Provider):
             tz = ZoneInfo("America/Toronto")
         elif province.lower() == "new brunswick":
             tz = ZoneInfo("America/Halifax")
+        elif province.lower() == "british columbia":
+            tz = ZoneInfo("America/Vancouver")
         else:
             breakpoint()
-            raise ValueError(province)
         return tz
 
     @staticmethod
