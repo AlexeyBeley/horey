@@ -1,12 +1,9 @@
 """
-Monitor mysql like a boss!
+Monitor Elasticache like a boss!
 """
-import json
-from horey.common_utils.common_utils import CommonUtils
-from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
-from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
-from horey.h_logger import get_logger
 from statistics import median, mean
+from horey.common_utils.common_utils import CommonUtils
+from horey.h_logger import get_logger
 
 logger = get_logger()
 
@@ -39,6 +36,7 @@ class ServerlessAlertBuilder:
 
         return ret
 
+    # pylint: disable = too-many-return-statements
     def generate_metric_alarm_limits(self, metric, statistics_data):
         """
         Generate alarm value min and max.
@@ -47,7 +45,7 @@ class ServerlessAlertBuilder:
         :param metric_raw:
         :return:
         """
-        
+
         min_multiplier = 0.01
         max_multiplier = 10.0
 
@@ -62,7 +60,8 @@ class ServerlessAlertBuilder:
         median_average = median(x["Average"] for x in statistics_data)
         mean_average = mean(x["Average"] for x in statistics_data)
         absolute_min_average = min(x["Average"] for x in statistics_data)
-        
+        logger.info(f"Unused: {absolute_min_average}")
+
         match metric.name:
             case "NewConnections":
                 return absolute_min_value, absolute_max_value*max_multiplier
@@ -79,7 +78,7 @@ class ServerlessAlertBuilder:
             case "ChannelAuthorizationFailures" | "Evictions" | "ThrottledCmds" | "IamAuthenticationThrottling" | "KeyAuthorizationFailures" | "CommandAuthorizationFailures":
                 return None, 0
             case "CacheMisses":
-                None, absolute_max_value * max_multiplier
+                return None, absolute_max_value * max_multiplier
             case _:
                 logger.info(f"{metric.name=}, {absolute_min_value=}, {absolute_max_value=}, {median_min=}, {mean_min=}, {median_max=}, {mean_max=}, {median_average=}, {mean_average=}")
                 breakpoint()
@@ -109,4 +108,4 @@ class ServerlessAlertBuilder:
 
         snake_case = CommonUtils.camel_case_to_snake_case(metric.name)
 
-        return prefix + snake_case 
+        return prefix + snake_case
