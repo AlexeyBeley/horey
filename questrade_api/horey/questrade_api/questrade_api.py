@@ -332,6 +332,17 @@ class QuestradeAPI:
         symbols = symbols["symbols"]
         return symbols
 
+    def populate_db_with_all_symbols_candles(self):
+        """
+        Check all the symbols without candles
+        """
+        chunk_size = 999
+        symbols = self.db_get_symbols()
+        for i in range(0, len(symbols), chunk_size):
+            self.interesting_symbols = {symbol.symbol_id: symbol for symbol in symbols[i:i + chunk_size]}
+            self.db_update_interesting_symbols_candles()
+            self.api_update_interesting_symbols_candles()
+
     def populate_db_with_new_symbols(self):
         """
         Fetch and update in db.
@@ -769,15 +780,18 @@ class QuestradeAPI:
         """
 
         existing_pairs = [(candle.float_start, candle.float_end) for candle in symbol.get_candles()]
-        
-        start_time_api = max(candle.float_end for candle in symbol.get_candles()) 
-        # todo: remove this converion in favor of "end" property in candle itself after migrating all DB items to
-        # correct format instead of UTC
-        start_time_api = datetime.fromtimestamp(start_time_api, tz=ZoneInfo("America/New_York"))
-
         # todo: Need to reduce one hour because exact time raises 401 - unauthorized.
         utc_dt = datetime.now(timezone.utc)
-        dt_now_new_yourk = utc_dt.astimezone(ZoneInfo("America/New_York"))
+        dt_now_new_yourk = utc_dt.astimezone(ZoneInfo("America/New_York")) 
+
+        if candles:=symbol.get_candles():
+            start_time_api = max(candle.float_end for candle in candles) 
+        else:
+            start_time_api = dt_now_new_yourk - timedelta(days=14)
+        # todo: remove this converion in favor of "end" property in candle itself after migrating all DB items to
+        # correct format instead of UTC
+        # start_time_api = datetime.fromtimestamp(start_time_api, tz=ZoneInfo("America/New_York"))
+
         candles = self.api_get_symbol_candles(symbol, start_time_api, dt_now_new_yourk)
         logger.info(f"Fetched {symbol.symbol} {len(candles)} candles from API")
         added_candles = symbol.add_candles(candles)
@@ -1179,32 +1193,6 @@ class QuestradeAPI:
         for line in lines:
             logger.info(line)
         return True
-
-    @connected
-    def db_get_all_symbols(self):
-        """
-        Fetch all symbols from DB
-        :return:
-        """
-
-        rows = self.db_execute('SELECT * FROM candles')
-
-        if rows is None:
-            return None
-        ret = []
-        for row in rows:
-            ret.append(Symbol({
-                "symbol": row[1],
-                "symbolId": row[2],
-                "securityType": row[3],
-                "isTradable": row[4],
-                "isQuotable": row[5],
-                "currency": row[6],
-                "listingExchange": row[7],
-                "description": row[8],
-                "id": row[0]
-            }))
-        return ret
 
     @connected
     def cleanup_candles(self):

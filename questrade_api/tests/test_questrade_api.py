@@ -336,7 +336,6 @@ def test_make_purhcase_plan_item(questrade_api):
 def test_run_the_main_loop(questrade_api):
     assert questrade_api.run_the_main_loop()
 
-
 @pytest.mark.unit
 def test_fetch_symbols_by_max_price(questrade_api):
     assert questrade_api.fetch_symbols_by_price_range(0.0001, 10)
@@ -345,12 +344,16 @@ def test_fetch_symbols_by_max_price(questrade_api):
 def test_populate_db_with_new_symbols(questrade_api):
     assert questrade_api.populate_db_with_new_symbols()
 
+@pytest.mark.wip
+def test_populate_db_with_all_symbols_candles(questrade_api):
+    assert questrade_api.populate_db_with_all_symbols_candles()
+
 @pytest.mark.unit
 def test_make_purchase_plan_helper(questrade_api):
     assert questrade_api.make_purchase_plan_helper()
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_selenium_sell_routine(questrade_api):
     try:
         assert questrade_api.run_selenium_sell_routine()
