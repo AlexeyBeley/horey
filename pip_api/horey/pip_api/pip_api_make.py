@@ -85,6 +85,7 @@ def init_configuration():
     parser.add_argument("--copy_horey_dependencies",  action=argparse.BooleanOptionalAction)
     parser.add_argument("--dst_dir_path", type=str)
     parser.add_argument("--package_name", type=str)
+    parser.add_argument("--force", action=argparse.BooleanOptionalAction, default=False)
     arguments = parser.parse_args()
 
     if arguments.pip_api_configuration is not None:
@@ -479,7 +480,8 @@ def copy_horey_dependencies(configs):
     dst_dir_path = Path(configs.get("dst_dir_path"))
     package_name = configs.get("package_name")
     StandaloneMethods = get_standalone_methods(configs)
-    StandaloneMethods.copy_horey_package_required_packages_to_build_dir(package_name, dst_dir_path, horey_dir_path)
+    force = configs.get("force", False)
+    StandaloneMethods.copy_horey_package_required_packages_to_build_dir(package_name, dst_dir_path, horey_dir_path, force=force)
 
 def main():
     """

@@ -799,7 +799,7 @@ class StandaloneMethods:
         return local_file_path
 
     @staticmethod
-    def copy_horey_package_required_packages_to_build_dir(package_raw_name: str, build_dir_path: Path, horey_repo_path: Path):
+    def copy_horey_package_required_packages_to_build_dir(package_raw_name: str, build_dir_path: Path, horey_repo_path: Path, force: bool=False):
         """
         Copy all needed directories and files.
 
@@ -828,7 +828,7 @@ class StandaloneMethods:
         for obj_name in list(set(base_names + recursively_found_horey_directories)):
             obj_path = horey_repo_path / obj_name
             if obj_path.is_dir():
-                if not (build_horey_dir_path / obj_name).exists():
+                if force or not (build_horey_dir_path / obj_name).exists():
                     shutil.copytree(obj_path, build_horey_dir_path / obj_name, ignore=ignore_build)
             else:
                 shutil.copy(obj_path, build_horey_dir_path / obj_name)
