@@ -828,7 +828,12 @@ class StandaloneMethods:
         for obj_name in list(set(base_names + recursively_found_horey_directories)):
             obj_path = horey_repo_path / obj_name
             if obj_path.is_dir():
-                if force or not (build_horey_dir_path / obj_name).exists():
+                if force:
+                    try:
+                        shutil.rmtree(build_horey_dir_path / obj_name)
+                    except FileNotFoundError:
+                        pass
+                if not (build_horey_dir_path / obj_name).exists():
                     shutil.copytree(obj_path, build_horey_dir_path / obj_name, ignore=ignore_build)
             else:
                 shutil.copy(obj_path, build_horey_dir_path / obj_name)
