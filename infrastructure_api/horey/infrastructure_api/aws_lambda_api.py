@@ -407,7 +407,7 @@ class AWSLambdaAPI:
                                                    routing_tags
                                                    )
         alerts_api.provision_cloudwatch_logs_alarm(log_group_name,
-                                                   f'"{alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"',
+                                                   f'"{alerts_api.alert_system.configuration.ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN}"',
                                                    "timeout",
                                                    routing_tags
                                                    )

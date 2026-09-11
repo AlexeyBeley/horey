@@ -217,7 +217,7 @@ class MessageCloudwatchDefault(MessageBase):
 
         :return:
         """
-        
+
         lambda_name = self.get_dimension("FunctionName")
 
         return f"https://{self.configuration.region}.console.aws.amazon.com/lambda/home?region={self.configuration.region}#/functions/{lambda_name}?tab=monitoring"
@@ -255,7 +255,7 @@ class MessageCloudwatchDefault(MessageBase):
         :param name:
         :return:
         """
-        
+
         if self.trigger is not None:
             for dimension in self.trigger["Dimensions"]:
                 if dimension.get("name") == name:
@@ -317,7 +317,7 @@ class MessageCloudwatchDefault(MessageBase):
             except Exception:
                 logger.info(f"Was not able to find data: {self.message_dict}")
                 raise
-            
+
             notification = self.generate_notification_default(reason=reason)
             notification.link = self.generate_alert_system_lambda_link()
             notification.link_href = "View AlertSystem Lambda"
@@ -363,8 +363,8 @@ class MessageCloudwatchDefault(MessageBase):
         pattern_log = pattern.replace(AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN,
                                       "ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN")
         pattern_log = pattern_log.replace(
-            AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN,
-            "ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN")
+            AlertSystemConfigurationPolicy.ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN,
+            "ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN")
 
         logger.info(f"Found {pattern_log} in {log_group_name}")
 
@@ -414,7 +414,7 @@ class MessageCloudwatchDefault(MessageBase):
             f'Time: {alarm_time}\n'
         )
 
-        notification.routing_tags = self.alarm_description.get("routing_tags", 
+        notification.routing_tags = self.alarm_description.get("routing_tags",
                        [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG])
 
         notification.link = self.generate_cloudwatch_alarm_link()

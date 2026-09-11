@@ -47,8 +47,8 @@ class NotificationChannelEcho:
 
         line = line.replace(AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN,
                             "ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN")
-        line = line.replace(AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN,
-                            "ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN")
+        line = line.replace(AlertSystemConfigurationPolicy.ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN,
+                            "ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN")
 
         if notification.type in [Notification.Types.CRITICAL, Notification.Types.WARNING]:
             logger.warning(line)

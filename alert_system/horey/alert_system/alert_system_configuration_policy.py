@@ -18,7 +18,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
 
     ALERT_SYSTEM_CONFIGURATION_FILE_PATH = "alert_system_configuration.json"
     ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN = "[ERROR]"
-    ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN = "Task timed out after"
+    ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN = "Task timed out after"
     # These key and value are added in the message dict to indicate the received message is self monitoring
     ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY = "ALERT_SYSTEM_SELF_MONITORING"
     ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE = "ALERT_SYSTEM_SELF_MONITORING"

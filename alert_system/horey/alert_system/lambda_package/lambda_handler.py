@@ -25,8 +25,8 @@ def handler(event, _):
     logger_string = json.dumps(event).replace(AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN,
                                           "ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN")
     logger_string = logger_string.replace(
-        AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN,
-        "ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN")
+        AlertSystemConfigurationPolicy.ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN,
+        "ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN")
     logger.info(f"Handling event: '{logger_string}'")
 
     event_handler = EventHandler(AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH)

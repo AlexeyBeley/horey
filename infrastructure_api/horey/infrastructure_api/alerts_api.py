@@ -668,9 +668,9 @@ class AlertsAPI:
         log_group_name = aws_lambda.logging_config["LogGroup"]
 
         # first
-        filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN
+        filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN
         self.provision_cloudwatch_logs_alarm(log_group_name,
-                                                    filter_text,
+                                                    f'"{filter_text}"',
                                                     "timeout",
                                                     routing_tags,
                                                     alarm_description_base=alarm_description_base,
@@ -699,6 +699,7 @@ class AlertsAPI:
 
         self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
 
+        # third
         alarm = self.provision_cloudwatch_alarm(
             name=f"has3-alarm-{lambda_name}-metric-duration",
             alarm_description=json.dumps(alarm_description),
@@ -1099,7 +1100,7 @@ class AlertsAPI:
         @return:
         """
 
-        filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN
+        filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN
         alarm_description = {"lambda_name": self.configuration.lambda_name,
                              AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
 
@@ -1220,7 +1221,7 @@ class AlertsAPI:
         """
 
         return self.environment_api.put_cloudwatch_log_lines(self.aws_lambda_api.log_group_name, [
-            f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}: Neo, the Horey has you!"])
+            f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN}: Neo, the Horey has you!"])
 
     def get_all_metrics(self, namespace):
         """

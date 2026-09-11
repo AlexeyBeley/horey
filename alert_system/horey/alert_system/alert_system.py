@@ -211,7 +211,7 @@ class AlertSystem:
         @return:
         """
 
-        filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN
+        filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN
         alarm_description = {"lambda_name": self.configuration.lambda_name,
                              AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
         return self.provision_cloudwatch_logs_alarm(self.configuration.alert_system_lambda_log_group_name,
@@ -860,7 +860,7 @@ class AlertSystem:
         """
         return self.trigger_log_filter_text_alarm(self.configuration.alert_system_lambda_log_group_name,
                                                   [
-                                                      f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}: Neo, the Horey has you!"])
+                                                      f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN}: Neo, the Horey has you!"])
 
     def trigger_log_filter_text_alarm(self, log_group_name, lines):
         """
