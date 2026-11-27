@@ -26,6 +26,9 @@ build:
 	cd .. &&\
 	docker build -f mcp/docker/Dockerfile -t ${MCP_IMAGE} --build-arg HOREY_MCP_PACKAGES="${HOREY_MCP_PACKAGES}" .
 
+# AWS credentials passed through from the calling shell; the ones not set there stay unset in the container.
+MCP_AWS_ENV_VARS := AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_REGION AWS_DEFAULT_REGION
+
 # Published on 127.0.0.1 only: the server has no authentication.
 run: build
 	mkdir -p ${MCP_CONFIGURATIONS_DIR_PATH} &&\
@@ -33,6 +36,7 @@ run: build
 	docker run -d --name ${MCP_CONTAINER_NAME} \
 		-p 127.0.0.1:${MCP_PORT}:8080 \
 		-v ${MCP_CONFIGURATIONS_DIR_PATH}:/opt/horey/mcp/configurations:ro \
+		$(foreach var,${MCP_AWS_ENV_VARS},-e ${var}) \
 		${MCP_IMAGE}
 
 stop:
