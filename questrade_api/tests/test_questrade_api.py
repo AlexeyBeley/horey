@@ -387,7 +387,7 @@ def test_run_selenium_sell_routine_ng(questrade_api):
     finally:
         questrade_api.selenium_api.disconnect()
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_selenium_sell_routine(questrade_api):
     try:
         assert questrade_api.run_selenium_sell_routine()

@@ -31,6 +31,12 @@ class OpensearchAPI:
     """
 
     def __init__(self, configuration: OpensearchAPIConfigurationPolicy = None):
+        """
+        Init the API client.
+
+        :param configuration: server address and credentials.
+        """
+
         self._monitors = None
         self._index_management_policies = None
         self.configuration = configuration
@@ -296,11 +302,11 @@ class OpensearchAPI:
             self.put(f"_plugins/_ism/policies/{policy.policy_id}", policy.generate_create_request())
             self._index_management_policies = []
         elif request := current_policy.generate_update_request(policy):
-                logger.info(f"Updating index management policy {current_policy.policy_id}")
-                self.put(f"_plugins/_ism/policies/{current_policy.policy_id}"
-                        f"?if_seq_no={current_policy.seq_no}&if_primary_term={current_policy.primary_term}",
-                            request)
-                self._index_management_policies = []
+            logger.info(f"Updating index management policy {current_policy.policy_id}")
+            self.put(f"_plugins/_ism/policies/{current_policy.policy_id}"
+                    f"?if_seq_no={current_policy.seq_no}&if_primary_term={current_policy.primary_term}",
+                        request)
+            self._index_management_policies = []
 
         self.apply_index_management_policy_to_existing_indices(policy)
         self.validate_index_management_policy_template(policy)
@@ -463,16 +469,43 @@ class OpensearchAPI:
         return self.get("_index_patterns")
 
     def get_notification_channels_slugs(self):
-        ret = self.get(f"_plugins/_notifications/channels")
+        """
+        Fetch notification channels.
+        Note: the response is not returned.
+
+        :return: None
+        """
+
+        return self.get("_plugins/_notifications/channels")
 
     def get_index_templates_raw(self):
-        ret = self.get(f"_index_template")
+        """
+        Fetch index templates.
+        Note: the response is not returned.
+
+        :return: None
+        """
+
+        return self.get("_index_template")
 
     def get_notification_channels(self):
+        """
+        Get notification channel configs.
+
+        :return: list of config dicts
+        """
+
         not_configs = self.get("_plugins/_notifications/configs")
         return not_configs["config_list"]
 
     def provision_notification_channel(self, data):
+        """
+        Create a notification channel config.
+
+        :param data: notification config request body
+        :return: API response
+        """
+
         return self.post("/_plugins/_notifications/configs/", data=data)
 
     def init_notification_channels(self):
@@ -517,6 +550,13 @@ class OpensearchAPI:
             json.dump(configs, fh)
 
     def restore(self, dst_dir: pathlib.Path):
+        """
+        Restore monitors from a backup, pointing them at the only existing notification config.
+
+        :param dst_dir: backup directory created by backup()
+        :return:
+        """
+
         configs = self.init_notification_configs()
         if len(configs) != 1:
             raise NotImplementedError("""with open(dst_dir / "notification_configs.json", "w", encoding="UTF-8") as fh: json.dump(configs, fh) """)
@@ -538,9 +578,61 @@ class OpensearchAPI:
         :return:
         """
 
+        if not roles:
+            raise ValueError("Create opensearch user roles where not set.")
+
+        if not password:
+            raise ValueError("Create opensearch user password was not set.")
+
         request = {
             "password": password,
             "opendistro_security_roles": roles,
             "backend_roles": []
         }
         return self.put(f"_plugins/_security/api/internalusers/{user_name}", request)
+
+    def get_user_roles(self, user_name):
+        """
+        Get all security roles the user gets, sorted by name.
+
+        Checks:
+        1. Roles assigned directly on the internal user.
+        2. Role mappings listing the user under "users" (wildcards supported).
+        3. Role mappings matching the user's backend roles (wildcards supported).
+
+        :param user_name: e.g. "user-horey"
+        :return: sorted list of role names
+        """
+
+        user = self.get(f"_plugins/_security/api/internalusers/{user_name}")[user_name]
+        roles = set(user.get("opendistro_security_roles") or [])
+        user_backend_roles = user.get("backend_roles") or []
+
+        def backend_role_matches(pattern):
+            """
+            Check whether any of the user's backend roles matches the pattern.
+
+            :param pattern: backend role name or wildcard, e.g. "team-horey-*"
+            :return: bool
+            """
+
+            return any(fnmatch.fnmatchcase(backend_role, pattern) for backend_role in user_backend_roles)
+
+        mappings = self.get("_plugins/_security/api/rolesmapping")
+        for role_name, mapping in mappings.items():
+            if not isinstance(mapping, dict):
+                continue
+
+            if any(fnmatch.fnmatchcase(user_name, pattern) for pattern in mapping.get("users") or []):
+                roles.add(role_name)
+                continue
+
+            if any(backend_role_matches(pattern) for pattern in mapping.get("backend_roles") or []):
+                roles.add(role_name)
+                continue
+
+            and_backend_roles = mapping.get("and_backend_roles") or []
+            if and_backend_roles and all(backend_role_matches(pattern) for pattern in and_backend_roles):
+                roles.add(role_name)
+
+        return sorted(roles)
