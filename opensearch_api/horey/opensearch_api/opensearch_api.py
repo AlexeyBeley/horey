@@ -586,10 +586,44 @@ class OpensearchAPI:
 
         request = {
             "password": password,
-            "opendistro_security_roles": roles,
             "backend_roles": []
         }
-        return self.put(f"_plugins/_security/api/internalusers/{user_name}", request)
+        response = self.put(f"_plugins/_security/api/internalusers/{user_name}", request)
+        self.add_user_to_roles(user_name, roles)
+        return response
+
+    def add_user_to_roles(self, user_name, role_names):
+        """
+        Add the user to each role's mapping, preserving the mapping's existing users.
+        PUT replaces the whole mapping, so all current fields are sent back
+        with the new user appended.
+
+        :param user_name: e.g. "user-horey"
+        :param role_names: e.g. ["role-horey"]
+        :return:
+        """
+
+        mappings = self.get("_plugins/_security/api/rolesmapping")
+
+        for role_name in role_names:
+            mapping = mappings.get(role_name) or {}
+            users = mapping.get("users") or []
+            if user_name in users:
+                logger.info(f"User '{user_name}' is already mapped to role '{role_name}'")
+                continue
+
+            request = {
+                "users": users + [user_name],
+                "backend_roles": mapping.get("backend_roles") or [],
+                "hosts": mapping.get("hosts") or [],
+            }
+            if mapping.get("and_backend_roles"):
+                request["and_backend_roles"] = mapping["and_backend_roles"]
+            if mapping.get("description"):
+                request["description"] = mapping["description"]
+
+            logger.info(f"Adding user '{user_name}' to role mapping '{role_name}'")
+            self.put(f"_plugins/_security/api/rolesmapping/{role_name}", request)
 
     def get_user_roles(self, user_name):
         """
