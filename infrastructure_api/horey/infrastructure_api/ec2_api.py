@@ -22,11 +22,36 @@ class EC2API:
         self.configuration = configuration
         self.environment_api = environment_api
 
+    def get_instances(self, tags_dict=None, update_info=True):
+        """
+        Get the environment VPC instances, all states (terminated ones are listed by AWS for about an hour).
+
+        :param tags_dict: tag name to the list of accepted values, e.g. {"Name": ["instance-horey"]}.
+            Tag values support "*" wildcards. None - all the VPC instances.
+        :param update_info:
+        :return:
+        """
+
+        tags_dict = tags_dict or {}
+        for tag_name, tag_value in tags_dict.items():
+            if not isinstance(tag_value, list):
+                raise ValueError(f"Tag '{tag_name}' value is not list: '{tag_value}'")
+
+        filters = {"Filters": [{"Name": f"tag:{tag_name}", "Values": values} for tag_name, values in tags_dict.items()] +
+                              [{"Name": "vpc-id", "Values": [self.environment_api.vpc.id]}]
+                   }
+
+        logger.info(f"Searching for instances by filters: {filters}, {update_info=}")
+        return self.environment_api.aws_api.ec2_client.get_region_instances(self.environment_api.region, filters=filters,
+                                                                            update_info=update_info)
+
     def get_instance(self, name=None, update_info=True, tags_dict=None):
         """
-        Get instnace.
+        Get single instance.
 
-        :param name:
+        :param name: Name tag value.
+        :param update_info:
+        :param tags_dict: see get_instances. Used instead of name.
         :return:
         """
 
@@ -35,17 +60,7 @@ class EC2API:
                 raise ValueError("tags_dict and name are None")
             tags_dict = {"Name": [name]}
 
-        for tag_name, tag_value in tags_dict.items():
-            if not isinstance(tag_value, list):
-                raise ValueError(f"Tag '{tag_name}' value is not list: '{tag_value}'")
-
-        filters = {"Filters": [{"Name": f"tag:{name}", "Values": values} for name, values in tags_dict.items()] +
-                              [{"Name": "vpc-id", "Values": [self.environment_api.vpc.id]}]
-                   }
-
-        logger.info(f"Searching for instance by filters: {filters}, {update_info=}")
-        ec2_instances = self.environment_api.aws_api.ec2_client.get_region_instances(self.environment_api.region, filters=filters,
-                                                                     update_info=update_info)
+        ec2_instances = self.get_instances(tags_dict=tags_dict, update_info=update_info)
         if len(ec2_instances) != 1:
             raise RuntimeError(f"Expected to find single instance, found: {len(ec2_instances)}")
         return ec2_instances[0]
@@ -76,7 +91,8 @@ class EC2API:
         security_group.name = name or self.configuration.name
         security_group.description = description or security_group.name
         security_group.region = self.environment_api.region
-        security_group.tags = self.environment_api.configuration.tags
+        security_group.tags = [dict(tag) for tag in self.environment_api.configuration.tags
+                               if tag["Key"] != "Name"]
         security_group.tags.append({
             "Key": "Name",
             "Value": security_group.name
@@ -126,7 +142,7 @@ class EC2API:
         filter_request = {"ImageIds": [param.value]}
         amis = self.environment_api.aws_api.ec2_client.get_region_amis(self.environment_api.region, custom_filters=filter_request)
         if len(amis) != 1:
-            raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
+            raise RuntimeError(f"Can not find single AMI using filter: {filter_request}")
         return amis[0]
 
     # pylint: disable=too-many-positional-arguments, too-many-arguments
@@ -134,15 +150,18 @@ class EC2API:
         """
         Provision instance.
 
-        :param asynchronous:
-        :param instance_type:
-        :param architecture:
-        :param key_name:
-        :param name: 
-        :param security_groups: 
-        :param volume_size: 
-        :return: 
+        :param asynchronous: return without waiting for the instance to run.
+        :param instance_type: Default: t3a.medium (amd64), t4g.medium (arm64).
+        :param architecture: amd64 or arm64.
+        :param key_name: Default: a new key "key_<name>", its private key saved to Secrets Manager.
+        :param name:
+        :param security_groups: EC2SecurityGroup list.
+        :param volume_size: GB, default 30.
+        :return:
         """
+
+        if not security_groups:
+            raise ValueError("security_groups were not set")
 
         if instance_type is None:
             if architecture == "amd64":
@@ -166,7 +185,8 @@ class EC2API:
         ec2_instance.min_count = 1
         ec2_instance.max_count = 1
 
-        ec2_instance.tags = self.environment_api.configuration.tags
+        ec2_instance.tags = [dict(tag) for tag in self.environment_api.configuration.tags
+                             if tag["Key"] != "Name"]
         ec2_instance.tags.append({
             "Key": "Name",
             "Value": name
@@ -202,7 +222,7 @@ class EC2API:
             }
         ]
         ec2_instance.monitoring = {"Enabled": False}
-        self.environment_api.aws_api.provision_ec2_instance(ec2_instance, wait_until_active=asynchronous)
+        self.environment_api.aws_api.provision_ec2_instance(ec2_instance, wait_until_active=not asynchronous)
         return ec2_instance
 
     def choose_subnets_with_instance_type_offerings(self, instance_type, subnets):
@@ -220,7 +240,7 @@ class EC2API:
 
     def start_instance(self, name=None):
         """
-        Stop EC2 instance.
+        Start EC2 instance and wait for it to run. Does nothing if it is running.
 
         :param name:
         :return:
@@ -253,6 +273,7 @@ class EC2API:
         if not ec2_instance:
             raise ValueError(f"Was not able to find instance by {name=}")
         self.environment_api.aws_api.ec2_client.stop_instance(ec2_instance, asynchronous=asynchronous)
+        return ec2_instance
 
     def provision_private_alb_security_group(self):
         """
@@ -338,9 +359,10 @@ class EC2API:
                                             )
 
         return key_pair
+
     def dispose_instance(self, name=None, missing_ok=True):
         """
-        Stop EC2 instance.
+        Terminate EC2 instance.
 
         :param missing_ok:
         :param name:

@@ -69,6 +69,10 @@ Rules:
   the MCP SDK hides the text of other exceptions, the registry re-raises them as `ToolError`.
 * A package failing to load is logged and skipped, the others are served.
 
+A package with many tools can use a `horey/<package_name>/mcp_tools/` package instead: its `__init__.py`
+defines `register_mcp_tools(registry)`, e.g. [infrastructure_api](../infrastructure_api/horey/infrastructure_api/mcp_tools/__init__.py)
+registers one tools class per API class (`EC2APIMCPTools`, `CloudwatchAPIMCPTools`, ...), imported statically.
+
 Registry helpers:
 
 | Helper | Use |
@@ -91,7 +95,7 @@ What some of them need where the server runs:
 
 | Package | Needs |
 |---------|-------|
-| `infrastructure_api` | AWS credentials in the container environment (`-e AWS_ACCESS_KEY_ID ...` or a role), `region` and `vpc_name` in its configuration |
+| `infrastructure_api` | AWS credentials in the container environment (`-e AWS_ACCESS_KEY_ID ...` or a role), `region` and `vpc_name` in its configuration. Secrets are read in `secrets_manager_region` (default: `region`): `infrastructure_api_get_secret` returns the value into the conversation, `infrastructure_api_download_secret_file` writes it to a 0600 file on the server host (in the container when run in docker) and does not return it. CloudWatch Logs: list log groups and streams, filter events by pattern and time range, tail a stream, run Logs Insights queries. Times are durations (`15m`, `2h`, `7d`) or ISO 8601. EC2 (`ec2_*`, in the environment VPC): list/get instances and security groups, start/stop/terminate instances, create security groups, rules, SSH keys and Ubuntu 24.04 instances |
 | `docker_api` | The Docker socket: `-v /var/run/docker.sock:/var/run/docker.sock`. No configuration file |
 | `deployer`, `provision_constructor` | SSH private keys as files in the configurations directory, passed by file name. `provision_constructor` also needs `deployer` in `HOREY_MCP_PACKAGES` |
 | `git_api` | Works on the single repository of its configuration, cloned inside the container |

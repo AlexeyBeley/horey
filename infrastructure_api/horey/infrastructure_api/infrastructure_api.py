@@ -27,6 +27,27 @@ class InfrastructureAPI:
         return EnvironmentAPI(configuration, aws_api, git_api=git_api)
 
     @staticmethod
+    def get_isolated_environment_api(configuration, aws_account_name):
+        """
+        EnvironmentAPI with its own AWSAccount (current role credentials, configuration region): several of them,
+        in different regions, live in one process without touching the global AWSAccount.
+
+        :param configuration: EnvironmentAPIConfigurationPolicy
+        :param aws_account_name: unique per environment, e.g. the configuration file name.
+        :return:
+        """
+
+        from horey.aws_api.aws_api import AWSAPI
+        from horey.aws_api.base_entities.aws_account import AWSAccount
+        from horey.infrastructure_api.environment_api import EnvironmentAPI
+
+        aws_account = AWSAccount()
+        aws_account.name = aws_account.id = aws_account_name
+        aws_account.connection_steps = [AWSAccount.ConnectionStep({"role": "current",
+                                                                   "region_mark": configuration.region})]
+        return EnvironmentAPI(configuration, AWSAPI(aws_account=aws_account))
+
+    @staticmethod
     def get_frontend_api(configuration, environment_api):
         """
         Get frontend API
