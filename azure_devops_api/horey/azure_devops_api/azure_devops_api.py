@@ -7,6 +7,7 @@ Manage Azure Devops
 import json
 import datetime
 import os
+import urllib.parse
 from collections import defaultdict
 
 import requests
@@ -734,8 +735,6 @@ class AzureDevopsAPI:
                     dict_src = response.json()
                     lst_all.append(WorkItem(dict_src))
                     lst_all_ids.append(int_id)
-            self.add_hours_to_work_item("236277", 0)
-            breakpoint()
             logger.info(f"Totally initialized {len(lst_all_ids)} until iteration: {iteration_id}")
 
         return self.recursive_init_work_items(lst_all)
@@ -793,6 +792,73 @@ class AzureDevopsAPI:
             dict_src = response.json()
 
         return WorkItem(dict_src)
+
+    WORK_ITEMS_BATCH_MAX_SIZE = 200
+
+    def query_work_item_ids(self, wiql, top=None):
+        """
+        Run a WIQL query in the team context (@CurrentIteration, @Me and @project macros work).
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/wiql/query-by-wiql
+
+        :param wiql: e.g. "SELECT [System.Id] FROM WorkItems WHERE [System.State] = 'Active'"
+        :param top: max number of results.
+        :return: work item ids in the query order. Link queries: the ids of the links' sources and targets.
+        """
+
+        url = (f"https://dev.azure.com/{self.org_name}/{urllib.parse.quote(self.project_name)}/"
+               f"{urllib.parse.quote(self.team_name)}/_apis/wit/wiql?api-version=7.1")
+        if top is not None:
+            url += f"&$top={int(top)}"
+
+        response = self.session.post(url, json={"query": wiql}, headers={"Content-Type": "application/json"})
+        if response.status_code != 200:
+            raise RuntimeError(f"WIQL query failed {response.status_code}: {response.text}")
+        ret = response.json()
+
+        if "workItems" in ret:
+            return [work_item["id"] for work_item in ret["workItems"]]
+
+        ids = []
+        for relation in ret.get("workItemRelations", []):
+            for side in ["source", "target"]:
+                work_item_id = (relation.get(side) or {}).get("id")
+                if work_item_id is not None and work_item_id not in ids:
+                    ids.append(work_item_id)
+        return ids
+
+    def get_work_items_batch(self, work_item_ids, fields=None):
+        """
+        Fetch work items by ids, WORK_ITEMS_BATCH_MAX_SIZE per request. Missing (deleted, no permission) ids are skipped.
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/get-work-items-batch
+
+        :param work_item_ids:
+        :param fields: field reference names, e.g. ["System.Title"]. None - all the fields.
+        :return: WorkItem list in the ids order.
+        """
+
+        url = f"https://dev.azure.com/{self.org_name}/{urllib.parse.quote(self.project_name)}/_apis/wit/workitemsbatch?api-version=7.1"
+        lst_ret = []
+        work_item_ids = list(work_item_ids)
+        for start in range(0, len(work_item_ids), self.WORK_ITEMS_BATCH_MAX_SIZE):
+            request_data = {"ids": work_item_ids[start:start + self.WORK_ITEMS_BATCH_MAX_SIZE], "errorPolicy": "Omit"}
+            if fields:
+                request_data["fields"] = fields
+            response = self.session.post(url, json=request_data, headers={"Content-Type": "application/json"})
+            if response.status_code != 200:
+                raise RuntimeError(f"Work items batch request failed {response.status_code}: {response.text}")
+            lst_ret += [WorkItem(dict_src) for dict_src in response.json()["value"] if dict_src]
+        return lst_ret
+
+    def get_team_iterations(self):
+        """
+        Team iterations with their attributes: startDate, finishDate, timeFrame (past, current, future).
+        Single request, unlike init_iterations.
+
+        :return: list of dicts.
+        """
+
+        return self.get(f"https://dev.azure.com/{self.org_name}/{urllib.parse.quote(self.project_name)}/"
+                        f"{urllib.parse.quote(self.team_name)}/_apis/work/teamsettings/iterations?api-version=7.1")["value"]
 
     def init_work_items_by_backlog(self, ignore_items=None):
         """

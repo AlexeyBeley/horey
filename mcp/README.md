@@ -84,7 +84,7 @@ Registry helpers:
 
 `github_api`, `jenkins_api`, `infrastructure_api`, `provision_constructor`, `azure_api`, `chronograf_api`, `deployer`,
 `docker_api`, `git_api`, `grafana_api`, `influxdb_api`, `kubernetes_api`, `opensearch_api`, `pip_api`, `postgres_api`,
-`redis_api`, `replacement_engine`, `selenium_api`, `slack_api`, `zabbix_api`, `snyk_api`.
+`redis_api`, `replacement_engine`, `selenium_api`, `slack_api`, `zabbix_api`, `snyk_api`, `azure_devops_api`.
 Call `mcp_list_packages` for the loaded packages and their tools.
 
 What some of them need where the server runs:
@@ -97,6 +97,7 @@ What some of them need where the server runs:
 | `git_api` | Works on the single repository of its configuration, cloned inside the container |
 | `selenium_api` | Chrome, which the image does not include |
 | `pip_api` | Nothing: without a configuration it lists the server's own packages |
+| `azure_devops_api` | `server_address`, `org_name`, `project_name`, `team_name`, `user` and `password` - a personal access token with the Work Items (Read) scope. The tools are read-only: search (filters or WIQL), read a work item with its description, links and comments, list the iterations |
 
 Tools which change data or run commands are marked destructive, e.g. `postgres_api_execute`, `redis_api_consume_stream`,
 `git_api_checkout_remote`, `deployer_run_remote_command`. Claude Code asks before each call unless you allow them.
