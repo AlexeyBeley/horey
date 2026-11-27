@@ -130,6 +130,26 @@ class OpensearchAPI:
             )
         return response.json()
 
+    def patch(self, request_path, data):
+        """
+        Execute patch call
+
+        @param request_path:
+        @param data: list of JSON patch operations
+        @return:
+        """
+
+        request = self.create_request(request_path)
+
+        response = requests.patch(request, auth=(self.configuration.user, self.configuration.password),
+                                  data=json.dumps(data), headers=self.headers, timeout=60)
+
+        if response.status_code not in [200, 201]:
+            raise RuntimeError(
+                f"Request to opensearch api returned an error {response.status_code}, the response is:\n{response.text}"
+            )
+        return response.json()
+
     def delete(self, request_path):
         """
         Execute delete call
@@ -589,8 +609,46 @@ class OpensearchAPI:
             "backend_roles": []
         }
         response = self.put(f"_plugins/_security/api/internalusers/{user_name}", request)
-        self.add_user_to_roles(user_name, roles)
+        self.provision_user_roles(user_name, roles)
         return response
+
+    def provision_user_roles(self, user_name, role_names):
+        """
+        Make the user's roles match the list:
+        add the missing roles, then delete the roles that are not in the list.
+        Roles granted through wildcard user patterns or backend roles are ignored,
+        since they are shared with other users.
+
+        :param user_name: e.g. "user-horey"
+        :param role_names: e.g. ["role-horey"]
+        :return:
+        """
+
+        self.add_user_to_roles(user_name, role_names)
+
+        extra_roles = sorted(self._get_user_explicit_roles(user_name) - set(role_names))
+        if extra_roles:
+            logger.info(f"Deleting roles {extra_roles} not in the requested list from user '{user_name}'")
+            self.delete_user_roles(user_name, extra_roles, raise_if_still_granted=False)
+
+    def _get_user_explicit_roles(self, user_name):
+        """
+        Roles assigned directly on the user or through role mappings listing the user's exact name.
+        Wildcard user patterns and backend roles are not included.
+
+        :param user_name: e.g. "user-horey"
+        :return: set of role names
+        """
+
+        user = self.get(f"_plugins/_security/api/internalusers/{user_name}")[user_name]
+        roles = set(user.get("opendistro_security_roles") or [])
+
+        mappings = self.get("_plugins/_security/api/rolesmapping")
+        for role_name, mapping in mappings.items():
+            if isinstance(mapping, dict) and user_name in (mapping.get("users") or []):
+                roles.add(role_name)
+
+        return roles
 
     def add_user_to_roles(self, user_name, role_names):
         """
@@ -612,18 +670,79 @@ class OpensearchAPI:
                 logger.info(f"User '{user_name}' is already mapped to role '{role_name}'")
                 continue
 
-            request = {
-                "users": users + [user_name],
-                "backend_roles": mapping.get("backend_roles") or [],
-                "hosts": mapping.get("hosts") or [],
-            }
-            if mapping.get("and_backend_roles"):
-                request["and_backend_roles"] = mapping["and_backend_roles"]
-            if mapping.get("description"):
-                request["description"] = mapping["description"]
-
             logger.info(f"Adding user '{user_name}' to role mapping '{role_name}'")
-            self.put(f"_plugins/_security/api/rolesmapping/{role_name}", request)
+            self._put_role_mapping_users(role_name, mapping, users + [user_name])
+
+    def _put_role_mapping_users(self, role_name, mapping, users):
+        """
+        Replace the users of a role mapping, preserving all its other fields.
+        PUT replaces the whole mapping, so every current field must be sent back.
+
+        :param role_name: e.g. "role-horey"
+        :param mapping: current mapping dict, empty if the mapping does not exist
+        :param users: full new users list
+        :return:
+        """
+
+        request = {
+            "users": users,
+            "backend_roles": mapping.get("backend_roles") or [],
+            "hosts": mapping.get("hosts") or [],
+        }
+        if mapping.get("and_backend_roles"):
+            request["and_backend_roles"] = mapping["and_backend_roles"]
+        if mapping.get("description"):
+            request["description"] = mapping["description"]
+
+        return self.put(f"_plugins/_security/api/rolesmapping/{role_name}", request)
+
+    def delete_user_roles(self, user_name, role_names, raise_if_still_granted=True):
+        """
+        Remove roles from the user:
+        1. Roles assigned directly on the internal user.
+        2. Role mappings listing the user's exact name under "users".
+        3. Wildcard user patterns and backend role matches are shared with other users,
+           so they are not changed. If a role is still granted that way, an error is raised
+           unless raise_if_still_granted is False.
+
+        :param user_name: e.g. "user-horey"
+        :param role_names: e.g. ["role-horey"]
+        :param raise_if_still_granted: raise if a role is still granted through wildcards or backend roles
+        :return:
+        """
+
+        role_names = set(role_names)
+
+        user = self.get(f"_plugins/_security/api/internalusers/{user_name}")[user_name]
+        direct_roles = user.get("opendistro_security_roles") or []
+        remaining_direct_roles = [role for role in direct_roles if role not in role_names]
+        if remaining_direct_roles != direct_roles:
+            logger.info(f"Removing direct roles {sorted(set(direct_roles) - set(remaining_direct_roles))} "
+                        f"from user '{user_name}'")
+            self.patch(f"_plugins/_security/api/internalusers/{user_name}",
+                       [{"op": "replace", "path": "/opendistro_security_roles", "value": remaining_direct_roles}])
+
+        mappings = self.get("_plugins/_security/api/rolesmapping")
+        for role_name in sorted(role_names):
+            mapping = mappings.get(role_name)
+            if not isinstance(mapping, dict):
+                continue
+
+            users = mapping.get("users") or []
+            if user_name not in users:
+                continue
+
+            logger.info(f"Removing user '{user_name}' from role mapping '{role_name}'")
+            self._put_role_mapping_users(role_name, mapping, [user for user in users if user != user_name])
+
+        if not raise_if_still_granted:
+            return
+
+        still_granted = sorted(role_names.intersection(self.get_user_roles(user_name)))
+        if still_granted:
+            raise RuntimeError(f"User '{user_name}' still has roles {still_granted} through wildcard user "
+                               "patterns or backend roles in role mappings. These are shared with other "
+                               "users and must be changed manually.")
 
     def get_user_roles(self, user_name):
         """
