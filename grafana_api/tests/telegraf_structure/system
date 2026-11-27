@@ -1,0 +1,11 @@
+name: system
+fieldKey       fieldType
+--------       ---------
+load1          float
+load15         float
+load5          float
+n_cpus         integer
+n_unique_users integer
+n_users        integer
+uptime         integer
+uptime_format  string

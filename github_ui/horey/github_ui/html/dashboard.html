@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>GitHub dashboard</title>
+    <meta name="color-scheme" content="dark">
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #3fb950;
+            --accent: #2ea043;
+            --error: #ff7b72;
+            --success: #56d364;
+        }
+        body { font-family: sans-serif; font-size: 1.25rem; margin: 2em; background: var(--bg); color: var(--text); }
+        table { border-collapse: collapse; margin-top: 1em; min-width: 20em; }
+        th, td { border: 1px solid var(--border); padding: 0.6em 1.2em; text-align: left; }
+        th { background: var(--surface); }
+        button {
+            background: var(--surface); color: var(--text);
+            border: 1px solid var(--border); border-radius: 8px;
+            font-size: 1.25rem; padding: 0.7em 1.6em; cursor: pointer;
+        }
+        button:hover:not(:disabled) { border-color: var(--accent); }
+        button:focus-visible, input[type=checkbox]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        input[type=checkbox] { accent-color: var(--accent); width: 1.3em; height: 1.3em; vertical-align: middle; }
+        #error { color: var(--error); margin-top: 1em; }
+        #status { color: var(--success); margin-top: 1em; }
+        td.monitor { padding: 0; }
+        .workflow { display: flex; justify-content: space-between; align-items: center; gap: 2em; padding: 0.6em 1.2em; }
+        .workflow + .workflow { border-top: 1px solid var(--border); }
+        .workflow-name { text-align: left; }
+        .workflow-message { padding: 0.6em 1.2em; }
+        .workflow-message.failed { color: var(--error); }
+        #add_to_monitored, #remove_from_monitored { margin-top: 1em; }
+        #start_monitoring, #stop_monitoring { margin-left: 0.6em; }
+        #monitoring_table { margin-top: 2em; }
+        #monitoring_table td.status { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>GitHub dashboard</h1>
+    <button id="fetch_repos">fetch_repos</button>
+    <button id="start_monitoring">Start monitoring</button>
+    <button id="stop_monitoring" disabled>Stop monitoring</button>
+    <div id="error"></div>
+    <table id="repos_table" hidden>
+        <thead><tr><th>Repository</th><th>Monitor</th></tr></thead>
+        <tbody></tbody>
+    </table>
+    <button id="add_to_monitored" hidden>Add to monitored</button>
+    <button id="remove_from_monitored" hidden>Remove from monitored</button>
+    <div id="status"></div>
+    <table id="monitoring_table" hidden>
+        <thead><tr><th>Repository</th><th>Workflow</th><th>Status</th></tr></thead>
+        <tbody></tbody>
+    </table>
+    <script>
+        const button = document.getElementById("fetch_repos");
+        const table = document.getElementById("repos_table");
+        const errorBox = document.getElementById("error");
+        const statusBox = document.getElementById("status");
+        const addButton = document.getElementById("add_to_monitored");
+        const removeButton = document.getElementById("remove_from_monitored");
+        const startButton = document.getElementById("start_monitoring");
+        const stopButton = document.getElementById("stop_monitoring");
+        const monitoringTable = document.getElementById("monitoring_table");
+
+        const MONITORING_INTERVAL_MS = 30 * 1000;
+        let monitoringTimer = null;
+        let updateInFlight = false;
+
+        async function errorMessage(response) {
+            let detail = "";
+            try {
+                detail = (await response.json()).detail || "";
+            } catch (_) {
+                // not a json body
+            }
+            return detail || "HTTP " + response.status;
+        }
+
+        function statusText(status) {
+            if (status === null || status === undefined) {
+                return "unknown";
+            }
+            return typeof status === "string" ? status : JSON.stringify(status, null, 1);
+        }
+
+        async function updateMonitoringStatus() {
+            if (updateInFlight) {
+                return;
+            }
+            updateInFlight = true;
+            try {
+                const response = await fetch("/update_monitoring_status");
+                if (!response.ok) {
+                    throw new Error(await errorMessage(response));
+                }
+                const rows = await response.json();
+                const tbody = monitoringTable.querySelector("tbody");
+                tbody.replaceChildren();
+                for (const item of rows) {
+                    const row = document.createElement("tr");
+                    for (const [value, className] of [[item.repository, ""], [item.workflow, ""], [statusText(item.status), "status"]]) {
+                        const cell = document.createElement("td");
+                        cell.className = className;
+                        cell.textContent = value;
+                        row.appendChild(cell);
+                    }
+                    tbody.appendChild(row);
+                }
+                monitoringTable.hidden = false;
+                errorBox.textContent = "";
+            } catch (error) {
+                errorBox.textContent = "Failed to update monitoring status: " + error.message;
+            } finally {
+                updateInFlight = false;
+            }
+        }
+
+        startButton.addEventListener("click", async () => {
+            errorBox.textContent = "";
+            statusBox.textContent = "";
+            startButton.disabled = true;
+            try {
+                const response = await fetch("/start_monitoring", {method: "POST"});
+                if (!response.ok) {
+                    throw new Error(await errorMessage(response));
+                }
+            } catch (error) {
+                errorBox.textContent = "Failed to start monitoring: " + error.message;
+                startButton.disabled = false;
+                return;
+            }
+            stopButton.disabled = false;
+            statusBox.textContent = "Monitoring started, the status is updated every " + MONITORING_INTERVAL_MS / 1000 + " seconds.";
+            updateMonitoringStatus();
+            monitoringTimer = setInterval(updateMonitoringStatus, MONITORING_INTERVAL_MS);
+        });
+
+        stopButton.addEventListener("click", async () => {
+            errorBox.textContent = "";
+            statusBox.textContent = "";
+            clearInterval(monitoringTimer);
+            monitoringTimer = null;
+            stopButton.disabled = true;
+            startButton.disabled = false;
+            try {
+                const response = await fetch("/stop_monitoring", {method: "POST"});
+                if (!response.ok) {
+                    throw new Error(await errorMessage(response));
+                }
+                statusBox.textContent = "Monitoring stopped.";
+            } catch (error) {
+                errorBox.textContent = "Failed to notify the server about stopping monitoring: " + error.message;
+            }
+        });
+
+        function messageElement(text, failed) {
+            const element = document.createElement("div");
+            element.className = "workflow-message" + (failed ? " failed" : "");
+            element.textContent = text;
+            return element;
+        }
+
+        async function loadWorkflows(repo, cell) {
+            try {
+                const response = await fetch("/fetch_workflows?repository=" + encodeURIComponent(repo));
+                if (!response.ok) {
+                    throw new Error("HTTP " + response.status);
+                }
+                const workflows = await response.json();
+                cell.replaceChildren();
+                if (workflows.length === 0) {
+                    cell.appendChild(messageElement("No workflows", false));
+                    return;
+                }
+                for (const workflow of workflows) {
+                    const item = document.createElement("div");
+                    item.className = "workflow";
+
+                    const name = document.createElement("span");
+                    name.className = "workflow-name";
+                    name.textContent = workflow;
+                    item.appendChild(name);
+
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.dataset.repository = repo;
+                    checkbox.dataset.workflow = workflow;
+                    checkbox.setAttribute("aria-label", "Monitor " + repo + " " + workflow);
+                    item.appendChild(checkbox);
+
+                    cell.appendChild(item);
+                }
+            } catch (error) {
+                cell.replaceChildren(messageElement("Failed to fetch workflows: " + error.message, true));
+            }
+        }
+
+        button.addEventListener("click", async () => {
+            errorBox.textContent = "";
+            statusBox.textContent = "";
+            button.disabled = true;
+            try {
+                const response = await fetch("/fetch_repos");
+                if (!response.ok) {
+                    let detail = "";
+                    try {
+                        detail = (await response.json()).detail || "";
+                    } catch (_) {
+                        // not a json body
+                    }
+                    throw new Error(detail || "HTTP " + response.status);
+                }
+                const repos = await response.json();
+                const tbody = table.querySelector("tbody");
+                tbody.replaceChildren();
+                for (const repo of repos) {
+                    const row = document.createElement("tr");
+                    const cell = document.createElement("td");
+                    cell.textContent = repo;
+                    row.appendChild(cell);
+
+                    const monitorCell = document.createElement("td");
+                    monitorCell.className = "monitor";
+                    monitorCell.appendChild(messageElement("Loading workflows...", false));
+                    row.appendChild(monitorCell);
+
+                    tbody.appendChild(row);
+                    loadWorkflows(repo, monitorCell);
+                }
+                table.hidden = false;
+                addButton.hidden = false;
+                removeButton.hidden = false;
+            } catch (error) {
+                errorBox.textContent = "Failed to fetch repos: " + error.message;
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        async function sendChecked(url, doneMessage, failMessage) {
+            errorBox.textContent = "";
+            statusBox.textContent = "";
+            const checked = table.querySelectorAll("tbody input[type=checkbox]:checked");
+            const workflowsByRepository = new Map();
+            for (const checkbox of checked) {
+                const repository = checkbox.dataset.repository;
+                if (!workflowsByRepository.has(repository)) {
+                    workflowsByRepository.set(repository, []);
+                }
+                workflowsByRepository.get(repository).push(checkbox.dataset.workflow);
+            }
+            const repositories = Array.from(
+                workflowsByRepository, ([repository, workflows]) => ({repository, workflows}));
+            if (repositories.length === 0) {
+                errorBox.textContent = "Select at least one workflow.";
+                return;
+            }
+            addButton.disabled = true;
+            removeButton.disabled = true;
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({repositories: repositories}),
+                });
+                if (!response.ok) {
+                    throw new Error("HTTP " + response.status);
+                }
+                statusBox.textContent = doneMessage + ": " + repositories.map((item) => item.repository + ": " + item.workflows.join(", ")).join("; ");
+            } catch (error) {
+                errorBox.textContent = failMessage + ": " + error.message;
+            } finally {
+                addButton.disabled = false;
+                removeButton.disabled = false;
+            }
+        }
+
+        addButton.addEventListener("click", () =>
+            sendChecked("/add_to_monitored", "Added to monitored", "Failed to add to monitored"));
+        removeButton.addEventListener("click", () =>
+            sendChecked("/remove_from_monitored", "Removed from monitored", "Failed to remove from monitored"));
+    </script>
+</body>
+</html>

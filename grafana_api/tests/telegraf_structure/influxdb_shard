@@ -1,0 +1,14 @@
+name: influxdb_shard
+fieldKey           fieldType
+--------           ---------
+diskBytes          float
+fieldsCreate       float
+seriesCreate       float
+writeBytes         float
+writePointsDropped float
+writePointsErr     float
+writePointsOk      float
+writeReq           float
+writeReqErr        float
+writeReqOk         float
+writeValuesOk      float

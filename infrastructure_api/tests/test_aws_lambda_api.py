@@ -1,0 +1,165 @@
+"""
+Init and cache AWS objects.
+
+"""
+import shutil
+import sys
+from pathlib import Path
+
+import pytest
+sys.path.append(str(Path(__file__).parent))
+from test_utils import init_from_secrets_api
+
+from horey.aws_api.aws_api import AWSAPI
+from horey.common_utils.common_utils import CommonUtils
+from horey.configuration_policy.configuration_policy import ConfigurationPolicy
+from horey.h_logger import get_logger
+from horey.infrastructure_api.infrastructure_api import InfrastructureAPI
+from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
+from horey.infrastructure_api.aws_lambda_api_configuration_policy import AWSLambdaAPIConfigurationPolicy
+from horey.infrastructure_api.alerts_api_configuration_policy import AlertsAPIConfigurationPolicy
+
+
+# pylint: disable= missing-function-docstring
+
+mock_values_file_path = Path(__file__).parent.parent.parent.parent / "ignore" / "test_aws_lambda_api_mocks.py"
+mock_values = CommonUtils.load_module(mock_values_file_path)
+
+
+logger = get_logger()
+
+aws_api = AWSAPI()
+
+class Configuration(ConfigurationPolicy):
+    """
+    Tests configuration
+    """
+
+    TEST_CONFIG = None
+
+    def __init__(self):
+        super().__init__()
+        self._environment_api_configuration_file_secret_name = None
+        self._stop_instance_ids = None
+        self._alerts_api_configuration_file_secret_name = None
+
+    @property
+    def environment_api_configuration_file_secret_name(self):
+        return self._environment_api_configuration_file_secret_name
+
+    @environment_api_configuration_file_secret_name.setter
+    def environment_api_configuration_file_secret_name(self, value: Path):
+        self._environment_api_configuration_file_secret_name = value
+
+    @property
+    def stop_instance_ids(self):
+        return self._stop_instance_ids
+
+    @stop_instance_ids.setter
+    def stop_instance_ids(self, value: Path):
+        self._stop_instance_ids = value
+
+    @property
+    def alerts_api_configuration_file_secret_name(self):
+        return self._alerts_api_configuration_file_secret_name
+
+    @alerts_api_configuration_file_secret_name.setter
+    def alerts_api_configuration_file_secret_name(self, value: Path):
+        self._alerts_api_configuration_file_secret_name = value
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_config():
+    Configuration.TEST_CONFIG = init_from_secrets_api(Configuration, mock_values.secret_name)
+    yield Configuration.TEST_CONFIG
+
+@pytest.fixture(name="env_api_integration")
+def fixture_env_api_integration():
+    env_configuration = init_from_secrets_api(EnvironmentAPIConfigurationPolicy, Configuration.TEST_CONFIG.environment_api_configuration_file_secret_name)
+    env_configuration.data_directory_path = Path("/tmp/test_data")
+    infrastructure_api = InfrastructureAPI()
+    environment_api = infrastructure_api.get_environment_api(env_configuration, aws_api=aws_api)
+    yield environment_api
+    if env_configuration.data_directory_path.exists():
+        shutil.rmtree(env_configuration.data_directory_path)
+
+
+@pytest.fixture(name="aws_lambda_api")
+def fixture_aws_lambda_api(env_api_integration):
+    infrastructure_api = InfrastructureAPI()
+    aws_lambda_api_configuration = AWSLambdaAPIConfigurationPolicy()
+    yield infrastructure_api.get_aws_lambda_api(aws_lambda_api_configuration, env_api_integration)
+
+
+@pytest.fixture(name="aws_lambda_api_stopper")
+def fixture_aws_lambda_api_stopper(env_api_integration):
+    infrastructure_api = InfrastructureAPI()
+    aws_lambda_api_configuration = AWSLambdaAPIConfigurationPolicy()
+    aws_lambda_api = infrastructure_api.get_aws_lambda_api(aws_lambda_api_configuration, env_api_integration)
+    aws_lambda_api.configuration.lambda_name = f"instance_stopper_{aws_lambda_api.environment_api.configuration.region}"
+    aws_lambda_api.configuration.lambda_timeout = 30
+    aws_lambda_api.configuration.lambda_memory_size = 1024
+    aws_lambda_api.configuration.schedule_expression = "rate(1 minute)"
+    # todo: "cron(0 22 * * ? *)"
+    aws_lambda_api.build_api.horey_git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
+    aws_lambda_api.build_api.horey_git_api.configuration.remote = "git@github.com:AlexeyBeley/horey.git"
+
+    aws_lambda_api.environment_variables_callback = lambda: {"Variables": {"INSTANCE_IDS": Configuration.TEST_CONFIG.stop_instance_ids,
+                                                                           "REGION": aws_lambda_api.environment_api.configuration.region}}
+
+    def role_inline_policies_callback():
+        """
+        Ec2
+        :return:
+        """
+
+        policy = aws_lambda_api.aws_iam_api.generate_inline_policy("inline_ec2", "*", [
+                                                                 "ec2:Describe*",
+                                                                 "ec2:StopInstances"
+                                                             ])
+        return [policy]
+
+    aws_lambda_api.role_inline_policies_callback = role_inline_policies_callback
+
+    def prepare_lambda_source_code_directory(branch_name):
+        """
+        Generate Dockerfile and horey repos.
+
+        :param branch_name:
+        :return:
+        """
+
+        horey_dir_preparator = aws_lambda_api.prepare_horey_lambda_source_code_directory(["aws_api"], "instance_stopper.handler")
+        path = horey_dir_preparator(branch_name)
+
+        shutil.copyfile(Path(__file__).parent / "aws_lambda_api_instance_stopper" / "instance_stopper.py", path / "instance_stopper.py")
+        return path
+
+    aws_lambda_api.build_api.prepare_source_code_directory = prepare_lambda_source_code_directory
+    yield aws_lambda_api
+
+
+@pytest.fixture(name="alerts_api")
+def fixture_alerts_api(env_api_integration):
+    infrastructure_api = InfrastructureAPI()
+    alerts_api_configuration = init_from_secrets_api(AlertsAPIConfigurationPolicy, Configuration.TEST_CONFIG.alerts_api_configuration_file_secret_name)
+
+    yield infrastructure_api.get_alerts_api(alerts_api_configuration, env_api_integration)
+
+
+@pytest.mark.unit
+def test_provision_instance_stopper_lambda(aws_lambda_api_stopper, alerts_api):
+    assert aws_lambda_api_stopper.provision_docker_lambda(alerts_api=alerts_api)
+
+@pytest.mark.unit
+def test_update_instance_stopper_lambda(aws_lambda_api_stopper):
+    assert aws_lambda_api_stopper.update_docker_lambda()
+
+@pytest.mark.unit
+def test_get_alarm_period_and_threshold(aws_lambda_api_stopper):
+    assert aws_lambda_api_stopper.get_alarm_period()
+
+@pytest.mark.unit
+def test_provision_instance_stopper_monitoring(aws_lambda_api_stopper, alerts_api):
+    aws_lambda = aws_lambda_api_stopper.get_lambda(aws_lambda_api_stopper.configuration.lambda_name)
+    assert aws_lambda_api_stopper.provision_monitoring(alerts_api, aws_lambda)
+

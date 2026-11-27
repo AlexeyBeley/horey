@@ -1,0 +1,469 @@
+"""
+AWS lambda client to handle lambda service API requests.
+"""
+from typing import List
+
+from horey.aws_api.aws_clients.boto3_client import Boto3Client
+from horey.aws_api.aws_services_entities.elasticache_user import ElasticacheUser
+
+from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.aws_services_entities.eks_cluster import EKSCluster
+from horey.aws_api.aws_services_entities.eks_addon import EKSAddon
+from horey.aws_api.aws_services_entities.eks_fargate_profile import EKSFargateProfile
+from horey.aws_api.aws_services_entities.eks_access_entry import EKSAccessEntry
+from horey.aws_api.base_entities.region import Region
+
+from horey.h_logger import get_logger
+
+logger = get_logger()
+
+
+class EKSClient(Boto3Client):
+    """
+    Client to handle specific aws service API calls.
+    """
+
+    def __init__(self, aws_account=None):
+        """
+        ret = self.get_all_clusters()
+
+        list_fargate_profiles = list(self.execute(self.get_session_client(region=region).list_fargate_profiles, "fargateProfileNames", filters_req={"clusterName": ret[0].name}))
+        list_identity_provider_configs = list(self.execute(self.get_session_client(region=region).list_identity_provider_configs, "identityProviderConfigs", filters_req={"clusterName": ret[0].name}))
+        list_nodegroups = list(self.execute(self.get_session_client(region=region).list_nodegroups, "nodegroups", filters_req={"clusterName": ret[0].name}))
+        """
+        client_name = "eks"
+        super().__init__(client_name, aws_account=aws_account)
+
+    # region cluster
+    def get_all_clusters(self, region=None, full_information=True):
+        """
+        Get all clusters in all regions.
+        :return:
+        """
+
+        if region is not None:
+            return self.get_region_clusters(
+                region, full_information=full_information
+            )
+
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_clusters(
+                _region, full_information=full_information
+            )
+
+        return final_result
+
+    def get_region_clusters(self, region, full_information=True) -> List[EKSCluster]:
+        """
+        Region specific state machines.
+
+        :param region:
+        :param full_information:
+        :return:
+        """
+
+        final_result = []
+        for name in self.execute(
+                self.get_session_client(region=region).list_clusters, "clusters"
+        ):
+            obj = EKSCluster({"name": name})
+            obj.region = region
+            final_result.append(obj)
+            if full_information:
+                self.update_cluster_info(obj)
+
+        return final_result
+
+    def update_cluster_info(self, obj):
+        """
+        Update current status.
+
+        :param obj:
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.get_session_client(region=obj.region).describe_cluster, "cluster", filters_req={"name": obj.name}
+        ):
+            obj.update_from_raw_response(dict_src)
+
+    def provision_cluster(self, cluster: EKSCluster):
+        """
+        Provision from object.
+
+        :param cluster:
+        :return:
+        """
+
+        region_clusters = self.get_region_clusters(
+            cluster.region
+        )
+        for region_cluster in region_clusters:
+            if (
+                    region_cluster.name == cluster.name
+            ):
+                cluster.update_from_raw_response(
+                    region_cluster.dict_src
+                )
+                return
+        response = self.provision_cluster_raw(cluster.region,
+                                              cluster.generate_create_request()
+                                              )
+        cluster.update_from_raw_response(response)
+
+    def provision_cluster_raw(self, region, request_dict):
+        """
+        Provision from raw request.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Creating cluster: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).create_cluster,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            del response["ResponseMetadata"]
+            return response
+
+    # endregion
+
+    # region addon
+    def get_all_addons(self, region=None, full_information=True):
+        """
+        Get all addons in all regions.
+        :return:
+        """
+
+        if region is not None:
+            return self.get_region_addons(
+                region, full_information=full_information
+            )
+
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_addons(
+                _region, full_information=full_information
+            )
+
+        return final_result
+
+    def get_region_addons(self, region, full_information=True):
+        """
+        Region specific state machines.
+
+        :param region:
+        :param full_information:
+        :return:
+        """
+
+        final_result = []
+        clusters = self.get_region_clusters(region)
+
+        for cluster in clusters:
+            final_result += self.get_cluster_addons(cluster, full_information=full_information)
+
+        return final_result
+
+    def get_cluster_addons(self, cluster, full_information=True):
+        """
+        Region specific state machines.
+
+        :param cluster:
+        :param full_information:
+        :return:
+        """
+
+        final_result = []
+        for name in self.execute(
+                self.get_session_client(region=cluster.region).list_addons, "addons",
+                filters_req={"clusterName": cluster.name}
+        ):
+            obj = EKSAddon({"addonName": name, "clusterName": cluster.name})
+            final_result.append(obj)
+            if full_information:
+                self.update_addon_info(obj)
+
+        return final_result
+
+    def update_addon_info(self, obj):
+        """
+        Update current status.
+
+        :param obj:
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.get_session_client(region=obj.region).describe_addon, "addon",
+                filters_req={"clusterName": obj.cluster_name, "addonName": obj.name}
+        ):
+            obj.update_from_raw_response(dict_src)
+
+    def provision_addon(self, addon: EKSCluster):
+        """
+        Provision from object.
+
+        :param addon:
+        :return:
+        """
+
+        region_addons = self.get_region_addons(
+            addon.region
+        )
+        for region_addon in region_addons:
+            if (
+                    region_addon.name == addon.name
+            ):
+                addon.update_from_raw_response(
+                    region_addon.dict_src
+                )
+                return
+        response = self.provision_addon_raw(addon.region,
+                                            addon.generate_create_request()
+                                            )
+        addon.update_from_raw_response(response)
+
+    def provision_addon_raw(self, region, request_dict):
+        """
+        Provision from raw request.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Creating addon: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).create_addon,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            del response["ResponseMetadata"]
+            return response
+
+    # endregion
+
+    # region fargate_profile
+    def get_all_fargate_profiles(self, region=None, full_information=True):
+        """
+        Get all fargate_profiles in all regions.
+        :return:
+        """
+
+        if region is not None:
+            return self.get_region_fargate_profiles(
+                region, full_information=full_information
+            )
+
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_fargate_profiles(
+                _region, full_information=full_information
+            )
+
+        return final_result
+
+    def get_region_fargate_profiles(self, region, full_information=True):
+        """
+        Region specific fargate_profiles.
+
+        :param region:
+        :param full_information:
+        :return:
+        """
+
+        final_result = []
+        clusters = self.get_region_clusters(region)
+
+        for cluster in clusters:
+            final_result += self.get_cluster_fargate_profiles(cluster, full_information=full_information)
+
+        return final_result
+
+    def get_cluster_fargate_profiles(self, cluster, full_information=True):
+        """
+        Region specific fargate_profiles.
+
+        :param cluster:
+        :param full_information:
+        :return:
+        """
+
+        final_result = []
+        for name in self.execute(
+                self.get_session_client(region=cluster.region).list_fargate_profiles, "fargateProfileNames",
+                filters_req={"clusterName": cluster.name}
+        ):
+            obj = EKSFargateProfile({"fargateProfileName": name, "clusterName": cluster.name})
+            final_result.append(obj)
+            if full_information:
+                self.update_fargate_profile_info(obj)
+
+        return final_result
+
+    def update_fargate_profile_info(self, obj):
+        """
+        Update current status.
+
+        :param obj:
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.get_session_client(region=obj.region).describe_fargate_profile, "fargateProfile",
+                filters_req={"clusterName": obj.cluster_name, "fargateProfileName": obj.name}
+        ):
+            obj.update_from_raw_response(dict_src)
+
+    def provision_fargate_profile(self, fargate_profile: EKSFargateProfile):
+        """
+        Provision from object.
+
+        :param fargate_profile:
+        :return:
+        """
+        fargate_profile_current = EKSFargateProfile({"fargateProfileName": fargate_profile.name,
+                                                     "clusterName": fargate_profile.cluster_name})
+        fargate_profile_current.region = fargate_profile.region
+        self.update_fargate_profile_info(
+            fargate_profile_current
+        )
+        if fargate_profile_current.arn:
+            self.update_fargate_profile_info(
+                fargate_profile
+            )
+            return
+
+        response = self.provision_fargate_profile_raw(fargate_profile.region,
+                                                      fargate_profile.generate_create_request()
+                                                      )
+        fargate_profile.update_from_raw_response(response)
+
+    def provision_fargate_profile_raw(self, region, request_dict):
+        """
+        Provision from raw request.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Creating fargate_profile: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).create_fargate_profile,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            del response["ResponseMetadata"]
+            return response
+
+    def dispose_fargate_profile(self, fargate_profile: EKSFargateProfile):
+        """
+        Dispose.
+
+        :return:
+        """
+
+        request_dict = {"clusterName": fargate_profile.cluster_name,
+                        "fargateProfileName": fargate_profile.name}
+        logger.info(f"Disposing fargate_profile: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=fargate_profile.region).delete_fargate_profile,
+                "fargateProfile",
+                filters_req=request_dict,
+        ):
+            return response
+    
+    def yield_access_entries(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all subnets.
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_access_entries_raw
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            EKSAccessEntry,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_access_entries_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for arn in self.execute(
+            self.get_session_client(region=region).list_access_entries, "accessEntries", filters_req=filters_req
+        ):
+            filters_req["principalArn"] = arn
+            for dict_src in self.execute(
+                self.get_session_client(region=region).describe_access_entry, "accessEntry", filters_req=filters_req
+            ):
+                yield dict_src
+
+    def update_access_entry_information(self, access_entry: EKSAccessEntry):
+        """
+        Update current status.
+
+        :param access_entry:
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.get_session_client(region=access_entry.region).describe_access_entry, "accessEntry",
+                filters_req={"clusterName": access_entry.cluster_name, "principalArn": access_entry.principal_arn}, exception_ignore_callback= lambda err: "ResourceNotFoundException" in repr(err)
+        ):
+            access_entry.update_from_raw_response(dict_src)
+            return True
+        return False
+
+    def provision_access_entry(self, access_entry: EKSAccessEntry):
+        """
+        Provision from object.
+
+        :return:
+        """
+
+        access_entry_current = EKSAccessEntry({})
+        access_entry_current.cluster_name = access_entry.cluster_name
+        access_entry_current.principal_arn = access_entry.principal_arn
+        if not self.update_access_entry_information(access_entry_current):
+            response = self.provision_access_entry_raw(access_entry_current.region, access_entry.generate_create_request())
+            access_entry.update_from_raw_response(response["accessEntry"])
+        request = access_entry.generate_modify_request(access_entry)
+        if request:
+            raise NotImplementedError(request)
+        access_entry.update_from_attrs(access_entry_current)
+        return True
+
+
+    def provision_access_entry_raw(self, region: Region, request: dict):
+        """
+        Provision from raw request.
+
+        :param region:
+        :param request:
+        :return:
+        """
+
+        logger.info(f"Creating access_entry: {request}")
+        for response in self.execute(
+                self.get_session_client(region=region).create_access_entry,
+                None,
+                raw_data=True,
+                filters_req=request,
+        ):
+            self.clear_cache(EKSAccessEntry)
+            return response
+        raise RuntimeError(f"Empty response while creating access entry: {request}")
+
+
+

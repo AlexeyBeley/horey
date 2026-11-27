@@ -1,0 +1,12 @@
+name: influxdb_tsm1_cache
+fieldKey            fieldType
+--------            ---------
+WALCompactionTimeMs float
+cacheAgeMs          float
+cachedBytes         float
+diskBytes           float
+memBytes            float
+snapshotCount       float
+writeDropped        float
+writeErr            float
+writeOk             float

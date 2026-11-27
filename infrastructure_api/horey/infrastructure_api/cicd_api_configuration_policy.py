@@ -1,0 +1,90 @@
+"""
+AWS Lambda config
+
+"""
+from pathlib import Path
+
+from horey.configuration_policy.configuration_policy import ConfigurationPolicy
+
+# pylint: disable= missing-function-docstring, too-many-instance-attributes
+
+
+class CICDAPIConfigurationPolicy(ConfigurationPolicy):
+    """
+    Main class
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._build_environment_variable = None
+        self._master_efs_access_point_name = None
+        self._master_file_system_name = None
+        self._github_hagent_security_group_name = None
+        self._jenkins_master_efs_security_group_name = None
+        self._jenkins_master_efs_access_point_name = None
+        self._jenkins_master_efs_file_system_name = None
+
+    @property
+    def jenkins_master_efs_security_group_name(self):
+        self.check_defined()
+        return self._jenkins_master_efs_security_group_name
+
+    @jenkins_master_efs_security_group_name.setter
+    def jenkins_master_efs_security_group_name(self, value):
+        self._jenkins_master_efs_security_group_name = value
+
+    @property
+    def jenkins_master_efs_access_point_name(self):
+        self.check_defined()
+        return self._jenkins_master_efs_access_point_name
+
+    @jenkins_master_efs_access_point_name.setter
+    def jenkins_master_efs_access_point_name(self, value):
+        self._jenkins_master_efs_access_point_name = value
+
+    @property
+    def jenkins_master_efs_file_system_name(self):
+        self.check_defined()
+        return self._jenkins_master_efs_file_system_name
+
+    @jenkins_master_efs_file_system_name.setter
+    def jenkins_master_efs_file_system_name(self, value):
+        self._jenkins_master_efs_file_system_name = value
+
+    @property
+    def github_hagent_security_group_name(self):
+        try:
+            self.check_defined()
+        except self.UndefinedValueError:
+            self._github_hagent_security_group_name = "sg_github-hagent"
+
+        return self._github_hagent_security_group_name
+
+    @github_hagent_security_group_name.setter
+    def github_hagent_security_group_name(self, value):
+        self._github_hagent_security_group_name = value
+
+    @property
+    def master_file_system_name(self):
+        self.check_defined()
+        return self._master_file_system_name
+
+    @property
+    def master_efs_access_point_name(self):
+        self.check_defined()
+        return self._master_efs_access_point_name
+
+    @property
+    def build_environment_variable(self):
+        if self._build_environment_variable is None:
+            raise self.UndefinedValueError("build_environment_variable")
+        return self._build_environment_variable  
+
+    @build_environment_variable.setter
+    def build_environment_variable(self, value):
+        self._build_environment_variable = value
+
+    @property
+    def deployment_directory(self):
+        return Path("/tmp/deployment")

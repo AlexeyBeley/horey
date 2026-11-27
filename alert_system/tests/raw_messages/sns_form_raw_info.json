@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-west-2:111111111111111:topic_test_alert_system:868e24fc-54ba-4895-b0f4-528bd4f89e7b",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "dd663da4-e781-5ae2-b911-6160a2ba3d09",
+                "TopicArn": "arn:aws:sns:us-west-2:111111111111111:topic_test_alert_system",
+                "Subject": "raw_message",
+                "Message": "{\"dict_src\": null, \"uuid\": \"test1-test2\", \"data\": {\"tags\": [\"alert_system_monitoring\"], \"type\": \"INFO\", \"text\": \"Cool info message\"}, \"type\": \"sns_raw\"}",
+                "Timestamp": "2023-04-27T09:40:11.394Z",
+                "SignatureVersion": "1",
+                "Signature": "",
+                "SigningCertUrl": "https://sns.us-west-2.amazonaws.com/SimpleNotificationService-blabla.pem",
+                "UnsubscribeUrl": "https://sns.us-west-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-west-2:111111111111111:topic_test_alert_system:868e24fc-54ba-4895-b0f4-528bd4f89e7b",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

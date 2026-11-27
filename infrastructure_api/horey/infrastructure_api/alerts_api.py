@@ -1,0 +1,1343 @@
+# pylint: disable = too-many-lines
+"""
+Alerts maintainer.
+
+"""
+
+import json
+import shutil
+import sys
+from pathlib import Path
+from datetime import datetime, timedelta, timezone
+
+from horey.alert_system.alert_system import AlertSystem
+from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
+from horey.alert_system.notification_channels.notification_channel_slack import NotificationChannelSlack, \
+    NotificationChannelSlackConfigurationPolicy
+from horey.alert_system.lambda_package.notification import Notification
+from horey.alert_system.postgres.postgres_alert_builder import \
+    PostgresAlertBuilder
+from horey.alert_system.elasticache.serverless_alert_builder import \
+    ServerlessAlertBuilder as ElasticacheServerlessAlertBuilder
+from horey.alert_system.mysql.mysql_alert_builder import MysqlAlertBuilder
+from horey.alert_system.opensearch.opensearch_alert_builder import OpensearchAlertBuilder
+from horey.alert_system.elb_alert_builder import ELBAlertBuilder
+from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
+from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
+from horey.aws_api.aws_services_entities.elasticsearch_domain import ElasticsearchDomain
+
+from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPI, AWSLambdaAPIConfigurationPolicy
+from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI, CloudwatchAPIConfigurationPolicy
+from horey.infrastructure_api.db_api import DBAPI, DBAPIConfigurationPolicy
+from horey.infrastructure_api.alerts_api_configuration_policy import AlertsAPIConfigurationPolicy
+from horey.h_logger import get_logger
+
+logger = get_logger()
+
+
+class AlertsAPI:
+    """
+    Manage Frontend.
+
+    """
+
+    def __init__(self, configuration:AlertsAPIConfigurationPolicy, environment_api):
+        self.configuration = configuration
+        self.environment_api = environment_api
+        self._aws_lambda_api = None
+        self._alert_system = None
+        self._cloudwatch_api = None
+        self._db_api = None
+        self._lambda_arn = None
+
+    @property
+    def alert_system(self):
+        """
+        Standard.
+
+        :return:
+        """
+        if self._alert_system is None:
+            config = AlertSystemConfigurationPolicy()
+            config.horey_repo_path = self.aws_lambda_api.build_api.horey_git_api.configuration.directory_path
+            config.do_not_send_ses_suppressed_bounce_notifications = self.configuration.do_not_send_ses_suppressed_bounce_notifications
+            config.sns_topic_name = self.configuration.sns_topic_name
+            config.lambda_name = self.configuration.lambda_name
+            config.dynamodb_table_name = self.configuration.dynamodb_table_name
+            config.region = self.environment_api.configuration.region
+            config.tags = self.environment_api.configuration.tags
+            self._alert_system = AlertSystem(config)
+            # self.generate_notification_channels_configuration()
+
+        return self._alert_system
+
+    @property
+    def aws_lambda_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        if self._aws_lambda_api is None:
+            config = AWSLambdaAPIConfigurationPolicy()
+            config.lambda_name = self.configuration.lambda_name
+            config.lambda_timeout = 300
+            config.lambda_memory_size = 1024
+            config.provision_sns_topic = True
+            config.schedule_expression = "rate(1 minute)"
+            lambda_api = AWSLambdaAPI(config, self.environment_api)
+
+            lambda_api.role_inline_policies_callback = lambda: [self.generate_inline_dynamodb_policy(),
+                                                                self.generate_inline_cloudwatch_policy()]
+            lambda_api.lambda_resource_policies_callback = lambda: [
+                {
+                    "Sid": "AlarmAction",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "lambda.alarms.cloudwatch.amazonaws.com"
+                    },
+                    "Action": "lambda:InvokeFunction",
+                    "Resource": None,
+                    "Condition": {
+                        "StringEquals": {
+                            "AWS:SourceAccount": self.environment_api.aws_api.lambda_client.account_id
+                        }
+                    }
+                }
+            ]
+
+            lambda_api.build_api.git_api = lambda_api.build_api.horey_git_api
+            lambda_api.build_api.prepare_docker_image_build_directory = self.prepare_docker_image_build_directory
+            self._aws_lambda_api = lambda_api
+
+        return self._aws_lambda_api
+
+    @property
+    def cloudwatch_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+        if self._cloudwatch_api is None:
+            config = CloudwatchAPIConfigurationPolicy()
+            self._cloudwatch_api = CloudwatchAPI(config, self.environment_api)
+
+        return self._cloudwatch_api
+
+    @property
+    def db_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+        if self._db_api is None:
+            config = DBAPIConfigurationPolicy()
+            self._db_api = DBAPI(config, self.environment_api)
+
+        return self._db_api
+
+    @property
+    def lambda_arn(self):
+        """
+        Alert system lambda ARN
+        """
+
+        if self._lambda_arn is None:
+            self._lambda_arn = self.aws_lambda_api.get_lambda(name=self.configuration.lambda_name).arn
+        return self._lambda_arn
+
+    def prepare_docker_image_build_directory(self, source_code_directory_path: Path, build_number):
+        """
+        Prepare the dir
+
+        :param build_number:
+        :param source_code_directory_path:
+        :return:
+        """
+
+        self.aws_lambda_api.build_api.docker_build_directory.mkdir()
+        self.alert_system.generate_lambda_dockerfile(self.aws_lambda_api.build_api.docker_build_directory)
+
+        self.aws_lambda_api.build_api.docker_build_directory =  self.aws_lambda_api.build_api.prepare_docker_image_horey_package_build_directory(source_code_directory_path, "alert_system")
+
+        logger.info(f"Start copying source code from '{source_code_directory_path}' to '{self.aws_lambda_api.build_api.docker_build_directory}'")
+
+        self.aws_lambda_api.build_api.add_build_metadata_file(self.aws_lambda_api.build_api.docker_build_directory, build_number)
+
+        alert_sys_config_path = self.aws_lambda_api.build_api.docker_build_directory / self.alert_system.configuration.ALERT_SYSTEM_CONFIGURATION_FILE_PATH
+        self.alert_system.configuration.generate_configuration_file_ng(alert_sys_config_path)
+        self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
+        self.alert_system.configuration.ALERT_SYSTEM_CONFIGURATION_FILE_PATH, before_comment="HOREY_REPOS_END", add_to_root=False)
+
+        return self.aws_lambda_api.build_api.docker_build_directory
+
+    def build_custom_files_directory_callback(self, build_custom_files_dir):
+        """
+        Generate files.
+
+        :return:
+        """
+
+        logger.info(f"Build custom_files_directory_callback from {self}")
+
+        with open(build_custom_files_dir/"dummy_file_for_docker_build", "w", encoding="utf-8") as file_handler:
+            file_handler.write("Hello from horey!")
+
+        return True
+
+    def add_slack_notification_channel(self, build_directory_path: Path, bearer_token, routing_tags_mapping, notification_type=None):
+        """
+        Generate slack api files.
+
+        :return:
+        """
+
+        configuration = NotificationChannelSlackConfigurationPolicy()
+        if Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG not in routing_tags_mapping:
+            raise ValueError(f"Default slack channel not set. Use routing tag: '{Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG}'")
+
+        configuration.tag_to_channel_mapping = routing_tags_mapping
+        configuration.bearer_token = bearer_token
+        if notification_type is not None:
+            configuration.notification_type = notification_type
+
+        slack_notification_channel_file_path = Path(sys.modules[NotificationChannelSlack.__module__].__file__)
+
+        self.alert_system.configuration.notification_channels.append(slack_notification_channel_file_path.name)
+
+        shutil.copy2(slack_notification_channel_file_path, build_directory_path)
+
+        self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
+        slack_notification_channel_file_path.name, before_comment="HOREY_REPOS_END", add_to_root=False)
+
+        slack_channel_configuration_file_path = build_directory_path / NotificationChannelSlack.CONFIGURATION_FILE_NAME
+
+        configuration.generate_configuration_file_ng(slack_channel_configuration_file_path)
+
+        self.aws_lambda_api.build_api.add_docker_instruction_copy(self.aws_lambda_api.build_api.docker_build_directory / "Dockerfile",
+        slack_channel_configuration_file_path.name, before_comment="HOREY_REPOS_END", add_to_root=False)
+
+        return True
+
+    def provision_alert_system(self):
+        """
+        Provision frontend.
+
+        :return:
+        """
+
+        # todo: Add tag to resource to indicate which Lambda owns them: metrics, alarms etc.
+        # check if needed or delete using cleanup
+
+        self.provision_dynamodb()
+        self.aws_lambda_api.provision_docker_lambda()
+        self.provision_self_monitoring()
+        return True
+
+    def update_alert_system(self):
+        """
+        Provision frontend.
+
+        :return:
+        """
+
+        return self.aws_lambda_api.update_docker_lambda()
+
+    def generate_mysql_cluster_alarms(self, cluster, routing_tags,
+                                        metric_names=None):
+        """
+        Generate alerts per resource: RDS Mysql Cluster
+
+        :param metric_nams:
+        :param metric_data_end_time:
+        :param metric_data_start_time:
+        :param cluster_id:
+        :return:
+        """
+
+        alerts_builder = MysqlAlertBuilder(self.environment_api.aws_api, cluster=cluster)
+        return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
+                                                          metric_names=metric_names)
+
+    def generate_opensearch_domain_alarms(self, domain, routing_tags,
+                                          metric_names=None):
+        """
+        Generate alerts per resource: Opensearch domain
+
+        :param domain:
+        :param routing_tags:
+        :param metric_names:
+        :return:
+        """
+
+        alerts_builder = OpensearchAlertBuilder(domain)
+        return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
+                                                          metric_names=metric_names)
+
+    def generate_postgres_cluster_alarms(self, cluster, routing_tags,
+                                         metric_names=None):
+        """
+        Generate alerts per resource: RDS Postgres Cluster
+
+        :param metric_name:
+        :param metric_data_end_time:
+        :param metric_data_start_time:
+        :param cluster_id:
+        :return:
+        """
+
+        alerts_builder = PostgresAlertBuilder(cluster=cluster)
+        return self.alert_system.generate_resource_alarms(alerts_builder, routing_tags,
+                                                          metric_names=metric_names)
+
+    def generate_alb_alarms(self, alb_name, routing_tags):
+        """
+        Generate alerts per resource: Elastic load balancer
+
+        :param alb_name:
+        :return:
+        """
+
+        all_metrics = self.environment_api.get_cloudwatch_metrics()
+        alerts_builder = ELBAlertBuilder(load_balancer_name=alb_name)
+        return self.alert_system.generate_builder_filtered_resource_alarms(alerts_builder, all_metrics, routing_tags)
+
+    def get_all_dimensions(self, str_find):
+        """
+        Get all dimensions
+
+        :return:
+        """
+
+        ret = self.environment_api.get_cloudwatch_metrics()
+        ret = [x for x in ret if str_find in str(x)]
+        dimensions = {dimension["Name"] for x in ret for dimension in x["Dimensions"]}
+        return dimensions
+
+    def dispose_alarms(self, alarms):
+        """
+        Delete alarms
+
+        :param alarms:
+        :return:
+        """
+
+        self.environment_api.dispose_alarm_objects(alarms)
+
+    def provision_resource_alarms(self, resource_alarms):
+        """
+        Provision generated alarms.
+
+        :param resource_alarms:
+        :return:
+        """
+
+        for alarm in resource_alarms:
+            self.provision_cloudwatch_alarm_object(alarm)
+        return True
+
+    def provision_dynamodb(self):
+        """
+        Used for alert status storing.
+        {'sensor_uid': {'S': 'test_manual'}, 'alarm_state': {'M': {'cooldown_time': {'N': '300'}, 'epoch_triggered': {'N': '11111111111111'}}}}
+        {'sensor_uid': {'S': 'test_manual2'}}
+
+        :return:
+        """
+
+        attribute_definitions = [
+            {
+                "AttributeName": "alarm_name",
+                "AttributeType": "S"
+            }
+        ]
+
+        key_schema = [
+            {
+                "AttributeName": "alarm_name",
+                "KeyType": "HASH"
+            }
+        ]
+
+        self.environment_api.provision_dynamodb(dynamodb_table_name=self.configuration.dynamodb_table_name,
+                                                attribute_definitions=attribute_definitions,
+                                                key_schema=key_schema)
+
+    def generate_inline_dynamodb_policy(self):
+        """
+        DynamoDB access
+
+        :return:
+        """
+        dynamodb = self.environment_api.get_dynamodb(self.configuration.dynamodb_table_name)
+        statements = [
+            {
+                "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:GetItem",
+                    "dynamodb:Scan",
+                    "dynamodb:DescribeTable",
+                    "dynamodb:ListTagsOfResource",
+                    "dynamodb:DeleteItem"
+                ],
+                "Resource": [
+                    dynamodb.arn,
+                    f"{dynamodb.arn}//index/*"
+                ],
+                "Effect": "Allow"
+            }
+        ]
+        return self.environment_api.generate_inline_policy(name="inline_dynamodb",
+                                                           description="DynamoDB access policy",
+                                                           statements=statements)
+
+    def generate_inline_cloudwatch_policy(self):
+        """
+        Cloudwatch access
+
+        :return:
+        """
+        statements = [
+            {
+                "Action": [
+                    "cloudwatch:SetAlarmState",
+                    "cloudwatch:DescribeAlarms"
+                ],
+                "Resource": [
+                    f"arn:aws:cloudwatch:{self.environment_api.configuration.region}:{self.environment_api.aws_api.dynamodb_client.account_id}:alarm:*"
+                ],
+                "Effect": "Allow"
+            }
+        ]
+
+        return self.environment_api.generate_inline_policy(name="inline_cloudwatch",
+                                                           description="Cloudwatch access policy",
+                                                           statements=statements)
+
+    def trigger_cloudwatch_logs_alarm(self, cloudwatch_log_group_name, log_line):
+        """
+        Write a line to cloudwatch log stream.
+
+        :param cloudwatch_log_group_name:
+        :param log_line:
+        :return:
+        """
+
+        return self.environment_api.put_cloudwatch_log_lines(cloudwatch_log_group_name, [log_line])
+
+    # pylint: disable = too-many-arguments, too-many-positional-arguments)
+    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_slug, routing_tags,
+                                        metric_name=None,
+                                        dimensions=None,
+                                        alarm_description_base=None
+                                        ):
+        """
+        Provision Cloud watch logs based alarm.
+
+        @return:
+        :param alarm_description_base:
+        :param dimensions:
+        :param metric_name:
+        :param routing_tags:
+        :param metric_slug:
+        :param filter_text:
+        :param log_group_name:
+        """
+
+        alerts_lamda = self.aws_lambda_api.get_lambda(name=self.configuration.lambda_name)
+        if metric_name is None:
+            metric_name = f"has3-metric-filter-{log_group_name}-{metric_slug}"
+
+        metric_filter = self.provision_cloudwatch_log_group_metric(log_group_name, metric_name, filter_text)
+
+        alarm_description = self.alert_system.generate_log_group_alarm_description(log_group_name, filter_text, routing_tags, alarm_description=alarm_description_base)
+
+        alarm = self.cloudwatch_api.provision_alarm(name=f"has3-alarm-{log_group_name}-{metric_slug}",
+                                                alarm_description=json.dumps(alarm_description),
+                                                metric_name=metric_filter.metric_transformations[0]["metricName"],
+                                                namespace=log_group_name,
+                                                dimensions=dimensions,
+                                                statistic="Sum",
+                                                period=300,
+                                                evaluation_periods=1,
+                                                datapoints_to_alarm=1,
+                                                threshold=0.0,
+                                                comparison_operator="GreaterThanThreshold",
+                                                treat_missing_data="notBreaching",
+                                                alarm_actions = [alerts_lamda.arn],
+                                                ok_actions=[alerts_lamda.arn]
+                                                )
+        self.environment_api.aws_api.cloud_watch_client.set_alarm_ok(alarm)
+        return alarm
+
+    def provision_cloudwatch_sqs_visible_alarm(
+            self, sqs_queue_name, threshold, routing_tags
+    ):
+        """
+        Number of SQS visible messages.
+
+        @param sqs_queue_name:
+        @param threshold:
+        @param routing_tags:
+        @return:
+        """
+
+        message_data = {"routing_tags": routing_tags,
+                        "queue_name": sqs_queue_name,
+                        "environment_name": self.environment_api.configuration.environment_name,
+                        "environment_level": self.environment_api.configuration.environment_level
+        }
+
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3_alarm-{sqs_queue_name}-ApproximateNumberOfMessagesVisible",
+            alarm_description=json.dumps(message_data),
+            metric_name="ApproximateNumberOfMessagesVisible",
+            namespace="AWS/SQS",
+            statistic="Average",
+            period=300,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            threshold=threshold,
+            comparison_operator="GreaterThanThreshold",
+            treat_missing_data="notBreaching",
+            dimensions=[{"Name": "QueueName", "Value": sqs_queue_name}]
+        )
+        self.environment_api.aws_api.cloud_watch_client.set_alarm_ok(alarm)
+        return alarm
+
+    def provision_cloudwatch_log_group_metric(self, log_group_name, metric_name, filter_pattern):
+        """
+        Provision metric filter for log group.
+
+        :param log_group_name:
+        :param metric_name:
+        :param filter_text:
+        :return:
+        """
+
+        existing_filters = list(self.environment_api.aws_api.cloud_watch_logs_client.yield_log_group_metric_filters(region=self.environment_api.region,
+        update_info=True,
+        filters_req={"logGroupName": log_group_name}))
+        duplicates = []
+
+        for existing_filter in existing_filters:
+            if existing_filter.filter_pattern == filter_pattern and existing_filter.name != metric_name:
+                duplicates.append(existing_filter.name)
+        if duplicates:
+            raise ValueError(f"Filter metrics {log_group_name=} {filter_pattern=} already exist: {duplicates}")
+
+        metric_filter = self.environment_api.provision_log_group_metric_filter(
+            name=metric_name,
+            log_group_name=log_group_name, filter_text=filter_pattern)
+        if len(metric_filter.metric_transformations) != 1:
+            raise NotImplementedError(
+                f"Unhandled situation when more then one metric transformation {metric_filter.metric_transformations}")
+        return metric_filter
+
+    def provision_scheduled_lambda_executions_alarm(self, monitored_lambda: AWSLambda, lambda_scheduled_period: int) -> CloudWatchAlarm:
+        """
+        Schedule alarm - makes sure the lambda is triggered correctly
+
+        ret = list(self.environment_api.aws_api.cloud_watch_client.yield_metrics_raw(monitored_lambda.region, filters_req={"Dimensions": [
+                {"Name": "FunctionName", "Value": monitored_lambda.name,
+                 }
+            ]}))
+
+        :param monitored_lambda:
+        :param lambda_scheduled_period: in seconds. e.g. lambda running each minute - 60
+        :return:
+        """
+
+        try:
+            assert self.configuration.routing_tags
+        except self.configuration.UndefinedValueError:
+            self.configuration.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
+
+        alarm_description = {"routing_tags": self.configuration.routing_tags,
+                             "lambda_name": monitored_lambda.name
+                            }
+
+        threshold = 8.0
+
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3-alarm-{monitored_lambda.name}-scheduled-executions",
+            alarm_description=json.dumps(alarm_description),
+            metric_name="Invocations",
+            namespace="AWS/Lambda",
+            statistic="Sum",
+            period=lambda_scheduled_period*10,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            threshold=threshold,
+            comparison_operator="LessThanThreshold",
+            treat_missing_data="breaching",
+            dimensions=[
+                {"Name": "FunctionName", "Value": monitored_lambda.name
+                 }
+            ]
+        )
+        return alarm
+
+    def provision_cloudwatch_alarm_object(self, alarm):
+        """
+        Provision the AWS object.
+
+        :param alarm:
+        :return:
+        """
+
+        alarm.region = self.environment_api.region
+        self.environment_api.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
+        return alarm
+
+    # pylint: disable = too-many-arguments
+    def provision_cloudwatch_alarm(self, name=None,
+                                   alarm_description=None,
+                                   metric_name=None,
+                                   namespace=None,
+                                   dimensions=None,
+                                   statistic=None,
+                                   period=None,
+                                   evaluation_periods=None,
+                                   datapoints_to_alarm=None,
+                                   threshold=None,
+                                   comparison_operator=None,
+                                   treat_missing_data=None):
+        """
+        Provision cloudwatch alarm - add self topic to it.
+
+        :param name:
+        :param alarm_description:
+        :param metric_name:
+        :param namespace:
+        :param statistic:
+        :param period:
+        :param evaluation_periods:
+        :param datapoints_to_alarm:
+        :param threshold:
+        :param comparison_operator:
+        :param treat_missing_data:
+        :return:
+        """
+
+        aws_lambda = self.aws_lambda_api.get_lambda()
+
+        return self.environment_api.provision_cloudwatch_alarm(name=name,
+                                                               alarm_description=alarm_description,
+                                                               metric_name=metric_name,
+                                                               namespace=namespace,
+                                                               dimensions=dimensions,
+                                                               statistic=statistic,
+                                                               period=period,
+                                                               evaluation_periods=evaluation_periods,
+                                                               datapoints_to_alarm=datapoints_to_alarm,
+                                                               threshold=threshold,
+                                                               comparison_operator=comparison_operator,
+                                                               treat_missing_data=treat_missing_data,
+                                                               ok_actions=[aws_lambda.arn],
+                                                               alarm_actions=[aws_lambda.arn],
+                                                               insufficient_data_actions=[]
+                                                               )
+
+    def provision_self_monitoring(self):
+        """
+        Provision self monitoring different parts.
+
+        @return:
+        """
+
+        self.provision_self_monitoring_log_error_alarm()
+        self.trigger_self_monitoring_log_error_alarm()
+
+        self.provision_self_monitoring_log_timeout_alarm()
+        self.trigger_self_monitoring_log_timeout_alarm()
+
+        alarm = self.provision_self_monitoring_errors_metric_alarm()
+        self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
+
+        alarm = self.provision_self_monitoring_duration_alarm()
+        self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
+
+        alarm = self.provision_self_monitoring_event_bridge_successful_invocations_alarm()
+        self.trigger_alarm(alarm)
+        return True
+
+    def trigger_alarm(self, alarm):
+        """
+        Trigger Alarm
+        """
+
+        return self.environment_api.aws_api.cloud_watch_client.set_alarm_state(alarm, "ALARM")
+
+    def provision_lambda_monitoring(self, lambda_name, routing_tags,
+                                        alarm_description_base=None):
+        """
+        Provision Lambda monitoring.
+
+        """
+
+        aws_lambda = self.aws_lambda_api.get_lambda(name=lambda_name)
+        # pylint: disable = unsubscriptable-object
+        log_group_name = aws_lambda.logging_config["LogGroup"]
+
+        # first
+        filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN
+        self.provision_cloudwatch_logs_alarm(log_group_name,
+                                                    f'"{filter_text}"',
+                                                    "timeout",
+                                                    routing_tags,
+                                                    alarm_description_base=alarm_description_base,
+                                                    )
+        self.trigger_cloudwatch_logs_alarm(log_group_name, filter_text)
+
+        # second
+        alarm_description = {"routing_tags": routing_tags,
+                             "lambda_name": lambda_name}
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3-alarm-{lambda_name}-metric-errors",
+            alarm_description=json.dumps(alarm_description),
+            metric_name="Errors",
+            namespace="AWS/Lambda",
+            statistic="Average",
+            period=300,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            threshold=1.0,
+            comparison_operator="GreaterThanThreshold",
+            treat_missing_data="notBreaching",
+            dimensions=[
+                {"Name": "FunctionName", "Value": lambda_name}
+            ]
+        )
+
+        self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
+
+        # third
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3-alarm-{lambda_name}-metric-duration",
+            alarm_description=json.dumps(alarm_description),
+            metric_name="Duration",
+            namespace="AWS/Lambda",
+            statistic="Average",
+            period=300,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            threshold=aws_lambda.timeout * 0.6 * 1000,
+            comparison_operator="GreaterThanThreshold",
+            treat_missing_data="notBreaching",
+            dimensions=[
+                {"Name": "FunctionName", "Value": lambda_name}
+            ]
+        )
+
+        self.environment_api.trigger_cloudwatch_alarm(alarm, "Explicitly changed state to ALARM")
+
+    def provision_rds_postgres_monitoring(self, cluster_name, routing_tags):
+        """
+        Provision Lambda monitoring.
+
+        """
+
+        cluster = self.db_api.get_cluster(cluster_name=cluster_name)
+        all_alarms, remove_alarms = self.generate_postgres_cluster_alarms(cluster, routing_tags)
+        logger.info(f"todo: Remove alarms: {remove_alarms}")
+
+        required_metric_names = ["ACUUtilization",
+        "ActiveTransactions",
+        "ConnectionAttempts",
+        "CommitLatency",
+        "CommitThroughput",
+        "DatabaseConnections",
+        "CPUUtilization",
+        "InsertLatency",
+        "InsertThroughput",
+        "SelectLatency",
+        "SelectThroughput",
+        "NetworkReceiveThroughput",
+        "NetworkTransmitThroughput",
+        "NetworkThroughput",
+        "StorageNetworkReceiveThroughput",
+        "StorageNetworkTransmitThroughput",
+        "StorageNetworkThroughput",
+        "Queries",
+        "FreeableMemory",
+        "SwapUsage",
+        "TempStorageIOPS",
+        "UpdateLatency",
+        "WriteLatency",
+        "ReadLatency",
+        "UpdateThroughput",
+        "WriteThroughput",
+        "WriteIOPS",
+        "TotalIOPS"]
+
+        add_alarms = [alarm for alarm in all_alarms if alarm.metric_name in required_metric_names]
+        alarm_description = json.dumps({"routing_tags": routing_tags,
+                                 "cluster_name": cluster_name})
+
+        for add_alarm in add_alarms:
+            add_alarm.alarm_description = alarm_description
+            self.provision_cloudwatch_alarm_object(add_alarm)
+
+        # trigger only first and last alarms
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[0], "Explicitly changed state to ALARM")
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[-1], "Explicitly changed state to ALARM")
+
+        logger.info(f"Added {len(add_alarms)} alarms")
+        added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
+        if len(added_metric_names) != len(required_metric_names):
+            logger.warning(f"Not all required metrics were added: {set(required_metric_names)- set(added_metric_names)}")
+            if len(added_metric_names) < len(required_metric_names) /2:
+                raise ValueError("Less then 50% of required alarms were added")
+        return True
+
+    def provision_rds_mysql_monitoring(self, cluster_name, routing_tags):
+        """
+        Provision rds mysql monitoring.
+
+        """
+
+        cluster = self.db_api.get_cluster(cluster_name=cluster_name)
+
+        required_metric_names = [
+        "ACUUtilization",
+        "ActiveTransactions",
+        "AbortedClients",
+        "CommitLatency",
+        "CPUUtilization",
+        "CommitThroughput",
+        "ConnectionAttempts",
+        "DatabaseConnections",
+        "Deadlocks",
+        "DeleteLatency",
+        "DeleteThroughput",
+        "DiskQueueDepth",
+        "DMLLatency",
+        "DMLThroughput",
+        "InsertLatency",
+        "FreeableMemory",
+        "NetworkReceiveThroughput",
+        "InsertThroughput",
+        "NetworkTransmitThroughput",
+        "NumActiveTransactions",
+        "NetworkThroughput",
+        "Queries",
+        "ReadIOPS",
+        "ReadThroughput",
+        "SelectLatency",
+        "SelectThroughput",
+        "RowLockTime",
+        "StorageNetworkReceiveThroughput",
+        "ServerlessDatabaseCapacity",
+        "StorageNetworkTransmitThroughput",
+        "StorageNetworkThroughput",
+        "SwapUsage",
+        "TempStorageIOPS",
+        "UpdateLatency",
+        "UpdateThroughput",
+        "WriteIOPS",
+        "ReadLatency",
+        "WriteLatency",
+        "WriteThroughput",
+        "TotalIOPS",]
+
+        add_alarms, remove_alarms = self.generate_mysql_cluster_alarms(cluster, routing_tags, metric_names=required_metric_names)
+        logger.info(f"todo: Remove alarms: {remove_alarms}")
+
+        alarm_description = json.dumps({"routing_tags": routing_tags,
+                                 "cluster_name": cluster_name})
+
+        for add_alarm in add_alarms:
+            add_alarm.alarm_description = alarm_description
+            self.provision_cloudwatch_alarm_object(add_alarm)
+
+        logger.info(f"Added {len(add_alarms)} alarms")
+        # trigger only first and last alarms
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[0], "Explicitly changed state to ALARM")
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[-1], "Explicitly changed state to ALARM")
+
+        added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
+        if len(added_metric_names) != len(required_metric_names):
+            logger.warning(f"Not all required metrics were added: {set(required_metric_names)- set(added_metric_names)}")
+            if len(added_metric_names) < len(required_metric_names) /2:
+                raise ValueError("Less then 50% of required alarms were added")
+        return True
+
+    def provision_opensearch_monitoring(self, domain_name, routing_tags):
+        """
+        Provision Opensearch domain monitoring.
+
+        :param domain_name:
+        :param routing_tags:
+        :return:
+        """
+
+        domain = ElasticsearchDomain({"DomainName": domain_name})
+        domain.region = self.environment_api.region
+        if not self.environment_api.aws_api.elasticsearch_client.update_domain_information(domain):
+            self.environment_api.aws_api.elasticsearch_client.clear_cache(ElasticsearchDomain)
+            if not self.environment_api.aws_api.elasticsearch_client.update_domain_information(domain):
+                raise self.environment_api.ResourceNotFoundError(
+                    f"Was not able to find opensearch domain '{domain_name}' in region {domain.region.region_mark}")
+
+        required_metric_names = ["5xx",
+                                 "4xx",
+                                 "AutomatedSnapshotFailure",
+                                 "ClusterIndexWritesBlocked",
+                                 "ClusterStatus.green",
+                                 "ClusterStatus.red",
+                                 "CPUUtilization",
+                                 "DiskQueueDepth",
+                                 "FreeStorageSpace",
+                                 "IndexingLatency",
+                                 "JVMMemoryPressure",
+                                 "KMSKeyError",
+                                 "KMSKeyInaccessible",
+                                 "MasterCPUUtilization",
+                                 "MasterJVMMemoryPressure",
+                                 "Nodes",
+                                 "SearchLatency",
+                                 "SysMemoryUtilization",
+                                 "ThreadpoolSearchQueue",
+                                 "ThreadpoolSearchRejected",
+                                 "ThreadpoolWriteQueue",
+                                 "ThreadpoolWriteRejected"]
+
+        add_alarms, remove_alarms = self.generate_opensearch_domain_alarms(domain, routing_tags,
+                                                                           metric_names=required_metric_names)
+        logger.info(f"todo: Remove alarms: {remove_alarms}")
+
+        alarm_description = json.dumps({"routing_tags": routing_tags,
+                                        "domain_name": domain_name})
+        for add_alarm in add_alarms:
+            add_alarm.alarm_description = alarm_description
+            self.provision_cloudwatch_alarm_object(add_alarm)
+
+        logger.info(f"Added {len(add_alarms)} alarms")
+        if not add_alarms:
+            raise ValueError(f"No alarms were generated for opensearch domain '{domain_name}'")
+
+        # trigger only first and last alarms
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[0], "Explicitly changed state to ALARM")
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[-1], "Explicitly changed state to ALARM")
+
+        added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
+        if len(added_metric_names) != len(required_metric_names):
+            logger.warning(f"Not all required metrics were added: {set(required_metric_names) - set(added_metric_names)}")
+            if len(added_metric_names) < len(required_metric_names) / 2:
+                raise ValueError("Less then 50% of required alarms were added")
+        return True
+
+    # pylint: disable = too-many-locals
+    def provision_elasticache_serverless_monitoring(self, routing_tags, cache=None, name=None):
+        """
+        Provision Elasticache serverless monitoring.
+
+        """
+        if name:
+            cache = self.db_api.get_serverless_cache(name=name)
+        elif cache:
+            name = cache.name
+        else:
+            raise ValueError("Either name or ")
+
+        required_metric_names = ["CurrConnections",
+                                "CacheHitRate",
+                                "NetworkBytesIn",
+                                "NonKeyTypeCmdsECPUs",
+                                "AuthenticationFailures",
+                                "NonKeyTypeCmds",
+                                "ElastiCacheProcessingUnits",
+                                "NetworkBytesOut",
+                                "TotalCmdsCount",
+                                "NewConnections",
+                                "Reclaimed",
+                                "IamAuthenticationThrottling",
+                                "CacheHits",
+                                "CommandAuthorizationFailures",
+                                "KeyAuthorizationFailures",
+                                "IamAuthenticationExpirations",
+                                "CacheMisses",
+                                "CurrVolatileItems",
+                                "ThrottledCmds",
+                                "CurrItems",
+                                "BytesUsedForCache",
+                                "ChannelAuthorizationFailures",
+                                "Evictions",
+                                "DB0AverageTTL"]
+
+        alerts_builder = ElasticacheServerlessAlertBuilder(cache)
+
+        metric_filters = alerts_builder.generate_metric_filters()
+        add_alarms, remove_alarms = [], []
+        alarm_description = json.dumps({"routing_tags": routing_tags,
+                            "serverless_name": name})
+        for filters_req in metric_filters:
+            metrics = self.get_resource_metrics(filters_req, metric_names=required_metric_names)
+
+            for metric in metrics:
+                metric_values = self.get_metric_statistics(metric)
+                add_alarms_tmp, remove_alarms_tmp = self.generate_metric_alarms(alerts_builder, metric, metric_values, alarm_description)
+                add_alarms += add_alarms_tmp
+                remove_alarms += remove_alarms_tmp
+
+        logger.info(f"todo: Remove alarms: {remove_alarms}")
+
+        for add_alarm in add_alarms:
+            self.provision_cloudwatch_alarm_object(add_alarm)
+
+        logger.info(f"Added {len(add_alarms)} alarms")
+        # trigger only first and last alarms
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[0], "Explicitly changed state to ALARM")
+        self.environment_api.trigger_cloudwatch_alarm(add_alarms[-1], "Explicitly changed state to ALARM")
+
+        added_metric_names = {_alarm.metric_name for _alarm in add_alarms}
+        if len(added_metric_names) != len(required_metric_names):
+            logger.warning(f"Not all required metrics were added: {set(required_metric_names)- set(added_metric_names)}")
+            if len(added_metric_names) < len(required_metric_names) /2:
+                raise ValueError("Less then 50% of required alarms were added")
+        return True
+
+    def get_metric_statistics(self, metric, start_time=None, end_time=None):
+        """
+        Find proper value
+        Start time between 3 hours and 15 days ago - Use a multiple of 60 seconds (1 minute).
+        Start time between 15 and 63 days ago - Use a multiple of 300 seconds (5 minutes).
+        Start time greater than 63 days ago - Use a multiple of 3600 seconds (1 hour).
+
+        :return:
+        """
+
+        now = datetime.now(timezone.utc)
+        if end_time and end_time > now:
+            raise ValueError("Maximal end time can be now or less")
+        end_time = end_time or now
+
+        # about 8 seconds to the end of 15 days
+        minimal_possible_time = now - timedelta(seconds=int(14.9999 * 24 * 60 * 60))
+        if start_time and start_time < minimal_possible_time:
+            raise ValueError("Minimal start time must be greater then 15 days from now")
+        if end_time < minimal_possible_time:
+            raise ValueError("Maximal end time must be greater then 15 days from now")
+
+        start_time = start_time or minimal_possible_time
+        seconds = int((end_time - start_time).total_seconds())
+
+        statistics = ["SampleCount", "Average", "Sum", "Minimum", "Maximum"]
+        period = 60
+        all_metric_values = self.get_metric_statistics_helper(metric, statistics, end_time, seconds, period)
+
+        return all_metric_values
+
+    def get_metric_statistics_helper(self, metric, statistics, end_time, seconds, period):
+        """
+        Loop over metric statistics:
+        'You have requested up to 10800 datapoints, which exceeds the limit of 1440. You may reduce the datapoints requested by increasing Period, or decreasing the time range.'
+
+        :param metric_raw:
+        :param statistics:
+        :param end_time:
+        :param seconds:
+        :param period:
+        :return:
+        """
+
+        ret = []
+        while seconds > 0:
+            seconds_delta = min(period * 1440, seconds)
+            start_time = end_time - timedelta(seconds=seconds_delta)
+            request_dict = {"Namespace": metric.namespace,
+                            "MetricName": metric.name,
+                            "Statistics": statistics,
+                            "StartTime": start_time,
+                            "EndTime": end_time,
+                            "Dimensions": metric.dimensions,
+                            "Period": period
+                            }
+            for response in self.environment_api.aws_api.cloud_watch_client.get_metric_statistics_raw(
+                    self.environment_api.region, request_dict):
+                ret += response["Datapoints"]
+
+            seconds -= seconds_delta
+            end_time = start_time
+
+        return ret
+
+    def generate_metric_alarms(self, resource_alerts_builder, metric,
+                                     all_metric_values, alarm_description):
+        """
+        Filtered resource metrics transformed into alarms.
+
+        :param metric_data_start_time:
+        :param metric_data_end_time:
+        :param resource_alarms_builder:
+        :param metrics:
+        :return:
+        """
+
+        lst_ret = []
+        lst_del = []
+
+        min_value, max_value = resource_alerts_builder.generate_metric_alarm_limits(metric, all_metric_values)
+        slug = resource_alerts_builder.generate_metric_alarm_slug(metric)
+
+        alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_min", metric, min_value,
+                                        "LessThanThreshold", alarm_description)
+        if min_value is not None:
+            lst_ret.append(alarm)
+        else:
+            lst_del.append(alarm)
+
+        alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_max", metric, max_value,
+                                        "GreaterThanThreshold", alarm_description)
+        if max_value is not None:
+            lst_ret.append(alarm)
+        else:
+            lst_del.append(alarm)
+
+        logger.info(f"Generated alarms from metrics. To add: {len(lst_ret)}, to delete: {len(lst_del)}")
+        return lst_ret, lst_del
+
+    def get_base_alarm(self, alarm_name, metric, threshold, comparison_operator, alarm_description):
+        """
+        Generate template alarm.
+
+        :return:
+        """
+
+        if len(alarm_name) > 255:
+            raise ValueError(f"Alarm name can be up to 255 chars: {len(alarm_name)=} {alarm_name=}")
+
+        alarm = CloudWatchAlarm({})
+        alarm.name = alarm_name
+        alarm.actions_enabled = True
+        alarm.insufficient_data_actions = []
+        alarm.metric_name = metric.name
+        alarm.namespace = metric.namespace
+        alarm.statistic = "Average"
+        alarm.dimensions = metric.dimensions
+        alarm.period = 60
+        alarm.evaluation_periods = 3
+        alarm.datapoints_to_alarm = 3
+        alarm.threshold = threshold
+        alarm.comparison_operator = comparison_operator
+        alarm.treat_missing_data = "notBreaching"
+
+        alarm.alarm_description = alarm_description
+        alarm.region = self.environment_api.region
+        alarm.ok_actions = [self.lambda_arn]
+        alarm.alarm_actions = [self.lambda_arn]
+        return alarm
+
+    def get_resource_metrics(self, filters_req, metric_names=None):
+        """
+        Fetch resource metrics by filters - Namespace and dimentions
+        """
+
+        metrics_fetched_from_aws = list(
+                self.environment_api.aws_api.cloud_watch_client.yield_metrics(self.environment_api.region,
+                                                                     filters_req=filters_req))
+        filter_dimensions = {dim["Name"]: dim["Value"] for dim in filters_req["Dimensions"]}
+        filtered_metrics = [metric for metric in metrics_fetched_from_aws if
+                                                                       {dim["Name"]: dim["Value"] for dim in
+                                                                        metric.dimensions} == filter_dimensions]
+
+        if not filtered_metrics:
+            raise RuntimeError(f"Was not able to find metrics: {filters_req}")
+
+        if metric_names:
+            return [metric for metric in filtered_metrics \
+                                       if metric.name in metric_names]
+
+        return filtered_metrics
+
+
+    def provision_self_monitoring_log_error_alarm(self):
+        """
+        Find [ERROR] log messages in self log.
+
+        @return:
+        """
+
+        filter_text = f'"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN}"'
+        alarm_description = {
+            "lambda_name": self.configuration.lambda_name,
+            AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
+
+        return self.provision_cloudwatch_logs_alarm(self.aws_lambda_api.log_group_name,
+                                                    filter_text,
+                                                    "error",
+                                                    [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+                                                    alarm_description_base=alarm_description,
+                                                    )
+
+    def provision_self_monitoring_log_timeout_alarm(self):
+        """
+        Find lambda timeout messages in self log.
+
+        @return:
+        """
+
+        filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN
+        alarm_description = {"lambda_name": self.configuration.lambda_name,
+                             AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
+
+        return self.provision_cloudwatch_logs_alarm(self.aws_lambda_api.log_group_name,
+                                                    filter_text,
+                                                    "timeout",
+                                                    [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+                                                    metric_name=f"has3-metric-filter-lambda-{self.configuration.lambda_name}-timeout",
+                                                    alarm_description_base=alarm_description
+                                                    )
+
+    def provision_self_monitoring_errors_metric_alarm(self):
+        """
+        Provision cloudwatch metric Lambda errors.
+        Lambda service metric shows the count of failed Lambda executions.
+
+        @return:
+        """
+
+        alarm_description = {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+                             "lambda_name": self.configuration.lambda_name,
+                             AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3-alarm-{self.configuration.lambda_name}-metric-errors",
+            alarm_description=json.dumps(alarm_description),
+            metric_name="Errors",
+            namespace="AWS/Lambda",
+            statistic="Average",
+            period=300,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            threshold=1.0,
+            comparison_operator="GreaterThanThreshold",
+            treat_missing_data="notBreaching",
+            dimensions=[
+                {"Name": "FunctionName", "Value": self.configuration.lambda_name}
+            ]
+        )
+
+        return alarm
+
+    def provision_self_monitoring_duration_alarm(self):
+        """
+        Check self metric for running to long.
+
+        @return:
+        """
+
+        alarm_description = {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+                             "lambda_name": self.configuration.lambda_name,
+                             AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
+
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3-alarm-{self.configuration.lambda_name}-metric-duration",
+            alarm_description=json.dumps(alarm_description),
+            metric_name="Duration",
+            namespace="AWS/Lambda",
+            statistic="Average",
+            period=300,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            threshold=self.configuration.lambda_timeout * 0.6 * 1000,
+            comparison_operator="GreaterThanThreshold",
+            treat_missing_data="notBreaching",
+            dimensions=[
+                {"Name": "FunctionName", "Value": self.configuration.lambda_name}
+            ]
+        )
+
+        return alarm
+
+    def provision_self_monitoring_event_bridge_successful_invocations_alarm(self):
+        """
+        Provision cloudwatch metric EventBridge Successful Invocations
+        It should be equal to 5 in 5 minutes.
+
+        @return:
+        """
+
+        alarm_description = {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+                             "lambda_name": self.configuration.lambda_name,
+                             AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
+
+        alarm = self.provision_cloudwatch_alarm(
+            name=f"has3-alarm-{self.configuration.lambda_name}-eventbridge-successful-invocations",
+            alarm_description=json.dumps(alarm_description),
+            metric_name="Invocations",
+            namespace="AWS/Events",
+            statistic="Sum",
+            period=300,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            threshold=4.0,
+            comparison_operator="LessThanThreshold",
+            treat_missing_data="notBreaching",
+            dimensions=[
+                {"Name": "RuleName", "Value": self.configuration.event_bridge_rule_name}
+            ]
+        )
+
+        return alarm
+
+    def trigger_self_monitoring_log_error_alarm(self):
+        """
+        Trigger the alarm using cloudwatch log stream filter metric.
+
+        :return:
+        """
+
+        return self.cloudwatch_api.put_cloudwatch_log_lines(self.aws_lambda_api.log_group_name, [
+            f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN}: Neo, the Horey has you!"])
+
+    def trigger_self_monitoring_log_timeout_alarm(self):
+        """
+        Test timeout alarm
+
+        :return:
+        """
+
+        return self.environment_api.put_cloudwatch_log_lines(self.aws_lambda_api.log_group_name, [
+            f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_LAMBDA_LOG_TIMEOUT_FILTER_PATTERN}: Neo, the Horey has you!"])
+
+    def get_all_metrics(self, namespace):
+        """
+        Return all metrics for the namespace
+
+        :param namespace:
+        :return:
+        """
+        return list(self.environment_api.aws_api.cloud_watch_client.yield_metrics_raw(self.environment_api.region,
+                                                                                         {"Namespace": namespace}))
+
+    @staticmethod
+    def generate_raw_message_dict(notification_type):
+        """
+        Generate dictionary which can be used to trigger raw message lambda
+
+        :return:
+        """
+
+        if Notification.Types.__members__.get(notification_type) is None:
+            raise ValueError(f"Notification type received '{notification_type}' is not one of:"
+                             f" {list(Notification.Types.__members__.keys())}")
+
+        return {AlertSystemConfigurationPolicy.ALERT_SYSTEM_RAW_MESSAGE_KEY: "",
+                "type": notification_type}
+
+    def trigger_lambda_raw_event(self, payload_dict):
+        """
+        Trigger lamda
+        """
+
+        payload_dict[self.alert_system.configuration.ALERT_SYSTEM_RAW_MESSAGE_KEY] = True
+        request_dict = {"FunctionName": self.configuration.lambda_name,
+        "InvocationType": "RequestResponse",
+        "Payload": json.dumps(payload_dict).encode("utf-8")}
+
+        return self.environment_api.aws_api.lambda_client.invoke_raw(self.environment_api.region, request_dict)

@@ -1,0 +1,42 @@
+{
+   "source": "aws.cloudwatch",
+   "alarmArn": "arn:aws:cloudwatch:us-west-2:12345678910:alarm:has2-rds-test-instance-aurora-postgres-test-0_commit_latency",
+   "accountId": "12345678910",
+   "time": "2024-12-14T21:15:12.615+0000",
+   "region": "us-west-2",
+   "alarmData": {
+       "alarmName": "has2-rds-test-instance-aurora-postgres-test-0_commit_latency",
+       "state": {
+           "value": "OK",
+           "reason": "Threshold Crossed: 1 out of the last 3 datapoints [1.293391304347826 (14/12/24 21:14:00)] was not greater than the threshold (1.2996393271379496) (minimum 1 datapoint for ALARM -> OK transition).",
+           "reasonData": "{\"version\":\"1.0\",\"queryDate\":\"2024-12-14T21:15:12.612+0000\",\"startDate\":\"2024-12-14T21:12:00.000+0000\",\"statistic\":\"Average\",\"period\":60,\"recentDatapoints\":[1.3430337662337661,1.4896043613707166,1.293391304347826],\"threshold\":1.2996393271379496,\"evaluatedDatapoints\":[{\"timestamp\":\"2024-12-14T21:14:00.000+0000\",\"sampleCount\":1.0,\"value\":1.293391304347826}]}",
+           "timestamp": "2024-12-14T21:15:12.615+0000"
+       },
+       "previousState": {
+           "value": "ALARM",
+           "reason": "Threshold Crossed: 3 out of the last 3 datapoints [1.3430337662337661 (14/12/24 21:12:00), 1.359253125 (14/12/24 21:11:00), 1.3937875894988065 (14/12/24 21:10:00)] were greater than the threshold (1.2996393271379496) (minimum 3 datapoints for OK -> ALARM transition).",
+           "reasonData": "{\"version\":\"1.0\",\"queryDate\":\"2024-12-14T21:13:12.614+0000\",\"startDate\":\"2024-12-14T21:10:00.000+0000\",\"statistic\":\"Average\",\"period\":60,\"recentDatapoints\":[1.3937875894988065,1.359253125,1.3430337662337661],\"threshold\":1.2996393271379496,\"evaluatedDatapoints\":[{\"timestamp\":\"2024-12-14T21:12:00.000+0000\",\"sampleCount\":1.0,\"value\":1.3430337662337661},{\"timestamp\":\"2024-12-14T21:11:00.000+0000\",\"sampleCount\":1.0,\"value\":1.359253125},{\"timestamp\":\"2024-12-14T21:10:00.000+0000\",\"sampleCount\":1.0,\"value\":1.3937875894988065}]}",
+           "timestamp": "2024-12-14T21:13:12.615+0000"
+       },
+       "configuration": {
+           "description": "{\"routing_tags\": [\"ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG\"]}",
+           "metrics": [
+               {
+                   "id": "aaaaaaa-854d-8a19-c66a-37f1f92d6c6e",
+                   "metricStat": {
+                       "metric": {
+                           "namespace": "AWS/RDS",
+                           "name": "CommitLatency",
+                           "dimensions": {
+                               "DBInstanceIdentifier": "instance-aurora-postgres-test-0"
+                           }
+                       },
+                       "period": 60,
+                       "stat": "Average"
+                   },
+                   "returnData": true
+               }
+           ]
+       }
+   }
+}

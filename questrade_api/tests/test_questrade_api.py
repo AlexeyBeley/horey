@@ -1,0 +1,408 @@
+"""
+Testing questrade api functionality.
+
+"""
+import json
+import time
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
+from typing import TypeVar
+from unittest.mock import Mock
+from zoneinfo import ZoneInfo
+import pytest
+
+from horey.questrade_api.items import Candle
+from horey.questrade_api.questrade_api import QuestradeAPI, QuestradeAPIConfigurationPolicy
+
+
+from horey.common_utils.common_utils import CommonUtils
+from horey.configuration_policy.configuration_policy import ConfigurationPolicy
+from horey.h_logger import get_logger
+
+test_mock_values_file_tokenh = Path(__file__).parent.parent.parent.parent / "ignore" / "test_q_api.py"
+test_mock_values = CommonUtils.load_module(test_mock_values_file_tokenh)
+
+
+
+logger = get_logger()
+
+
+T = TypeVar('T', bound=ConfigurationPolicy)
+data_directory = Path("/tmp/data")
+
+# pylint: disable = missing-function-docstring
+
+class Configs(ConfigurationPolicy):
+    """
+    Standard tests configs.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._token = None
+        self._account = None
+        self._api_server = None
+        self._user = None
+        self._password = None
+
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, value):
+        self._password = value
+
+    @property
+    def user(self):
+        return self._user
+
+    @user.setter
+    def user(self, value):
+        self._user = value
+
+    @property
+    def api_server(self):
+        return self._api_server
+
+    @api_server.setter
+    def api_server(self, value):
+        self._api_server = value
+
+    @property
+    def account(self):
+        return self._account
+
+    @account.setter
+    def account(self, value):
+        self._account = value
+
+    @property
+    def token(self):
+        return self._token
+
+    @token.setter
+    def token(self, value):
+        self._token = value
+
+
+@pytest.fixture(name="tests_config")
+def fixture_tests_config():
+    configuration = Configs()
+    configuration.user = test_mock_values.user
+    configuration.password= test_mock_values.password
+    configuration.token = test_mock_values.token
+    configuration.account = test_mock_values.account
+    configuration.api_server = test_mock_values.api_server
+    yield configuration
+
+
+@pytest.fixture(name="questrade_api")
+def fixture_questrade_api(tests_config):
+    configuration = QuestradeAPIConfigurationPolicy()
+    configuration.token = tests_config.token
+    configuration.password = tests_config.password
+    configuration.user = tests_config.user
+    configuration.account = tests_config.account
+    configuration.api_server = tests_config.api_server
+
+    _questrade_api = QuestradeAPI(configuration=configuration)
+    yield _questrade_api
+
+
+@pytest.mark.unit
+def test_connect(questrade_api):
+    assert questrade_api.connect()
+
+@pytest.mark.unit
+def test_get_accounts(questrade_api):
+    questrade_api.connect()
+    assert questrade_api.get_accounts()
+
+
+@pytest.mark.unit
+def test_get_positions(questrade_api):
+    questrade_api.connect()
+    assert questrade_api.get_positions()
+
+@pytest.mark.unit
+def test_get_position_history(questrade_api):
+    questrade_api.connect()
+    assert questrade_api.get_position_history("43620897")
+
+
+@pytest.mark.unit
+def test_populate_db_with_new_symbols_by_prefix(questrade_api):
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("A")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("B")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("C")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("D")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("E")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("F")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("G")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("H")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("I")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("J")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("K")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("L")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("M")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("N")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("O")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("P")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("Q")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("R")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("S")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("T")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("U")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("V")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("W")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("X")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("Y")
+    assert questrade_api.populate_db_with_new_symbols_by_prefix("Z")
+
+@pytest.mark.unit
+def test_get_all_symbols_from_files(questrade_api):
+    assert questrade_api.get_all_symbols_from_files()
+
+@pytest.mark.unit
+def test_get_tradable_stocks(questrade_api):
+    questrade_api.connect()
+    assert questrade_api.get_tradable_stocks()
+
+
+@pytest.mark.unit
+def test_get_all_stocks_daily_history(questrade_api):
+    questrade_api.connect()
+    assert questrade_api.get_all_stocks_daily_history()
+
+
+@pytest.mark.unit
+def test_provision_db(questrade_api):
+    assert questrade_api.provision_db_symbols_table()
+    assert questrade_api.provision_db_candles_table()
+
+@pytest.mark.unit
+def test_sort_and_print_cheapest_by_price(questrade_api):
+    response = questrade_api.sort_and_print_cheapest_by_price()
+    assert response
+
+@pytest.mark.unit
+def test_check_strategy_one_persent_below_current(questrade_api):
+    assert questrade_api.check_strategy_one_persent_below_current(52015918)
+
+@pytest.mark.unit
+def test_selenium_login(questrade_api):
+    assert questrade_api.selenium_login()
+
+@pytest.mark.unit
+def test_cleanup_candles(questrade_api):
+    assert questrade_api.cleanup_candles()
+
+@pytest.mark.unit
+def test_get_activities(questrade_api):
+    assert questrade_api.get_activities()
+
+
+@pytest.mark.unit
+def test_update_symbol_today_candles(questrade_api):
+    symbol = questrade_api.db_get_symbol(symbol_symbol="FEMY")
+    questrade_api.update_symbol_today_candles(symbol)
+
+
+@pytest.mark.unit
+def test_debug_symbol_calculate_vwap_incline(questrade_api):
+    symbol = questrade_api.db_get_symbol(symbol_symbol="FEMY")
+    candles = questrade_api.db_get_today_candles(symbol)
+    questrade_api.calculate_vwap_incline(candles)
+
+@pytest.mark.unit
+def test_calculate_vwap_incline(questrade_api):
+    with open(Path(__file__).parent / "candles_sample.json", encoding="utf-8") as fh:
+        candle_dicts = json.load(fh)
+    candles = [Candle(dict_src) for dict_src in candle_dicts]
+    assert questrade_api.calculate_vwap_incline(candles)
+
+@pytest.mark.unit
+def test_get_idle_positions(questrade_api):
+    assert questrade_api.get_idle_positions()
+
+
+@pytest.mark.unit
+def test_generate_profit_review(questrade_api):
+    """
+    First week - buy small up to 1 dollar. Complete to 1 dollar
+    Second week - complete to dollar.
+    Third week - buy with slop < 0 and largest spread in vwap_change
+    :param questrade_api:
+    :return:
+    """
+    today = datetime.now(timezone.utc)
+    if today.hour < 3:
+        today -= timedelta(days=1)
+    time_start = today.replace(hour=3, minute=0, second=0, microsecond=0) - timedelta(days=7)
+    time_end = today.replace(hour=20, minute=0, second=0, microsecond=0) - timedelta(minutes=1)
+
+    assert questrade_api.generate_profit_review(time_start, time_end)
+    breakpoint()
+
+@pytest.mark.unit
+def test_fetch_symbols_by_max_price(questrade_api):
+    assert questrade_api.fetch_symbols_by_price_range(0.001, 2)
+
+@pytest.mark.unit
+def test_selenium_sell_symbol(questrade_api):
+    questrade_api.selenium_login()
+    try:
+        assert questrade_api.selenium_sell_symbol("MGIH", 1.63)
+    finally:
+        questrade_api.selenium_api.disconnect()
+
+@pytest.mark.unit
+def test_get_positions_without_sell_orders(questrade_api):
+    assert questrade_api.get_positions_without_sell_orders()
+
+@pytest.mark.unit
+def test_update_cheap_candles_with_today_data(questrade_api):
+    assert questrade_api.update_cheap_candles_with_today_data()
+
+@pytest.mark.unit
+def test_make_purchase_plan(questrade_api):
+    questrade_api.api_update_interesting_symbols_candles = Mock()
+    assert questrade_api.make_purchase_plan()
+
+@pytest.mark.unit
+def test_get_positions_without_sell_orders(questrade_api):
+    for _ in range(60*8):
+        assert questrade_api.get_positions_without_sell_orders()
+        logger.info("Sleeping 60 seconds...")
+        time.sleep(60)
+
+@pytest.mark.unit
+def test_update_interesting_symbols_in_ram(questrade_api):
+    assert questrade_api.update_interesting_symbols_in_ram()
+    assert questrade_api.update_interesting_symbols_in_ram()
+
+
+@pytest.mark.unit
+def test_db_get_symbol_candles_raw(questrade_api):
+    symbol_ids = "30758709, 42513463, 52629140, 15408, 56110632, 55222450".split(", ")
+    assert questrade_api.db_get_symbol_candles_raw(symbol_ids)
+
+@pytest.mark.unit
+def test_db_get_symbol_candles_raw_with_start_timestamp(questrade_api):
+    symbol_ids = "30758709, 42513463, 52629140, 15408, 56110632, 55222450".split(", ")
+    time_now = datetime.now(ZoneInfo("America/New_York"))
+
+    end_timestamp = time_now.timestamp()
+    start_timestamp = end_timestamp - 7*24*60*60
+
+    ret = questrade_api.db_get_symbol_candles_raw(symbol_ids, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
+    assert ret
+
+@pytest.mark.unit
+def test_update_ineresting_symbols_market_data(questrade_api):
+    # questrade_api.connect_api = Mock()
+    assert questrade_api.update_ineresting_symbols_market_data(symbol_names= ["CAN"])
+
+@pytest.mark.unit
+def test_update_ineresting_symbols_market_data_symbol_name(questrade_api):
+    assert questrade_api.update_ineresting_symbols_market_data(symbol_names=["CAN"])
+    time.sleep(10)
+    assert questrade_api.update_ineresting_symbols_market_data(symbol_names=["CAN"])
+
+
+@pytest.mark.unit
+def test_get_trading_start_time_by_timedelta(questrade_api):
+    utc_dt = datetime.now(timezone.utc)
+    eastern_dt_now = utc_dt.astimezone(ZoneInfo("America/New_York"))
+    ret = questrade_api.get_trading_start_time_by_timedelta(eastern_dt_now, timedelta(seconds=24*60*60))
+    assert ret
+
+@pytest.mark.unit
+def test_prepare_candles_for_purchase_planning(questrade_api):
+    assert questrade_api.update_ineresting_symbols_market_data(symbol_names= ["CAN"])
+    assert questrade_api.prepare_candles_for_purchase_planning(questrade_api.interesting_symbols[27995787])
+
+
+@pytest.mark.unit
+def test_make_purhcase_plan_item(questrade_api):
+    assert questrade_api.update_ineresting_symbols_market_data(symbol_names= ["CAN"])
+    symbol = questrade_api.interesting_symbols[27995787]
+    assert questrade_api.prepare_candles_for_purchase_planning(symbol)
+    assert questrade_api.make_purhcase_plan_item(symbol)
+
+@pytest.mark.unit
+def test_fetch_symbols_by_max_price(questrade_api):
+    assert questrade_api.fetch_symbols_by_price_range(0.0001, 10)
+
+@pytest.mark.unit
+def test_populate_db_with_new_symbols(questrade_api):
+    assert questrade_api.populate_db_with_new_symbols()
+
+@pytest.mark.unit
+def test_draw_graph(questrade_api: QuestradeAPI):
+    """
+    (Pdb) purchase_plan._items[107].symbol.symbol
+    'SES'
+    (Pdb) purchase_plan._items[107].symbol.id
+    1063801
+    (Pdb) purchase_plan._items[107].symbol.symbol_id
+    40366393
+    """
+
+    assert questrade_api.update_ineresting_symbols_market_data(symbol_names= ["CYPH"])
+    for symbol in questrade_api.interesting_symbols.values():
+        break
+    else:
+        raise NotImplementedError()
+
+    # todo: remove the mock after server fixed.
+    questrade_api.api_update_interesting_symbols_candles = Mock()
+
+    item = questrade_api.make_purhcase_plan_item(symbol)
+    item.show_graph()
+
+@pytest.mark.unit
+def test_make_purchase_plan_helper(questrade_api):
+    assert questrade_api.make_purchase_plan_helper()
+
+@pytest.mark.unit
+def test_get_db_statistics(questrade_api):
+    ret = questrade_api.get_db_statistics()
+    assert ret
+
+@pytest.mark.unit
+def test_populate_db_with_all_symbols_candles(questrade_api):
+    questrade_api.configuration.db_file_name = "questrade_market_aggregator.db"
+    assert questrade_api.populate_db_with_all_symbols_candles()
+
+
+@pytest.mark.unit
+def test_run_selenium_sell_routine_ng(questrade_api):
+    # MGIH sends Night trade message
+    questrade_api.api_get_orders = lambda *args: []
+    try:
+        assert questrade_api.run_selenium_sell_routine_ng()
+    finally:
+        questrade_api.selenium_api.disconnect()
+
+@pytest.mark.wip
+def test_run_selenium_sell_routine(questrade_api):
+    try:
+        assert questrade_api.run_selenium_sell_routine()
+    finally:
+        questrade_api.selenium_api.disconnect()
+
+@pytest.mark.wip
+def test_run_the_main_loop(questrade_api):
+    assert questrade_api.run_the_main_loop()
+
+@pytest.mark.unit
+def test_db_move_candles_to_historical_data(questrade_api):
+    assert questrade_api.db_move_candles_to_historical_data()
+
+
+@pytest.mark.unit
+def test_db_move_candles_from_historical_data(questrade_api):
+    assert questrade_api.db_move_candles_from_historical_data()

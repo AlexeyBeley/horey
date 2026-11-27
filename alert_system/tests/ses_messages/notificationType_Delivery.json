@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-east-1:012345678910:alert-system-configuration-set:46704549-21c1-4039-a6b4-0b86d40551d7",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "557475ad-8343-5996-8997-2b1c5b9806c3",
+                "TopicArn": "arn:aws:sns:us-east-1:012345678910:alert-system-configuration-set",
+                "Subject": null,
+                "Message": "{\"notificationType\":\"Delivery\",\"mail\":{\"timestamp\":\"2024-05-05T18:57:29.303Z\",\"source\":\"Source Address <source@address.com>\",\"sourceArn\":\"arn:aws:ses:us-east-1:012345678910:identity/horey.com\",\"sourceIp\":\"1.1.1.1\",\"callerIdentity\":\"lambda_alerts_handler-production-us-east-1-lambdaRole\",\"sendingAccountId\":\"012345678910\",\"messageId\":\"0100018f4a1e46d7-63b2b0df-d55e-45ab-b958-af82d2813661-000000\",\"destination\":[\"dst@address.com\"],\"headersTruncated\":false,\"headers\":[{\"name\":\"Date\",\"value\":\"Sun, 5 May 2024 18:57:29 +0000\"},{\"name\":\"From\",\"value\":\"Source Address <source@address.com>\"},{\"name\":\"To\",\"value\":\"dst@address.com\"},{\"name\":\"Subject\",\"value\":\"Email subject\"},{\"name\":\"MIME-Version\",\"value\":\"1.0\"},{\"name\":\"Content-Type\",\"value\":\"multipart/alternative;  boundary=\\\"----=_Part_5278563_1263549793.1714935449494\\\"\"}],\"commonHeaders\":{\"from\":[\"Source Address <source@address.com>\"],\"date\":\"Sun, 5 May 2024 18:57:29 +0000\",\"to\":[\"dst@address.com\"],\"subject\":\"Email subject\"}},\"delivery\":{\"timestamp\":\"2024-05-05T18:57:31.591Z\",\"processingTimeMillis\":2288,\"recipients\":[\"dst@address.com\"],\"smtpResponse\":\"250 2.6.0 <0100018f4a1e46d7-63b2b0df-d55e-45ab-b958-af82d2813661-000000@email.amazonses.com> [InternalId=180783763487906, Hostname=DM6PR038.namprd07.prod.outlook.com] 39863 bytes in 0.201, 193.349 KB/sec Queued mail for delivery\",\"remoteMtaIp\":\"8.8.8.8\",\"reportingMTA\":\"a8-90.smtp-out.amazonses.com\"}}",
+                "Timestamp": "2024-05-05T18:57:31.795Z",
+                "SignatureVersion": "1",
+                "Signature": "gYtDbv2Xf69yOFDeipBCvjgGkxtuKq2a/LdvOeulKKn1E1XpEAlaT7zl4x9rdub1eaakHBakdwil1H7QL7J2I+5MmIRZEcj0CDCrP5Q6ydaOtnpNGHpDu2omfOJzeUACHoIhRzeZBfeBJd7OBVU59KB+oLBNPzS/qxNbusk9YNBAu5hr9HgtNrm5ioXMHxazKdytddwTzSgggx/pRfe2anfZ+w2hBAWixgjfEqQfbhmZMEI01G8rEaQTK2jeGjVNFcLZudc/Lppm+Y4SBIYgGzv7G3ktjIHnOSHd5IJ5AnN66SXaJtddw1/b+zujU778AOWOGpvGLYyZRpqCqSoTCA==",
+                "SigningCertUrl": "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-60eadc530605d63b8e62a523676ef735.pem",
+                "UnsubscribeUrl": "https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:012345678910:alert-system-configuration-set:46704549-21c1-4039-a6b4-0b86d40551d7",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

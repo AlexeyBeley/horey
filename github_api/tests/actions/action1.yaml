@@ -1,0 +1,35 @@
+# 1. The name of the automation workflow
+name: Node.js CI Pipeline
+
+# 2. What triggers this workflow? 
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+# 3. The actual jobs to run
+jobs:
+  build-and-test:
+    # The operating system environment the runner uses
+    runs-on: ubuntu-latest
+
+    # The sequential steps of the job
+    steps:
+      # Step 1: Clone the repository's code onto the runner machine
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up the desired language/runtime environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Step 3: Run standard terminal commands to install dependencies
+      - name: Install Dependencies
+        run: npm ci
+
+      # Step 4: Run the test suite
+      - name: Run Tests
+        run: npm test

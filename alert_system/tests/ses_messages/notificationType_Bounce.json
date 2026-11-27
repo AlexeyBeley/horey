@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-east-1:012345678910:alert-system-configuration-set:46704549-21c1-4039-a6b4-0b86d40551d7",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "250a7091-a108-5bc7-8af0-2e2079c537b0",
+                "TopicArn": "arn:aws:sns:us-east-1:012345678910:alert-system-configuration-set",
+                "Subject": null,
+                "Message": "{\"notificationType\":\"Bounce\",\"bounce\":{\"feedbackId\":\"0100018f4a1e19b0-73c01395-187a-49d7-ac6e-826998ceddec-000000\",\"bounceType\":\"Permanent\",\"bounceSubType\":\"OnAccountSuppressionList\",\"bouncedRecipients\":[{\"emailAddress\":\"dst@address.com\",\"action\":\"failed\",\"status\":\"5.1.1\",\"diagnosticCode\":\"Amazon SES did not send the message to this address because it is on the suppression list for your account. For more information about removing addresses from the suppression list, see the Amazon SES Developer Guide at https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-email-suppression-list.html\"}],\"timestamp\":\"2024-05-05T18:57:17.000Z\",\"reportingMTA\":\"dns; amazonses.com\"},\"mail\":{\"timestamp\":\"2024-05-05T18:57:17.367Z\",\"source\":\"Source Address <source@address.com>\",\"sourceArn\":\"arn:aws:ses:us-east-1:012345678910:identity/horey.com\",\"sourceIp\":\"1.1.1.1\",\"callerIdentity\":\"lambda_alerts_handler-production-us-east-1-lambdaRole\",\"sendingAccountId\":\"012345678910\",\"messageId\":\"0100018f4a1e1837-3ffe4f3a-666f-4056-bf82-2dbb0f8fb783-000000\",\"destination\":[\"dst@address.com\"],\"headersTruncated\":false,\"headers\":[{\"name\":\"Date\",\"value\":\"Sun, 5 May 2024 18:57:17 +0000\"},{\"name\":\"From\",\"value\":\"Source Address <source@address.com>\"},{\"name\":\"To\",\"value\":\"dst@address.com\"},{\"name\":\"Subject\",\"value\":\"Subject title\"},{\"name\":\"MIME-Version\",\"value\":\"1.0\"},{\"name\":\"Content-Type\",\"value\":\"multipart/alternative;  boundary=\\\"----=_Part_6861422_53949545.1714935437494\\\"\"}],\"commonHeaders\":{\"from\":[\"Source Address <source@address.com>\"],\"date\":\"Sun, 5 May 2024 18:57:17 +0000\",\"to\":[\"dst@address.com\"],\"subject\":\"Subject title\"}}}",
+                "Timestamp": "2024-05-05T18:57:17.912Z",
+                "SignatureVersion": "1",
+                "Signature": "plu0sZpigyWDZY2uo2yvd2xDrRbYjy25M2vOadJXvBGOg8SHqK4SnsKy2pKOlxYe31h/kFvs+Sf+8RfBWZqbf8oE/KPQlerXp6M8lCCWMLw//iiYpbeVoeIi/ort8R+BOLmIjkGsEe8WJ/tnw6xLJyRrNnd6deWM2Y2eTlQQipnGhkZEJfcUyfo81fYYPOkfKmAUjzEsSNP8ekDqvfZ7vZNfn2aExKdvE97P4ApJsq/A/RkT/zaiLepV0N4dY/SmMHnVlt0fWPHz8EzmMG+m80FYJptGOJu3cyp8tBHQoaTlTzw/jYftvVHAWsUQ7dxh0dxPp17xzF6+eNFnpQakjg==",
+                "SigningCertUrl": "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-60eadc530605d63b8e62a523676ef735.pem",
+                "UnsubscribeUrl": "https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:012345678910:alert-system-configuration-set:46704549-21c1-4039-a6b4-0b86d40551d7",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

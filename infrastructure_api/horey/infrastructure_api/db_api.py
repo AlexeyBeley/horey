@@ -1,0 +1,606 @@
+"""
+Standard Load balancing maintainer.
+
+"""
+from typing import List
+
+from horey.aws_api.aws_services_entities.elasticache_serverless_cache import ElasticacheServerlessCache
+from horey.aws_api.aws_services_entities.elasticache_user_group import ElasticacheUserGroup
+from horey.aws_api.aws_services_entities.elasticache_user import ElasticacheUser
+from horey.aws_api.aws_services_entities.glue_database import GlueDatabase
+from horey.aws_api.aws_services_entities.glue_table import GlueTable
+from horey.h_logger import get_logger
+from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
+from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
+from horey.aws_api.aws_services_entities.rds_db_cluster_parameter_group import RDSDBClusterParameterGroup
+from horey.aws_api.aws_services_entities.rds_db_parameter_group import RDSDBParameterGroup
+from horey.aws_api.aws_services_entities.rds_db_subnet_group import RDSDBSubnetGroup
+from horey.infrastructure_api.db_api_configuration_policy import DBAPIConfigurationPolicy
+
+logger = get_logger()
+
+
+class DBAPI:
+    """
+    Manage ECS.
+
+    """
+
+    def __init__(self, configuration: DBAPIConfigurationPolicy, environment_api):
+        self.configuration = configuration
+        self.environment_api = environment_api
+        self._max_version_raw = None
+        self.dns_api = None
+
+        if self.environment_api.configuration.environment_level == self.environment_api.configuration.environment_name:
+            self.configuration.slug = self.environment_api.configuration.environment_name
+        else:
+            self.configuration.slug = f"{self.environment_api.configuration.environment_level_abbr}-{self.environment_api.configuration.environment_name}"
+
+
+    def provision(self):
+        """
+        Provision ECS infrastructure.
+
+        :return:
+        """
+
+        # todo: cleanup report delete unused parameter groups.
+        # todo: cleanup report delete unused users, user groups,
+        # todo: cleanup report find user groups with "default" user
+
+        self.environment_api.aws_api.rds_client.clear_cache(None, all_cache=True)
+        self.provision_serverless_cluster_parameter_group()
+        self.provision_db_instance_parameter_group()
+        self.provision_rds_subnet_group()
+
+        self.provision_cluster_serverless()
+        self.provision_rds_db_instances()
+        self.provision_domain_names()
+        return True
+
+    def set_api(self, dns_api=None):
+        """
+        Set APIs
+
+        :param dns_api:
+        :return:
+        """
+
+        if dns_api:
+            if not dns_api.configuration.hosted_zone_name:
+                raise NotImplementedError("Must have hosted_zone_name set in the dns api")
+            self.dns_api = dns_api
+
+    @property
+    def max_version_raw(self):
+        """
+        The maximum version available in RDS
+
+        :return:
+        """
+        if self._max_version_raw is None:
+            self._max_version_raw = self.environment_api.aws_api.rds_client.get_engine_max_version(
+                self.environment_api.region,
+                self.configuration.engine_type,
+                raw=True)
+        return self._max_version_raw
+
+    def provision_serverless_cluster_parameter_group(self):
+        """
+        Parameters used by the serverless cluster.
+
+        :return:
+        """
+
+        db_cluster_parameter_group = RDSDBClusterParameterGroup({})
+        db_cluster_parameter_group.region = self.environment_api.region
+        db_cluster_parameter_group.name = self.configuration.cluster_parameter_group_name
+        db_cluster_parameter_group.db_parameter_group_family = self.max_version_raw["DBParameterGroupFamily"]
+        db_cluster_parameter_group.description = db_cluster_parameter_group.name
+        db_cluster_parameter_group.tags = self.environment_api.configuration.tags
+        db_cluster_parameter_group.tags.append({
+            "Key": "name",
+            "Value": db_cluster_parameter_group.name
+        })
+        db_cluster_parameter_group.parameters = [{"ParameterName": "binlog_format",
+                                                  "ParameterValue": "ROW",
+                                                  "Description": "Binary logging format for replication",
+                                                  "Source": "user",
+                                                  "ApplyType": "static",
+                                                  "DataType": "string",
+                                                  "AllowedValues": "ROW,STATEMENT,MIXED,OFF",
+                                                  "IsModifiable": True,
+                                                  "ApplyMethod": "pending-reboot",
+                                                  "SupportedEngineModes": ["provisioned"]}]
+
+        self.environment_api.aws_api.provision_db_cluster_parameter_group(db_cluster_parameter_group)
+        return True
+
+    def provision_db_instance_parameter_group(self):
+        """
+        Database param group.
+
+        :return:
+        """
+
+        db_parameter_group = RDSDBParameterGroup({})
+        db_parameter_group.region = self.environment_api.region
+        db_parameter_group.name = self.configuration.instance_parameter_group_name
+        db_parameter_group.db_parameter_group_family = self.max_version_raw["DBParameterGroupFamily"]
+        db_parameter_group.description = db_parameter_group.name
+        db_parameter_group.tags = self.environment_api.configuration.tags
+        db_parameter_group.tags.append({
+            "Key": "name",
+            "Value": db_parameter_group.name
+        }
+        )
+
+        self.environment_api.aws_api.provision_db_parameter_group(db_parameter_group)
+        return True
+
+    def provision_rds_subnet_group(self):
+        """
+        Subnets used by the cluster.
+
+        :return:
+        """
+        subnet_group = RDSDBSubnetGroup({})
+        subnet_group.region = self.environment_api.region
+        subnet_group.name = self.configuration.subnet_group_name
+        subnet_group.db_subnet_group_description = self.configuration.subnet_group_name
+        subnet_group.subnet_ids = [subnet.id for subnet in self.environment_api.private_subnets]
+        subnet_group.tags = self.environment_api.configuration.tags
+        subnet_group.tags.append({
+            "Key": "name",
+            "Value": subnet_group.name
+        }
+        )
+        self.environment_api.aws_api.provision_db_subnet_group(subnet_group)
+        return True
+
+    def provision_cluster_serverless(self):
+        """
+        Serverless class
+
+        :return:
+        """
+        security_groups = self.environment_api.get_security_groups(self.configuration.security_group_names)
+
+        cluster = RDSDBCluster({})
+        cluster.region = self.environment_api.region
+        cluster.db_subnet_group_name = self.configuration.subnet_group_name
+        cluster.db_cluster_parameter_group_name = self.configuration.cluster_parameter_group_name
+        cluster.backup_retention_period = self.configuration.backup_retention_days
+        cluster.database_name = self.configuration.database_name
+        cluster.id = self.configuration.cluster_name
+        cluster.vpc_security_group_ids = [security_group.id for security_group in security_groups]
+        engine_version_raw = self.environment_api.aws_api.rds_client.get_engine_version(self.environment_api.region,
+                                                                                        self.configuration.engine_type,
+                                                                                        self.max_version_raw[
+                                                                                            "EngineVersion"])
+        cluster.engine = engine_version_raw["Engine"]
+        cluster.engine_version = engine_version_raw["EngineVersion"]
+
+        if "postgres" in cluster.engine.lower():
+            cluster.port = 5432
+
+            cluster.enable_cloudwatch_logs_exports = [
+                "postgresql",
+            ]
+        elif "mysql" in cluster.engine.lower():
+            cluster.port = 3306
+            cluster.enable_cloudwatch_logs_exports = ["audit", "error", "general", "instance", "slowquery"]
+        else:
+            raise RuntimeError(f"Not implemented: {cluster.engine}")
+
+        cluster.master_username = self.configuration.master_username
+        cluster.manage_master_user_password = True
+        # cluster.master_user_password = self.get_secret(
+        #     self.configuration.password_secret_name)
+        cluster.preferred_backup_window = "07:30-08:00"
+        cluster.preferred_maintenance_window = "mon:06:00-mon:07:00"
+        cluster.storage_encrypted = True
+        cluster.engine_mode = "provisioned"
+
+        cluster.deletion_protection = self.configuration.deletion_protection
+        cluster.copy_tags_to_snapshot = True
+
+        cluster.tags = self.environment_api.configuration.tags
+        cluster.tags.append({
+            "Key": "name",
+            "Value": cluster.id
+        }
+        )
+        cluster.serverless_v2_scaling_configuration = self.configuration.serverless_v2_scaling_configuration
+        cluster.auto_minor_version_upgrade = True
+
+        self.environment_api.aws_api.provision_rds_db_cluster(cluster)
+        return cluster
+
+    def provision_rds_db_instances(self):
+        """
+        Provision all the instances.
+
+        :return:
+        """
+
+        logger.info("Starting provisioning fb instances")
+
+        for counter in range(self.configuration.db_instance_count):
+            db_instance = RDSDBInstance({})
+            db_instance.region = self.environment_api.region
+
+            db_instance.id = self.configuration.instance_name_format.format(id=counter)
+
+            db_instance.db_cluster_identifier = self.configuration.cluster_name
+            db_instance.db_subnet_group_name = self.configuration.subnet_group_name
+            db_instance.db_parameter_group_name = self.configuration.instance_parameter_group_name
+            engine_version_raw = self.environment_api.aws_api.rds_client.get_engine_version(self.environment_api.region,
+                                                                                            self.configuration.engine_type,
+                                                                                            self.max_version_raw[
+                                                                                                "EngineVersion"])
+            db_instance.engine = engine_version_raw["Engine"]
+            db_instance.engine_version = engine_version_raw["EngineVersion"]
+
+            db_instance.preferred_maintenance_window = "mon:06:00-mon:07:00"
+            db_instance.storage_encrypted = True
+
+            db_instance.copy_tags_to_snapshot = True
+            db_instance.db_instance_class = self.configuration.cluster_instance_class
+
+            db_instance.tags = self.environment_api.configuration.tags
+            db_instance.tags.append({
+                "Key": "name",
+                "Value": db_instance.id
+            }
+            )
+            self.environment_api.aws_api.provision_db_instance(db_instance)
+            logger.info(f"Provisioned DB instance: {counter}")
+        return True
+
+    def get_cluster(self, cluster_name=None):
+        """
+        Get the cluster object from API.
+
+        :return:
+        """
+        cluster_name = cluster_name or self.configuration.cluster_name
+        cluster = RDSDBCluster({"DBClusterIdentifier": cluster_name})
+        cluster.region = self.environment_api.region
+        if not self.environment_api.aws_api.rds_client.update_cluster_information(cluster):
+            self.environment_api.aws_api.rds_client.clear_cache(RDSDBCluster)
+            if not self.environment_api.aws_api.rds_client.update_cluster_information(cluster):
+                raise self.environment_api.ResourceNotFoundError(f"Was not able to find cluster {cluster_name} in region {cluster.region.region_mark}")
+        return cluster
+
+    @property
+    def reader_dns_address(self):
+        """
+        DNS address to be used to access Readers
+
+        :return:
+        """
+
+        return f"{self.configuration.cluster_name}-reader.{self.dns_api.configuration.hosted_zone_name}"
+
+    @property
+    def writer_dns_address(self):
+        """
+        DNS address to be used to access Writers
+
+        :return:
+        """
+
+        return f"{self.configuration.cluster_name}-writer.{self.dns_api.configuration.hosted_zone_name}"
+
+    def provision_domain_names(self):
+        """
+        Provision cluster domain names
+
+        :return:
+        """
+
+        if self.dns_api is None:
+            return True
+
+        cluster = self.get_cluster()
+        self.dns_api.configuration.dns_target = cluster.reader_endpoint
+        self.dns_api.configuration.dns_address = self.reader_dns_address
+        self.dns_api.provision()
+
+        self.dns_api.configuration.dns_target = cluster.endpoint
+        self.dns_api.configuration.dns_address = self.writer_dns_address
+        return self.dns_api.provision()
+
+    def tags_dict(self):
+        """
+        Get tags dict.
+
+        :return:
+        """
+
+        return {tag["Key"]: tag["Value"] for tag in self.environment_api.configuration.tags}
+
+
+    def provision_glue_database(self, database_name: str) -> GlueDatabase:
+        """
+        Create glue database.
+        :return:
+        """
+
+        database = GlueDatabase({})
+        database.region = self.environment_api.region
+        database.name = database_name
+        database.tags = self.tags_dict()
+        database.tags["Name"] = database_name
+
+        self.environment_api.aws_api.glue_client.provision_database(database)
+        return database
+
+    def get_glue_table(self, database_name:str, table_name: str)-> GlueTable:
+        """
+        Provision table
+
+        :return:
+        """
+
+        table = GlueTable({})
+        table.region = self.environment_api.region
+        table.database_name = database_name
+        table.name = table_name
+        if not self.environment_api.aws_api.glue_client.update_table_information(table):
+            raise ValueError(f"Was not able to find table {table.name} in database {table.database_name}")
+        return table
+
+    def provision_glue_table(self, database_name:str, table_name: str, storage_descriptor, partition_keys)-> GlueTable:
+        """
+        Provision table
+
+        :return:
+        """
+
+        table = GlueTable({})
+        table.region = self.environment_api.region
+        table.database_name = database_name
+        table.name = table_name
+        table.description = table_name
+        table.retention = 0
+        table.storage_descriptor = storage_descriptor
+        table.table_type = "EXTERNAL_TABLE"
+        table.parameters = {
+            "EXTERNAL": "TRUE",
+            "has_encrypted_data": "true",
+            "transient_lastDdlTime": "1633420967"
+        }
+        table.partition_keys = partition_keys
+        self.environment_api.aws_api.glue_client.provision_table(table)
+        return table
+
+    def dispose_glue_database(self, database_name: str) -> GlueDatabase:
+        """
+        Delete glue database if exists
+        :return:
+        """
+
+        database = GlueDatabase({})
+        database.region = self.environment_api.region
+        database.name = database_name
+
+        self.environment_api.aws_api.glue_client.dispose_database(database)
+        return database
+
+    def dispose_glue_table(self, database_name:str, table_name: str):
+        """
+        Provision table
+
+        :return:
+        """
+
+        table = GlueTable({})
+        table.region = self.environment_api.region
+        table.database_name = database_name
+        table.name = table_name
+        self.environment_api.aws_api.glue_client.dispose_table(table)
+        return table
+
+    def compare_objects(self, db_src_name: str, tbl_src_name: str, db_dst_name: str, tbl_dst_name: str):
+        """
+        Compare objects
+
+        :return:
+        """
+
+        tbl_src = self.get_glue_table(db_src_name, tbl_src_name)
+        tbl_dst = self.get_glue_table(db_dst_name, tbl_dst_name)
+        return self.find_diff(tbl_src.dict_src, tbl_dst.dict_src)
+
+    def find_diff(self, d1, d2, path=""):
+        """
+        Find Difference
+
+        :param d1:
+        :param d2:
+        :param path:
+        :return:
+        """
+
+        str_ret = ""
+        for k in d1:
+            if k not in d2:
+                str_ret += f"{path}{k}: removed from d2\n"
+            elif isinstance(d1[k], dict) and isinstance(d2[k], dict):
+                str_ret += self.find_diff(d1[k], d2[k], path + k + " -> ") + "\n"
+            elif d1[k] != d2[k]:
+                str_ret += f"{path}{k}: {d1[k]} -> {d2[k]}\n"
+
+        for k in d2:
+            if k not in d1:
+                str_ret += f"{path}{k}: added in d2\n"
+
+        return str_ret
+
+    def provision_elasticache_serverless(self, name=None, cache:ElasticacheServerlessCache=None, security_groups=None, user_group=None):
+        """
+        Provision elasticache
+        !!! Make sure you have: All permissions from role: ElastiCacheServiceRolePolicy
+
+        :return:
+        """
+
+        if not cache:
+            name = name or self.configuration.serverless_elasticache_name
+            cache = ElasticacheServerlessCache({"name":name})
+
+            cache.region = self.environment_api.region
+
+            cache.description = f"Serverless cache in {self.environment_api.configuration.environment_name}"
+            cache.subnet_ids = [subnet.id for subnet in self.environment_api.private_subnets]
+
+            cache.engine = "redis"
+            cache.tags = self.environment_api.configuration.tags
+            cache.tags.append({
+            "Key": "name",
+            "Value": name
+            })
+            if security_groups:
+                cache.security_group_ids = [sec_group.id for sec_group in security_groups]
+
+            if user_group:
+                cache.user_group_id = user_group.id
+
+        self.environment_api.aws_api.elasticache_client.provision_serverless_cache(cache)
+
+        return cache
+
+    def dispose_elasticache_serverless(self, name=None):
+        """
+        Provision elasticache
+
+        :return:
+        """
+
+        name = name or self.configuration.serverless_elasticache_name
+        cache = ElasticacheServerlessCache({"name": name})
+
+        cache.region = self.environment_api.region
+
+        self.environment_api.aws_api.elasticache_client.dispose_serverless_cache(cache)
+
+        return cache
+
+    def get_user_group(self, user_group_name):
+        """
+        Get user group
+        """
+
+        user_group = ElasticacheUserGroup({})
+        user_group.region = self.environment_api.region
+        user_group.user_group_name = user_group_name
+        user_group.id= user_group_name
+
+        if not self.environment_api.aws_api.elasticache_client.update_user_group_information(user_group):
+            raise self.environment_api.ResourceNotFoundError(f"Was not able to find {user_group_name=}")
+
+        return user_group
+
+    def provision_elasticache_user(self, user_group_name: str, user_name:str, passwords: List[str], cache: ElasticacheServerlessCache=None, engine="redis"):
+        """
+        Provision elasticache user
+
+        :return:
+        """
+
+        engine = cache.engine if cache else engine
+
+        if engine != "redis":
+            raise ValueError(f"Unsupported engine: {engine}")
+
+        region = cache.region if cache else self.environment_api.region
+
+        user_group = ElasticacheUserGroup({})
+        user_group.region = region
+        user_group.user_group_name = user_group_name
+        user_group.id = user_group_name
+        user_group.engine = engine
+        user_group.tags = self.environment_api.configuration.tags
+        user_group.tags.append({
+                "Key": "name",
+                "Value": user_group_name
+            })
+        try:
+            default_user = self.get_elasticache_user(region, user_id="default-secure")
+        except self.environment_api.ResourceNotFoundError:
+            default_user = self.provision_elasticache_user_raw(region, "default-secure", "default", passwords, engine, "on ~* +@all")
+
+        user_group.user_ids_to_add = [default_user.id]
+
+        user = self.provision_elasticache_user_raw(region, user_name, user_name, passwords, engine, "on ~* +@all")
+
+        user_group.user_ids_to_add.append(user.id)
+        self.environment_api.aws_api.elasticache_client.provision_user_group(user_group)
+
+        return user
+
+    # pylint: disable = too-many-positional-arguments, too-many-arguments
+    def provision_elasticache_user_raw(self, region, user_id, user_name, passwords, engine, access_string):
+        """
+        Raw user withoug group.
+
+        """
+
+        user = ElasticacheUser({})
+        user.region = region
+        user.id = user_id
+        user.user_name = user_name
+        user.passwords = passwords
+        user.access_string = access_string
+        user.tags = self.environment_api.configuration.tags
+        user.tags.append({
+            "Key": "name",
+            "Value": user_name
+        })
+
+        user.engine = engine
+        self.environment_api.aws_api.elasticache_client.provision_user(user)
+        return user
+
+
+    def get_elasticache_user(self, region, user_name=None, user_id=None):
+        """
+        Get elasticache user
+
+        :param region:
+        :param user_name:
+        :return:
+        """
+
+        for user in self.environment_api.aws_api.elasticache_client.yield_users(region=region):
+            if user_name:
+                if user.user_name == user_name:
+                    break
+            elif user_id:
+                if user.id == user_id:
+                    break
+            else:
+                raise ValueError("User name or user id must be provided")
+        else:
+            raise self.environment_api.ResourceNotFoundError(f"Was not able to find '{user_name}' user")
+
+        return user
+
+    def get_serverless_cache(self, name=None):
+        """
+        Get elasticache cache
+        :param name:
+        :return:
+        """
+
+        cache = ElasticacheServerlessCache({})
+        cache.region = self.environment_api.region
+        cache.name = name or self.configuration.serverless_elasticache_name
+        if not self.environment_api.aws_api.elasticache_client.update_serverless_cache_information(cache):
+            self.environment_api.aws_api.elasticache_client.clear_cache(ElasticacheServerlessCache)
+            if not self.environment_api.aws_api.elasticache_client.update_serverless_cache_information(cache):
+                raise self.environment_api.ResourceNotFoundError(f"Was not able to find cache '{name}' in region {self.environment_api.configuration.region}")
+        return cache

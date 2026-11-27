@@ -1,0 +1,1053 @@
+# pylint: disable = too-many-lines
+"""
+Docker API - used to communicate with docker service.
+
+"""
+
+import datetime
+import getpass
+import itertools
+import json
+import os.path
+import platform
+import re
+import threading
+import time
+from pathlib import Path
+from random import random
+from time import perf_counter
+from urllib.parse import urljoin
+
+import docker
+from docker.errors import BuildError
+from docker.utils.json_stream import json_stream
+from horey.h_logger import get_logger, get_raw_logger
+from horey.common_utils.bash_executor import BashExecutor
+from horey.docker_api.registry import Registry
+
+logger = get_logger()
+BashExecutor.set_logger(logger, override=False)
+
+
+class DockerAPI:
+    """
+    Docker API main class
+
+    """
+
+    def __init__(self):
+        self._client = None
+    
+    @property
+    def client(self):
+        if self._client is None:
+            if "macos" in platform.platform().lower():
+                self._client = docker.DockerClient(base_url=f'unix:///Users/{getpass.getuser()}/.docker/run/docker.sock')
+            else:
+                self._client = docker.from_env(timeout=60 * 10)
+        return self._client
+
+    def login(self, registry, username, password):
+        """
+        Authenticate with a registry. Similar to the ``docker login`` command.
+
+        @param registry:
+        @param username:
+        @param password:
+        @return:
+        """
+
+        ret = self.client.login(registry=registry, username=username, password=password)
+        logger.info(ret)
+        return ret
+
+    @staticmethod
+    def logout(registry):
+        """
+        Logout
+
+        @param registry:
+        @return:
+        """
+
+        logger.info(f"Logout from docker registry: {registry}")
+        return_dict = BashExecutor.run_bash(f"docker logout {registry}")
+        logger.info(return_dict)
+        return return_dict
+
+    def get_image(self, name):
+        """
+        Get local image.
+
+        @param name:
+        @return:
+        """
+
+        logger.info(f"Getting image: '{name}'")
+        docker_image = self.client.images.get(name)
+        return docker_image
+
+    def build_standard(self, **kwargs):
+        """
+        Build image.
+
+        @return:
+        :param
+        """
+
+        logger.info(f"Starting building image path={kwargs.get('path')}, tag={kwargs.get('tag')}")
+
+        try:
+            build_start = perf_counter()
+            docker_image, build_log = self.client.images.build(
+
+                **kwargs)
+            build_end = perf_counter()
+            self.print_log(build_log)
+        except BuildError as exception_instance:
+            self.print_log(exception_instance.build_log)
+            raise
+
+        logger.info(f"Finished building image in {build_end - build_start} seconds")
+
+        return docker_image
+
+    def build(self, dockerfile_directory_path, tags, stream=True, remove_intermediate_containers=True, nocache=False, **kwargs):
+        """
+        Entrypoint.
+
+        :param dockerfile_directory_path:
+        :param tags:
+        :param args:
+        :param stream:
+        :param remove_intermediate_containers: CLI default value is True. Python docker client default is False.
+        :param kwargs:
+        :return:
+        """
+
+        if isinstance(dockerfile_directory_path, Path):
+            dockerfile_directory_path = str(dockerfile_directory_path)
+
+        if not isinstance(tags, list):
+            raise ValueError(
+                f"'tags' must be of a type 'list' received {tags}: type: {type(tags)}"
+            )
+
+        tag = tags[0] if len(tags) > 0 else "latest"
+
+        if nocache:
+            kwargs["pull"] = True
+
+        logger.info(f"Building image from: {dockerfile_directory_path} nocache={nocache}, {remove_intermediate_containers=}, {kwargs=}, {tags=}")
+
+        if stream:
+            docker_image = self.build_streaming(path=dockerfile_directory_path, tag=tag,
+                                                rm=remove_intermediate_containers,
+                                                forcerm=remove_intermediate_containers, **kwargs)
+        else:
+            docker_image = self.build_standard(path=dockerfile_directory_path, tag=tag,
+                                               rm=remove_intermediate_containers,
+                                               forcerm=remove_intermediate_containers, **kwargs)
+
+        self.tag_image(docker_image, tags[1:])
+
+        return docker_image
+
+    def build_streaming(self, **kwargs):
+        """
+        Taken from Docker package.
+
+        :param kwargs:
+        :return:
+        """
+
+        raw_logger = get_raw_logger("docker_raw", format_string="docker-daemon: %(message)s")
+
+        resp = self.client.api.build(**kwargs)
+        if isinstance(resp, str):
+            return self.client.images.get(resp)
+        last_event = None
+        image_id = None
+        result_stream, internal_stream = itertools.tee(json_stream(resp))
+        for chunk in internal_stream:
+            if "error" in chunk:
+                raise BuildError(chunk["error"], result_stream)
+            if "stream" in chunk:
+                match = re.search(
+                    r'(^Successfully built |sha256:)([0-9a-f]+)$',
+                    chunk["stream"]
+                )
+                if match:
+                    image_id = match.group(2)
+                raw_logger.info(chunk["stream"])
+            else:
+                logger.warning(f"Unknown docker output: {chunk}")
+            last_event = chunk
+        if image_id:
+            return self.client.images.get(image_id)
+        raise BuildError(last_event or 'Unknown', result_stream)
+
+    def get_image_by_tag(self, tag):
+        """
+        Find image object by image tag.
+
+        :param tag:
+        :return:
+        """
+
+        for image in self.get_all_images():
+            if tag in image.tags:
+                return image
+        return None
+
+    def print_live_log(self, log_generator):
+        """
+        Separate thread.
+
+        :param log_generator:
+        :return:
+        """
+
+        logger.info("Live logs printing")
+
+        def helper():
+            for log_line in log_generator:
+                self.print_log_line(log_line, raise_on_error=False)
+
+        thread = threading.Thread(
+            target=helper
+        )
+
+        thread.start()
+
+    # pylint: disable = too-many-arguments, too-many-positional-arguments
+    def run(self, image_name, container_name=None, environment_variables=None, command_args=None, detach=True,
+            remove=True):
+        """
+        Run the image.
+
+        :param image_name:
+        :param container_name:
+        :param environment_variables:
+        :param command_args:
+        :param detach:
+        :param remove:
+        :return:
+        """
+
+        environment_variables = environment_variables or {}
+        command_args = command_args or []
+
+        try:
+            logger.info(f"Attempting to run container '{container_name}' from image '{image_name}'...")
+            container = self.client.containers.run(
+                image_name,
+                name=container_name,
+                environment=environment_variables,
+                command=command_args,
+                detach=detach,  # Run in the background
+                remove=remove  # Automatically remove container when it exits
+            )
+
+            logger.info(f"Container '{container.name}' started with ID: {container.id}")
+            logger.info("Fetching logs...")
+
+            # Stream logs from the container
+            for line in container.logs(stream=True):
+                logger.info(line.decode('utf-8').strip())
+
+            # Wait for the container to finish and get its exit status
+            result = container.wait()
+            logger.info(f"Container '{container.name}' exited with status code: {result['StatusCode']}")
+            if result["StatusCode"] != 0:
+                return False
+
+        except docker.errors.ImageNotFound:
+            logger.exception(
+                f"Error: Image '{image_name}' not found locally. Please build it first using 'docker build -t {image_name} .' in the directory with your Dockerfile and entrypoint.sh.")
+            raise
+        except docker.errors.ContainerError as e:
+            logger.exception(f"Container '{container_name}' exited with an error: {e} "
+                             f"Stderr: {e.stderr.decode('utf-8')}")
+            raise
+        except Exception as e:
+            logger.exception(f"An unexpected error occurred: {e}")
+            raise
+        return True
+
+    def print_log(self, log_iterator):
+        """
+        Print log from iterable.
+
+        @param log_iterator:
+        @return:
+        """
+
+        for log_line in log_iterator:
+            self.print_log_line(log_line)
+
+    @staticmethod
+    def print_log_line(log_line, raise_on_error=True):
+        """
+        Pretty print of a log line.
+
+        @param log_line:
+        @return:
+        :param raise_on_error:
+        """
+
+        key = "status"
+        if key in log_line:
+            logger.info(log_line[key])
+            return True
+
+        key = "stream"
+        if key in log_line:
+            logger.info(log_line[key])
+            return True
+
+        key = "aux"
+        if key in log_line:
+            logger.info(log_line[key])
+            return True
+
+        key = "error"
+        if key in log_line:
+            if raise_on_error:
+                logger.exception(log_line)
+                raise DockerAPI.OutputError(log_line)
+
+            logger.error(log_line[key])
+            return True
+
+        logger.error(f"Unknown keys in: {log_line}")
+        return True
+
+    def tag_image(self, image, tags):
+        """
+        Tag image with new tags.
+
+        @param image:
+        @param tags:
+        @return:
+        """
+        if not isinstance(tags, list):
+            raise ValueError(f"Tags should be a list, received: {type(tags)}: {tags}")
+
+        if len(tags) == 0:
+            return True
+        image.tag(tags[0])
+        return self.tag_image(image, tags[1:])
+
+    def upload_images(self, repo_tags, retry=True):
+        """
+        Upload images based on the tags. Retry if concurrent uploads failed by server
+
+        :param repo_tags:
+        :param retry:
+        :return:
+        """
+
+        retries_limit = 60
+        for retry_counter in range(retries_limit):
+            try:
+                return self.raw_upload_images(repo_tags)
+            except Exception as error_inst:
+                if "IncompleteRead" not in repr(error_inst):
+                    raise
+                if not retry:
+                    raise
+                time_to_sleep = random() * 20 + 10
+                logger.info(
+                    f"Received IncompleteRead, it means server closed connection. Going to sleep ({retry_counter}/{retries_limit}) for {time_to_sleep}")
+                time.sleep(time_to_sleep)
+
+        raise TimeoutError(f"Image tags {repo_tags} uploading failed for {retries_limit} times")
+
+    def raw_upload_images(self, repo_tags):
+        """
+        Try uploading
+
+        :param repo_tags:
+        :return:
+        """
+
+        errors_detected = []
+        logger.info(f"Uploading image to repository {repo_tags}")
+        for repository in repo_tags:
+            logger.info(f"Uploading {repository} to repository")
+            time_start = datetime.datetime.now()
+            for log_line in self.client.images.push(
+                    repository=repository, stream=True, decode=True
+            ):
+                try:
+                    self.print_log_line(log_line)
+                except DockerAPI.OutputError:
+                    errors_detected.append(log_line)
+
+            time_end = datetime.datetime.now()
+            if errors_detected:
+                raise RuntimeError(
+                    f"Failed to upload {repository} took {time_end - time_start} time. {errors_detected}")
+
+            logger.info(
+                f"Uploading repository {repository} took {time_end - time_start} time."
+            )
+        return True
+
+    def pull_images(self, repo, tag=None, all_tags=False):
+        """
+        Pull image or images.
+
+        @param repo:
+        @param tag:
+        @param all_tags: NOT specific tags, ALL images being pulled. Very slow!
+        @return:
+        """
+
+        logger.info(f"Pulling image from repository: {repo}, tag: {tag}")
+        if tag is not None and repo.find(":") > -1:
+            raise RuntimeError(f"Using both repo tag and tag kwarg: {repo}, {tag}")
+        images = self.client.images.pull(
+            repository=repo, tag=tag, all_tags=all_tags, decode=True
+        )
+        if not isinstance(images, list):
+            images = [images]
+
+        return images
+
+    def copy_image_daemonless(self, src_registry:Registry, dst_registry:Registry, src_repo , dst_repo, src_tag, dst_tag=None):
+        """
+        Copy image using raw http requests.
+
+        """
+
+        dst_tag = dst_tag or src_tag
+        return self.copy_manifest(src_registry, dst_registry, src_repo, dst_repo, src_tag, dst_tag or src_tag)
+
+    @staticmethod
+    def copy_blob(src_registry:Registry, dst_registry:Registry, src_repo:str, dst_repo:str, dict_blob_description:dict):
+        """
+        Copy blob if needed.
+
+        """
+
+        digest, size = dict_blob_description["digest"], dict_blob_description["size"]
+        dscope = f"repository:{dst_repo}:pull,push"
+
+        if dst_registry.blob_exists(dst_repo, digest):
+            logger.info(f"Skipping existing blob: {digest}")
+            return True
+
+        # Same registry: ask it to mount the blob from the other repo (no data transfer)
+        if src_registry.host == dst_registry.host:
+            dst_registry.tokens.pop(dscope, None)
+            scope = f"{dscope} repository:{src_repo}:pull"
+            ret = dst_registry.request("POST", f"/v2/{dst_repo}/blobs/uploads/", scope,
+                            params={"mount": digest, "from": src_repo})
+            if ret.status_code == 201:
+                return True
+            upload_url = urljoin(dst_registry.base, ret.headers["Location"])  # fell back to a normal upload
+        else:
+            ret = dst_registry.request("POST", f"/v2/{dst_repo}/blobs/uploads/", dscope)
+            ret.raise_for_status()
+            upload_url = urljoin(dst_registry.base, ret.headers["Location"])
+
+        # Stream the blob from source to destination
+        logger.info(f"Downloading blob: {digest=} {size=}")
+        with src_registry.request("GET", f"/v2/{src_repo}/blobs/{digest}",
+                         f"repository:{src_repo}:pull", stream=True) as g:
+            g.raise_for_status()
+            logger.info(f"Downloaded blob: {digest=} {size=}")
+            data = g.content if size < 50 * 1024 * 1024 else DockerAPI.SizedStream(g.raw, size)
+            ret = dst_registry.request(
+                "PUT", upload_url, dscope,
+                params={"digest": digest},
+                headers={"Content-Type": "application/octet-stream",
+                         "Content-Length": str(size)},
+                data=data,
+            )
+            ret.raise_for_status()
+            logger.info(f"Uploaded blob: {digest=} {size=}")
+        return True
+    
+    class SizedStream:
+        """
+        Used because new version of requests thinks it's working with file and tries to call the len.
+        It fails, even if it won't fail the len reported by OS for socket will be wrong.
+        """
+        
+        def __init__(self, stream_raw, size:int):
+            self._stream_raw = stream_raw
+            self._size = size
+        
+        def __len__(self):
+            """
+            Create the function to be used by requests
+            """
+
+            return self._size
+        
+        def read(self, amount=-1):
+            """
+            Wrap the read function
+            """
+
+            return self._stream_raw.read(amount)
+
+    def copy_manifest(self, src_registry:Registry, dst_registry:Registry, src_repo:str, dst_repo:str, ref:str, dst_ref:str):
+        """
+        Copy manifest
+
+        """
+
+        MANIFEST_TYPES = ",".join([
+          "application/vnd.oci.image.index.v1+json",
+            "application/vnd.docker.distribution.manifest.list.v2+json",
+            "application/vnd.oci.image.manifest.v1+json",
+            "application/vnd.docker.distribution.manifest.v2+json",
+            ])
+
+        logger.info(f"Copy manifest {src_registry=}, {src_repo=} {dst_registry=}, {dst_repo=}, {dst_ref=}")
+        ret = src_registry.request("GET", f"/v2/{src_repo}/manifests/{ref}", \
+                        f"repository:{src_repo}:pull", \
+                        headers={"Accept": MANIFEST_TYPES})
+        ret.raise_for_status()
+        body, ctype, dict_manifest = ret.content, ret.headers["Content-Type"], ret.json()
+
+        if "manifests" in dict_manifest:
+            # multi-arch index: copy each child by digest
+            for child in dict_manifest["manifests"]:
+                self.copy_manifest(src_registry, dst_registry, src_repo, dst_repo, child["digest"], child["digest"])
+        else:
+            # single image: config + layers
+            for dict_manifest_description in [dict_manifest["config"], *dict_manifest["layers"]]:
+                self.copy_blob(src_registry, dst_registry, src_repo, dst_repo, dict_manifest_description)
+
+        # Push the exact original bytes so the digest stays identical
+        ret = dst_registry.request("PUT", f"/v2/{dst_repo}/manifests/{dst_ref}",
+                        f"repository:{dst_repo}:pull,push",
+                        headers={"Content-Type": ctype}, data=body)
+        ret.raise_for_status()
+
+    def copy_image(self, src_repo_with_tag, dst_repo_name, copy_all_tags=True, tag=None):
+        """
+        Copy image from one repo to the other.
+
+        @param src_repo_with_tag:
+        @param dst_repo_name:
+        @param copy_all_tags:
+        @return:
+        """
+
+        images = self.pull_images(src_repo_with_tag, all_tags=copy_all_tags)
+        if len(images) < 1:
+            raise RuntimeError(
+                f"Expected > 1 docker image with tag: {src_repo_with_tag}"
+            )
+
+        image = images[0]
+        repo, tmp_tag = self.split_repo_with_tag(src_repo_with_tag)
+        tag = tag or tmp_tag
+        if copy_all_tags:
+            logger.info(f"Preparing dst tags: {image.attrs['RepoTags']}")
+            dst_tags = [
+                f"{dst_repo_name}:{self.split_repo_with_tag(image_tag)[1]}"
+                for image_tag in image.attrs["RepoTags"]
+                if image_tag.startswith(repo)
+            ]
+        else:
+            dst_tags = [f"{dst_repo_name}:{tag}"]
+
+        self.tag_image(image, dst_tags)
+        return self.upload_images(dst_tags)
+
+    @staticmethod
+    def split_repo_with_tag(repo_with_tag):
+        """
+        Split repo with tag to repo and tag.
+
+        @param repo_with_tag:
+        @return:
+        """
+        if ":" not in repo_with_tag:
+            raise ValueError(f"Untagged repo: {repo_with_tag}")
+
+        if repo_with_tag.count(":") > 1:
+            raise ValueError(f"Expected single ':' in repo repo: {repo_with_tag}")
+
+        repo, tag = repo_with_tag.split(":")
+        return repo, tag
+
+    @staticmethod
+    def kill_container(container, remove=False, wait_to_finish=None):
+        """
+        Kill the running container.
+
+        @param container:
+        @param remove:
+        @param wait_to_finish:
+        @return:
+        """
+
+        logger.info(f"Killing container: {container.id}.")
+        try:
+            container.wait(timeout=wait_to_finish)
+        except Exception as inst_error:
+            if "Read timed out" not in repr(inst_error):
+                raise
+
+        try:
+            container.kill()
+        except docker.errors.APIError as inst_error:
+            if "is not running" not in str(inst_error):
+                raise
+
+        if remove:
+            logger.info(f"Removing container: {container.id}.")
+            container.remove()
+
+    def get_containers_by_image(self, image_id, all_containers=False):
+        """
+        Get all containers.
+
+        @param all_containers:
+        @param image_id:
+        @return:
+        """
+
+        ret = [
+            container
+            for container in self.client.containers.list(all=all_containers)
+            if image_id == container.image.id
+        ]
+        return ret
+
+    @staticmethod
+    def get_containers_bash(all_containers=False, filters=None):
+        """
+        Get all containers via bash.
+
+        Example filters:
+        ! until is not working with 'ps'
+
+        filters=["status=exited", "until=60m" ] -> becomes
+        -> '--filter "status=exited" --filter "until=60m"'
+
+        :param filters:
+        :param all_containers:
+        :return:
+        """
+
+        all_containers_str = "" if not all_containers else " --all"
+        if filters:
+            filters_str = ' --filter "' + '" --filter "'.join(filters) + '"'
+        else:
+            filters_str = ""
+        command = f'docker ps --format json {all_containers_str}{filters_str}'
+        response_str =   BashExecutor.run_bash(command)["stdout"]
+        ret_containers = []
+        for line in response_str.split("\n"):
+            if line:
+                response_dict = json.loads(line)
+                ret_containers.append(response_dict)
+        return ret_containers
+
+
+    def remove_image(self, image_id, force=True, wait_to_finish=20 * 60, childless=False):
+        """
+        Remove image and all its children.
+
+        :param image_id:
+        :param force:
+        :param wait_to_finish:
+        :param childless:
+        :return:
+        """
+
+        logger.info(f"Start removing image: {image_id}")
+
+        lst_ret = []
+        image_children = None
+        if force:
+            all_images = self.get_all_images()
+            main_image = list(filter(lambda _img: _img.id == image_id, all_images))
+            if len(main_image) != 1:
+                raise ValueError(f"{image_id=}, {len(main_image)=}")
+            main_image = main_image[0]
+
+            if not childless:
+                image_children = self.get_child_image_ids(image_id, all_images)
+                for child_image_id in image_children:
+                    lst_ret += self.remove_image(child_image_id, force=True)
+
+            for container in self.get_containers_by_image(image_id):
+                self.kill_container(container, remove=True, wait_to_finish=wait_to_finish)
+
+            if image_children and not main_image.tags:
+                logger.info(
+                    f"Untagged parent image automatically removed by docker after all children removed: {image_id}.")
+                lst_ret.append(image_id)
+                return lst_ret
+
+        logger.info(f"Removing image: {image_id}.")
+
+        self.client.images.remove(image_id, force=force)
+        lst_ret.append(image_id)
+
+        return lst_ret
+
+    def get_all_images(self, repo_name=None):
+        """
+        List local images.
+        Caution: If you need remote images in ECR use boto3.
+
+        @param repo_name:
+        @return:
+        """
+
+        return self.client.images.list(name=repo_name, all=True)
+
+    def get_child_image_ids(self, image_id, all_images):
+        """
+        Return the children of the image.
+
+        :return:
+        """
+
+        child_ids = []
+        candidates = [image for image in all_images if image_id in image.id]
+        if len(candidates) != 1:
+            raise RuntimeError(f"Found {len(candidates)=} with {image_id=}")
+        for image in all_images:
+            if image.attrs.get("Parent", None) == image_id:
+                child_ids.append(image.id)
+
+        logger.info(f"{image_id=} {child_ids=}")
+        return child_ids
+
+    def save(self, image, file_path):
+        """
+        Save image to file.
+
+        Example:
+
+            >>> image = cli.images.get("busybox:latest")
+            >>> f = open('/tmp/busybox-latest.tar', 'wb')
+            >>> for chunk in image.save():
+            >>>   f.write(chunk)
+            >>> f.close()
+        :param file_path:
+        :param image:
+        :return:
+        """
+
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        with open(file_path, "wb") as file_handler:
+            for chunk in image.save():
+                file_handler.write(chunk)
+
+        return os.path.exists(file_path)
+
+    def load(self, file_path):
+        """
+        Load from file.
+
+        :param file_path:
+        :return:
+        """
+
+        with open(file_path, "rb") as file_handler:
+            data = file_handler.read()
+
+        images = self.client.images.load(data)
+
+        if not isinstance(images, list):
+            raise ValueError(f"Expected list: {images=}")
+
+        if len(images) != 1:
+            raise ValueError(f"Expected list of length 1: {images=}")
+
+        return images[0]
+
+    def get_all_ancestors(self, image_id, all_images=None):
+        """
+        Generate list of ancestors.
+
+        :param image_id:
+        :return:
+        """
+
+        if all_images is None:
+            all_images = {image.id: image for image in self.get_all_images()}
+            if not all_images[image_id].attrs.get("Parent"):
+                return []
+            return self.get_all_ancestors(all_images[image_id].attrs.get("Parent"), all_images=all_images)
+
+        if not all_images[image_id].attrs("Parent"):
+            return [image_id]
+
+        return [image_id] + self.get_all_ancestors(all_images[image_id].attrs("Parent"), all_images=all_images)
+
+    class OutputError(RuntimeError):
+        """
+        Error caught in a log line.
+        """
+
+    @staticmethod
+    def get_childless_images(all_images):
+        """
+        Get images
+
+        :param all_images:
+        :return:
+        """
+
+        parent_ids = [image.attrs.get("Parent") for image in all_images if image.attrs("Parent")]
+        return [image for image in all_images if image.attrs["Id"] not in parent_ids]
+
+    def clear_all_images(self):
+        """
+        Delete all images and their children
+
+        :return:
+        """
+
+        all_images = self.get_all_images()
+        while all_images:
+            print(f"All images: {len(all_images)}")
+
+            childless_images = self.get_childless_images(all_images)
+            print(f"Childless images: {len(childless_images)}")
+            for image in childless_images:
+                self.remove_image(image.attrs["Id"], force=True, childless=True)
+
+            all_images = self.get_all_images()
+
+    def prune_old_images(self, limit, timeout = 10 * 60):
+        """
+        Delete old images
+
+        :param timeout:
+        :param limit:
+        :return:
+        """
+
+        all_images = self.get_all_images()
+
+        for image in all_images:
+            if len(image.tags) == 0:
+                logger.info(f"Deleting image without tags: {image.id}")
+                self.remove_image(image.id, force=True, wait_to_finish=timeout)
+
+        all_images = self.get_all_images()
+
+        for image in sorted(all_images, key=lambda x: x.attrs["Created"], reverse=True)[limit:]:
+            logger.info(f"Deleting image {image.id}")
+            self.remove_image(image.id, force=True, wait_to_finish=timeout)
+
+
+    @staticmethod
+    def prune_dead_containers():
+        """
+        Find dead
+
+        :return:
+        """
+
+        return_dict = BashExecutor.run_bash("docker ps --all -q -f status=dead")
+        dead_container_ids = return_dict["stdout"].split("\n")
+        containers_dir = Path("/var/lib/docker/containers")
+        stdout = BashExecutor.run_bash(f"sudo ls {containers_dir}")["stdout"]
+        container_directory_names = stdout.split("\n")
+
+        for container_id in dead_container_ids:
+            BashExecutor.run_bash(f"docker container rm -f {container_id}", ignore_on_error_callback=lambda _: True)
+
+            for container_directory_name in container_directory_names:
+                if container_id in container_directory_name:
+                    BashExecutor.run_bash(f"sudo rm -rf {containers_dir / container_directory_name}", ignore_on_error_callback=lambda _: True)
+                    break
+
+        if dead_container_ids:
+            BashExecutor.run_bash("sudo service docker restart")
+
+        return return_dict
+
+    def prune_containers(self, time_limit=60*60, container_log_attrs=None, stopped=True):
+        """
+        Deleted old containers
+
+        :param stopped:
+        :param container_log_attrs:
+        :param time_limit: default is an hour
+        :return:
+        """
+
+        container_dir_name = "pruner"
+
+        start = perf_counter()
+        try:
+            containers = self.get_containers_bash(all_containers=True)
+        except Exception as inst_error:
+            DockerAPI.log_to_container_file(container_dir_name, f"Pruning error: {repr(inst_error)}", attrs=container_log_attrs)
+            raise
+
+        to_delete_counter = 0
+        deleted_counter = 0
+
+        restart_docker = False
+        for container in containers:
+            try:
+                delete = False
+                if stopped and container["State"] == "running":
+                    delete = False
+                elif container["State"] == "dead":
+                    restart_docker = True
+                    delete = True
+                elif not self.check_container_newer_then(container, time_limit):
+                    delete = True
+
+                if not delete:
+                    continue
+
+                to_delete_counter += 1
+                logger.info(f"Removing {to_delete_counter}/{len(containers)} container: {container['ID']}")
+                self.delete_container_bash(container, force= True)
+                deleted_counter += 1
+            except Exception as inst_error:
+                DockerAPI.log_to_container_file(container_dir_name,
+                                                f"Pruning error deleting container {container['ID']}: {repr(inst_error)}", attrs=container_log_attrs)
+
+        logger.info(
+            f"Finished deleting {deleted_counter=} {to_delete_counter=} containers after {perf_counter() - start}")
+        if restart_docker:
+            logger.info("Restarting docker")
+            BashExecutor.run_bash("sudo service docker restart")
+
+        return True
+
+    @staticmethod
+    def delete_container_bash(container_dict: dict, force: bool = False):
+        """
+        Delete container by id.
+
+        :param container_dict:
+        :param force:
+        :return:
+        """
+
+        if container_dict["State"] == "dead":
+            def helper():
+                command = f"sudo ls /var/lib/docker/containers | grep {container_dict['ID']}"
+                response = BashExecutor.run_bash(command, ignore_on_error_callback= lambda _response:  _response["stdout"] == _response["stderr"] == "" and _response["code"] == 1)
+                dir_name = response["stdout"]
+                if not dir_name:
+                    raise RuntimeError(f"Can not find dead container directory: {container_dict['ID']}")
+                command = f"sudo rm -rf /var/lib/docker/containers/{dir_name}"
+                response = BashExecutor.run_bash(command)
+                assert response["stdout"] == ""
+        else:
+            def helper():
+                command = f"docker container rm {'--force' if force else ''} {container_dict['ID']}"
+                response = BashExecutor.run_bash(command)
+                assert container_dict["ID"].startswith(response["stdout"])
+
+        thread = threading.Thread(
+            target=helper
+        )
+
+        thread.start()
+        time.sleep(0.1)
+
+
+    @staticmethod
+    def check_container_newer_then(container, time_limit_seconds) -> bool:
+        """
+        Check if container is newer than time_limit
+        Return True if the container is newer than time_limit.
+
+        'Exited (127) 4 days ago'
+
+        :param container:
+        :param time_limit_seconds:
+        :return:
+        """
+
+        if "days" in container["Status"]:
+            container_seconds = int(container["Status"].split("days")[0].strip().split(" ")[-1])*24*60*60
+        elif "minutes" in container["Status"]:
+            container_seconds = int(container["Status"].split("minutes")[0].strip().split(" ")[-1])*60
+        elif "About a minute ago" in container["Status"]:
+            if time_limit_seconds  > 60:
+                container_seconds = 60
+            else:
+                container_seconds = DockerAPI.get_container_age_bash(container["ID"])
+        else:
+            logger.error(f"Unknown container status format: {container['Status']}")
+            container_seconds = DockerAPI.get_container_age_bash(container["ID"])
+
+        return container_seconds < time_limit_seconds
+
+    @staticmethod
+    def get_container_age_bash(container_id:str) -> int:
+        """
+        Return seconds.
+
+        :param container_id:
+        :return:
+        """
+
+        command = f"docker container inspect --format json {container_id}"
+        response = BashExecutor.run_bash(command)
+        containers = json.loads(response["stdout"])
+        if len(containers) != 1:
+            raise ValueError(f"Expected one container: {containers}")
+        container = containers[0]
+
+        # 2026-03-13T14:10:38.199877338Z
+        time_string = container["State"].get("FinishedAt")
+        if not time_string or "0001" in time_string:
+            time_string = container["State"].get("StartedAt")
+        if not time_string or "0001" in time_string:
+            time_string = container["Created"]
+
+        sub_time = time_string.split(".")[0]
+        container_datetime = datetime.datetime.strptime(sub_time, "%Y-%m-%dT%H:%M:%S")
+        now_aware_utc = datetime.datetime.now()
+        return int((now_aware_utc - container_datetime).total_seconds())
+
+
+    @staticmethod
+    def log_to_container_file(dir_name, log_line, attrs=None):
+        """
+        Simulate docker container logger.
+
+        :param attrs:
+        :param dir_name:
+        :param log_line:
+        :return:
+        """
+
+        command = f"sudo mkdir -p /var/lib/docker/containers/{dir_name}"
+        BashExecutor.run_bash(command)
+
+        now_aware_utc = datetime.datetime.now(tz=datetime.timezone.utc)
+
+        formatted_time_base = now_aware_utc.strftime("%Y-%m-%d %H:%M:%S")
+        microseconds = now_aware_utc.strftime("%f")
+
+        milliseconds = microseconds[:3]
+
+        timestamp_with_comma_ms = f"{formatted_time_base},{milliseconds}"
+
+        dict_line = {"log": f"[{timestamp_with_comma_ms}][INFO][docker_api.py:1]: " + log_line,
+                     "stream": "stdout",
+                     "time": now_aware_utc.isoformat().replace("+00:00", "Z"),
+                     }
+        if attrs:
+            dict_line["attrs"] = attrs
+        command = f"sudo echo {json.dumps(json.dumps(dict_line))} >>" + f"/var/lib/docker/containers/{dir_name}/{dir_name}-json.log"
+        return BashExecutor.run_bash(command, sudo=True)

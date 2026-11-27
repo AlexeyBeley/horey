@@ -1,0 +1,324 @@
+"""
+Testing docker_api module.
+
+"""
+
+import os
+
+import pytest
+from horey.docker_api.docker_api import DockerAPI
+from horey.common_utils.common_utils import CommonUtils
+try:
+    from horey.aws_api.aws_api import AWSAPI
+except Exception:
+    pass
+
+src_aws_region = "us-west-2"
+dst_aws_region = "us-west-2"
+
+# pylint: disable= missing-function-docstring
+
+IMAGE_TAG = "horey-test:latest"
+
+
+@pytest.fixture(name="mock_values")
+def mock_values_fixture():
+    mock_values_file_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "docker_api_mock_values.py"
+        )
+    )
+    print(f"{mock_values_file_path=}")
+    mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
+    yield mock_values
+
+
+@pytest.mark.done
+def test_init_docker_api():
+    """
+    Test basic init.
+
+    @return:
+    """
+
+    assert isinstance(DockerAPI(), DockerAPI)
+
+
+def login(docker_api):
+    """
+    Login to aws region using aws_api
+
+    @param docker_api:
+    @return:
+    """
+
+    aws_api = AWSAPI()
+    credentials = aws_api.get_ecr_authorization_info(region=src_aws_region)
+    credentials = credentials[0]
+    registry, username, password = (
+        credentials["proxy_host"],
+        credentials["user_name"],
+        credentials["decoded_token"],
+    )
+    docker_api.login(registry, username, password)
+    return registry
+
+
+@pytest.mark.done
+def test_login():
+    """
+    Test login to aws region using aws_api
+
+    @return:
+    """
+    docker_api = DockerAPI()
+    aws_api = AWSAPI()
+    credentials = aws_api.get_ecr_authorization_info(region=src_aws_region)
+
+    if len(credentials) != 1:
+        raise ValueError("len(credentials) != 1")
+    credentials = credentials[0]
+    registry, username, password = (
+        credentials["proxy_host"],
+        credentials["user_name"],
+        credentials["decoded_token"],
+    )
+    docker_api.login(registry, username, password)
+
+
+@pytest.mark.done
+def test_build():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    docker_api = DockerAPI()
+    image = docker_api.build(
+        os.path.dirname(os.path.abspath(__file__)), [IMAGE_TAG]
+    )
+    assert image is not None
+
+
+@pytest.mark.done
+def test_build_with_args():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    docker_api = DockerAPI()
+    image = docker_api.build(
+        os.path.dirname(os.path.abspath(__file__)), [IMAGE_TAG], buildargs={"test_arg_name": "test_arg_value"}
+    )
+    assert image is not None
+
+
+@pytest.mark.done
+def test_build_with_wrong_kwarg():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    docker_api = DockerAPI()
+    with pytest.raises(TypeError, match=r".*got an unexpected keyword argument.*"):
+        docker_api.build(
+            os.path.dirname(os.path.abspath(__file__)), ["horey-test:latest"],
+            buildargs_error_value={"test_arg_name": "test_arg_value"}
+        )
+
+
+@pytest.mark.done
+def test_get_image():
+    """
+    Self explanatory.
+
+    @return:
+    """
+
+    docker_api = DockerAPI()
+    image = docker_api.get_image("horey-test:latest")
+    assert image is not None
+
+
+@pytest.mark.skip
+def test_upload_image():
+    docker_api = DockerAPI()
+    registry = login(docker_api)
+    image_tag = "horey-test:latest"
+    image = docker_api.get_image(image_tag)
+    tags = [f"{registry}/{image_tag}"]
+    docker_api.tag_image(image, tags)
+    docker_api.upload_images(tags)
+
+
+@pytest.mark.skip
+def test_pull_image():
+    """
+    Self explanatory.
+
+    @return:
+    """
+
+    docker_api = DockerAPI()
+    registry = login(docker_api)
+    image_tag = "horey-test:latest"
+    tags = f"{registry}/{image_tag}"
+    images = docker_api.pull_images(tags)
+    assert images is not None
+
+
+@pytest.mark.skip
+def test_copy_image():
+    """
+    Test copying image from source repo to dst
+
+    @return:
+    """
+
+    docker_api = DockerAPI()
+    registry = login(docker_api)
+    image_tag = "horey-test:latest"
+    image_registry_path = f"{registry}/{image_tag}"
+    image_dst_tag = "horey-test:dst"
+    image_registry_path_dst = f"{registry}/{image_dst_tag}"
+    docker_api.copy_image(
+        image_registry_path, image_registry_path_dst, copy_all_tags=True
+    )
+
+
+@pytest.mark.skip
+def test_remove_image(mock_values):
+    """
+    Test removing image.
+
+    @return:
+    """
+
+    docker_api = DockerAPI()
+    docker_api.remove_image(mock_values["image_with_children_id"], force=True)
+
+
+@pytest.mark.done
+def test_get_all_images():
+    """
+    Test getting all images.
+
+    @return:
+    """
+
+    docker_api = DockerAPI()
+    registry = login(docker_api)
+    images = docker_api.get_all_images(repo_name=f"{registry}/horey-test")
+    assert images is not None
+
+
+@pytest.mark.skip
+def test_get_child_image_ids(mock_values):
+    docker_api = DockerAPI()
+    image_id = mock_values["image_with_children_id"]
+    image_ids = docker_api.get_child_image_ids(image_id, None)
+    assert isinstance(image_ids, list)
+
+
+@pytest.mark.done
+def test_save():
+    docker_api = DockerAPI()
+    image_tag = "horey-test:latest"
+    image = docker_api.get_image(image_tag)
+    assert docker_api.save(image, "tmp.tar")
+
+
+@pytest.mark.done
+def test_load():
+    docker_api = DockerAPI()
+    image = docker_api.load("tmp.tar")
+    tags = ["horey-test:latest", "horey:file_loaded"]
+    assert docker_api.tag_image(image, tags)
+
+
+@pytest.mark.done
+def test_get_all_ancestors():
+    docker_api = DockerAPI()
+    image_id = "sha256:"
+    ret = docker_api.get_all_ancestors(image_id)
+    assert ret
+
+
+@pytest.mark.done
+def test_build_rm_false():
+    docker_api = DockerAPI()
+    image = docker_api.build(
+        os.path.dirname(os.path.abspath(__file__)), ["horey-test:latest"],
+        remove_intermediate_containers=False)
+    assert image is not None
+
+
+@pytest.mark.unit
+def test_run():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    docker_api = DockerAPI()
+    assert docker_api.run(IMAGE_TAG, command_args=["sleep", "2"])
+
+
+@pytest.mark.unit
+def test_prune_dead_containers():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    assert DockerAPI.prune_dead_containers()
+
+
+@pytest.mark.unit
+def test_log_to_container_file():
+    """
+    Test building image.
+
+    @return:
+    """
+    assert DockerAPI.log_to_container_file("test", "Pruning error: blabla")
+
+
+@pytest.mark.unit
+def test_log_to_container_file_with_attrs():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    assert DockerAPI.log_to_container_file("test", "Pruning error: blabla", attrs={"tag": "test_tag"})
+
+
+@pytest.mark.unit
+def test_get_containers_bash():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    assert DockerAPI().get_containers_bash(all_containers=True,  filters=["status=exited"])
+
+
+@pytest.mark.wip
+def test_prune_containers():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    assert DockerAPI().prune_containers(time_limit=60*5, stopped=True)

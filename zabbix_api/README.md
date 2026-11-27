@@ -1,0 +1,1 @@
+https://www.tothenew.com/blog/create-a-custom-metric-in-zabbix/

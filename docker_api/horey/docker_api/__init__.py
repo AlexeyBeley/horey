@@ -1,0 +1,5 @@
+"""
+Docker API package.
+"""
+
+__version__ = "1.0.24"

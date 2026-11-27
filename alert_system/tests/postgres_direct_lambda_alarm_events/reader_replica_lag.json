@@ -1,0 +1,42 @@
+{
+   "source": "aws.cloudwatch",
+   "alarmArn": "arn:aws:cloudwatch:us-west-2:12345678910:alarm:has2-rds-test1-reader2_aurora_replica_lag",
+   "accountId": "12345678910",
+   "time": "2024-12-15T21:50:10.690+0000",
+   "region": "us-west-2",
+   "alarmData": {
+       "alarmName": "has2-rds-test1-reader2_aurora_replica_lag",
+       "state": {
+           "value": "ALARM",
+           "reason": "Threshold Crossed: 3 out of the last 3 datapoints [24.0 (15/12/24 21:49:00), 24.0 (15/12/24 21:48:00), 24.0 (15/12/24 21:47:00)] were greater than the threshold (22.84285714285714) (minimum 3 datapoints for OK -> ALARM transition).",
+           "reasonData": "{\"version\":\"1.0\",\"queryDate\":\"2024-12-15T21:50:10.686+0000\",\"startDate\":\"2024-12-15T21:47:00.000+0000\",\"statistic\":\"Average\",\"period\":60,\"recentDatapoints\":[24.0,24.0,24.0],\"threshold\":22.84285714285714,\"evaluatedDatapoints\":[{\"timestamp\":\"2024-12-15T21:49:00.000+0000\",\"sampleCount\":1.0,\"value\":24.0},{\"timestamp\":\"2024-12-15T21:48:00.000+0000\",\"sampleCount\":1.0,\"value\":24.0},{\"timestamp\":\"2024-12-15T21:47:00.000+0000\",\"sampleCount\":1.0,\"value\":24.0}]}",
+           "timestamp": "2024-12-15T21:50:10.690+0000"
+       },
+       "previousState": {
+           "value": "OK",
+           "reason": "Threshold Crossed: 1 out of the last 3 datapoints [1.0 (15/12/24 19:07:00)] was not greater than the threshold (22.84285714285714) (minimum 1 datapoint for ALARM -> OK transition).",
+           "reasonData": "{\"version\":\"1.0\",\"queryDate\":\"2024-12-15T19:08:10.686+0000\",\"startDate\":\"2024-12-15T19:05:00.000+0000\",\"statistic\":\"Average\",\"period\":60,\"recentDatapoints\":[25.0,23.0,1.0],\"threshold\":22.84285714285714,\"evaluatedDatapoints\":[{\"timestamp\":\"2024-12-15T19:07:00.000+0000\",\"sampleCount\":1.0,\"value\":1.0}]}",
+           "timestamp": "2024-12-15T19:08:10.688+0000"
+       },
+       "configuration": {
+           "description": "{\"routing_tags\": [\"ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG\"]}",
+           "metrics": [
+               {
+                   "id": "86c9e366-a6a8-bf8b-83a7-b24ab473d45d",
+                   "metricStat": {
+                       "metric": {
+                           "namespace": "AWS/RDS",
+                           "name": "AuroraReplicaLag",
+                           "dimensions": {
+                               "DBInstanceIdentifier": "reader2"
+                           }
+                       },
+                       "period": 60,
+                       "stat": "Average"
+                   },
+                   "returnData": true
+               }
+           ]
+       }
+   }
+}

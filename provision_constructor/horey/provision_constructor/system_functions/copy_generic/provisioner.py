@@ -1,0 +1,91 @@
+"""
+Copy generic file or folder
+
+"""
+from pathlib import Path
+
+from horey.common_utils.remoter import Remoter
+from horey.provision_constructor.system_function_factory import SystemFunctionFactory
+
+from horey.provision_constructor.system_functions.system_function_common import (
+    SystemFunctionCommon,
+)
+from horey.h_logger import get_logger
+
+logger = get_logger()
+
+
+@SystemFunctionFactory.register
+class Provisioner(SystemFunctionCommon):
+    """
+    Main class
+
+    """
+
+    # pylint: disable= too-many-arguments
+    def __init__(self, deployment_dir, force, upgrade, **kwargs):
+        super().__init__(deployment_dir, force, upgrade, **kwargs)
+        self.src = kwargs["src"]
+        self.dst = kwargs["dst"]
+        self.sudo = kwargs.get("sudo")
+
+    def test_provisioned(self):
+        """
+        Test copy generic file/dir provisioned.
+
+        @return:
+        """
+
+        return self.check_file_provisioned(self.src, self.dst)
+
+    def _provision(self):
+        """
+        Provision the copy generic file/dir
+
+        @return:
+        """
+
+        self.provision_file(self.src, self.dst, sudo=self.sudo)
+
+    def provision_remote(self, remoter: Remoter):
+        """
+        Provision remotely
+
+        :param remoter:
+        :return:
+        """
+
+        self.remoter = remoter
+
+        if self.action == "download":
+            return self.remote_download()
+        parent = str(Path(self.dst).parent)
+        command = f"mkdir -p {parent}"
+        if self.sudo:
+            command = "sudo " + command
+        remoter.execute(command)
+
+        if self.src.is_dir():
+            return remoter.put_directory(self.src, self.dst, sudo=self.sudo)
+
+        remoter.put_file(self.src, self.dst, sudo=self.sudo)
+
+        sudo = "sudo " if self.sudo else ""
+        chmod = self.kwargs.get("chmod")
+        if chmod:
+            self.remoter.execute(f"{sudo}chmod -R {chmod} {self.dst}")
+
+        chown = self.kwargs.get("chown")
+        if chown:
+            self.remoter.execute(f"{sudo}chown -R {chown} {self.dst}")
+
+        return True
+
+    def remote_download(self):
+        """
+        Download file from server
+
+        :return:
+        """
+
+        return self.remoter.get_file(self.src, self.dst, sudo=self.sudo)

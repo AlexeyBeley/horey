@@ -1,0 +1,4 @@
+horey.configuration_policy>=1.0.0
+horey.h_logger>=1.0.0
+horey.replacement_engine>=1.0.0
+requests

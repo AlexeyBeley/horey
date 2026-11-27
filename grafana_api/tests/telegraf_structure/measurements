@@ -1,0 +1,26 @@
+name: measurements
+name
+----
+cpu
+disk
+diskio
+influxdb
+influxdb_cq
+influxdb_database
+influxdb_httpd
+influxdb_memstats
+influxdb_queryExecutor
+influxdb_runtime
+influxdb_shard
+influxdb_subscriber
+influxdb_system
+influxdb_tsm1_cache
+influxdb_tsm1_engine
+influxdb_tsm1_filestore
+influxdb_tsm1_wal
+influxdb_write
+kernel
+mem
+processes
+swap
+system

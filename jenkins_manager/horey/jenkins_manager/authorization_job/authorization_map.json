@@ -1,0 +1,13 @@
+[
+    {
+        "job_name": "job_name",
+        "user_identity": "user_identity",
+        "parameters_restrictions": [
+            {
+                "name": "var_1",
+                "value": "val_1",
+                "required": false
+            }
+        ]
+    }
+]

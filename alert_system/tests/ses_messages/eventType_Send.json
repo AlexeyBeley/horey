@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:eu-central-1:012345678910:alert-system-configuration-set:7a109c1f-2ed6-44c2-ab22-37eebba85807",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "25a23189-78df-592c-a588-6f38a03d408b",
+                "TopicArn": "arn:aws:sns:eu-central-1:012345678910:alert-system-configuration-set",
+                "Subject": "Amazon SES Email Event Notification",
+                "Message": "{\"eventType\":\"Send\",\"mail\":{\"timestamp\":\"2024-05-05T18:57:37.979Z\",\"source\":\"Source Address <source@address.com>\",\"sendingAccountId\":\"012345678910\",\"messageId\":\"0107018f4a1e68bb-37059630-46ee-4a2c-8fb7-9cab09e4e9cc-000000\",\"destination\":[\"dst@address.com\"],\"headersTruncated\":false,\"headers\":[{\"name\":\"From\",\"value\":\"Source Address <source@address.com>\"},{\"name\":\"To\",\"value\":\"dst@address.com\"},{\"name\":\"MIME-Version\",\"value\":\"1.0\"}],\"commonHeaders\":{\"from\":[\"Source Address <source@address.com>\"],\"to\":[\"dst@address.com\"],\"messageId\":\"0107018f4a1e68bb-37059630-46ee-4a2c-8fb7-9cab09e4e9cc-000000\"},\"tags\":{\"ses:source-tls-version\":[\"TLSv1.3\"],\"ses:operation\":[\"SendTemplatedEmail\"],\"ses:configuration-set\":[\"alert-system-configuration-set\"],\"ses:recipient-isp\":[\"UNKNOWN_ISP\"],\"ses:source-ip\":[\"8.8.8.8\"],\"ses:from-domain\":[\"horey.com\"],\"ses:sender-identity\":[\"horey.com\"],\"ses:caller-identity\":[\"caller-identity\"]}},\"send\":{}}\n",
+                "Timestamp": "2024-05-05T18:57:38.127Z",
+                "SignatureVersion": "1",
+                "Signature": "D6B19TgAoJe5yzIBqcJJKPVCLOivduU9LlM2744hAmW0rjzEYqhH5tQpq79t0dxkW2qM6IBiMfnoXYSjDlptPvbyuDO8WzdFQ9eKzv0YJ2AeCIP1vluajM1Q29SpWhZwlnMdJ6+CVsdUj+ecdkuJ/latGWSvUu8wFCRGln1tMvFYS420vcMjIH6msbYUqhq3czidi0r1EW0bgvbwvzHNRfYcT8I5rDBkh1oFJdOy5nZhW6LdlXiDmBnj8ABN1KTDu9YGp0cPNBhnSo6hqyQCRXvrPFh/crKahaHPfs427/g+DlvWdEUvbqhqYSZy6L8HMNrzw183fUKh/LHCh+i37Q==",
+                "SigningCertUrl": "https://sns.eu-central-1.amazonaws.com/SimpleNotificationService-60eadc530605d63b8e62a523676ef735.pem",
+                "UnsubscribeUrl": "https://sns.eu-central-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-central-1:012345678910:alert-system-configuration-set:7a109c1f-2ed6-44c2-ab22-37eebba85807",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

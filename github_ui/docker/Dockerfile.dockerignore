@@ -1,0 +1,12 @@
+# The build context is the whole horey repository; only the sources of the
+# resolved packages end up in the final image (see the horey_dependencies stage).
+**/.git
+**/.idea
+**/__pycache__
+**/*.pyc
+**/_build
+**/node_modules
+**/*.dSYM
+go
+c
+**/*.tar

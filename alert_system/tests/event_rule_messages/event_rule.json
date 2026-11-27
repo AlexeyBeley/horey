@@ -1,0 +1,13 @@
+{
+    "version": "0",
+    "id": "aaaaaaaa-62e3-6fdc-680a-aaaaaaaaaaa",
+    "detail-type": "Scheduled Event",
+    "source": "aws.events",
+    "account": "012345678910",
+    "time": "2024-08-30T00:49:28Z",
+    "region": "us-west-2",
+    "resources": [
+        "arn:aws:events:us-west-2:012345678910:rule/event-bridge-rule-alert_system_test_deploy_lambda"
+    ],
+    "detail": {}
+}

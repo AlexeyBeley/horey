@@ -1,0 +1,206 @@
+"""
+AWS Lambda representation
+"""
+
+from horey.aws_api.aws_services_entities.aws_object import AwsObject
+from horey.aws_api.base_entities.region import Region
+
+
+class ECSTaskDefinition(AwsObject):
+    """
+    AWS AutoScalingGroup class
+    """
+
+    def __init__(self, dict_src, from_cache=False):
+        super().__init__(dict_src)
+        self._region = None
+        self.volumes = None
+        self.network_mode = None
+        self.requires_compatibilities = None
+        self.memory = None
+        self.cpu = None
+        self.family = None
+        self.container_definitions = None
+        self.task_role_arn = None
+        self.execution_role_arn = None
+        self.runtime_platform = None
+
+        if from_cache:
+            self._init_object_from_cache(dict_src)
+            return
+
+        self.update_from_raw_response(dict_src)
+
+    def _init_object_from_cache(self, dict_src):
+        """
+        Init from cache
+
+        :param dict_src:
+        :return:
+        """
+
+        options = {}
+        self._init_from_cache(dict_src, options)
+
+    def update_from_raw_response(self, dict_src):
+        """
+        Object data from server dict reply.
+
+        :param dict_src:
+        :return:
+        """
+
+        init_options = {
+            "taskDefinitionArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
+            "containerDefinitions": self.init_default_attr,
+            "family": self.init_default_attr,
+            "taskRoleArn": self.init_default_attr,
+            "executionRoleArn": self.init_default_attr,
+            "revision": self.init_default_attr,
+            "volumes": self.init_default_attr,
+            "requiresAttributes": self.init_default_attr,
+            "placementConstraints": self.init_default_attr,
+            "compatibilities": self.init_default_attr,
+            "requiresCompatibilities": self.init_default_attr,
+            "cpu": self.init_default_attr,
+            "memory": self.init_default_attr,
+            "registeredAt": self.init_default_attr,
+            "registeredBy": self.init_default_attr,
+            "status": self.init_default_attr,
+            "networkMode": self.init_default_attr,
+            "runtimePlatform": self.init_default_attr,
+            "enableFaultInjection": self.init_default_attr,
+        }
+        return self.init_attrs(dict_src, init_options)
+
+    def generate_create_request(self):
+        """
+        Generate request from object.
+
+        :return:
+        """
+
+        request = {"containerDefinitions": self.container_definitions, "tags": self.tags}
+
+        self.extend_request_with_optional_parameters(request, ["networkMode",
+                                                               "runtimePlatform",
+                                                               "requiresCompatibilities",
+                                                               "memory",
+                                                               "cpu",
+                                                               "volumes",
+                                                               "executionRoleArn",
+                                                               "taskRoleArn",
+                                                               "family"])
+
+        return request
+
+    @property
+    def region(self):
+        """
+        if self.arn is not None:
+            self._region = Region.get_region(self.arn.split(":")[3])
+
+        return self._region
+
+        :return:
+        """
+
+        if self._region is not None:
+            return self._region
+
+        raise NotImplementedError("todo: Region from ARN")
+
+    @region.setter
+    def region(self, value):
+        """
+        Set region
+
+        :param value:
+        :return:
+        """
+
+        if not isinstance(value, Region):
+            raise ValueError(value)
+
+        self._region = value
+
+    def set_storage(self,
+                                             linux_params=None,
+                                             volumes=None,
+                                             mount_points=None ):
+        """
+        Add storage.
+
+        :param mount_points:
+        :param volumes:
+        :param linux_params:
+        :return:
+        """
+
+        if linux_params:
+            if len(self.container_definitions) != 1:
+                raise NotImplementedError("Only 1 container is supported for now")
+            self.container_definitions[0]["linuxParameters"] = linux_params
+
+        if volumes:
+            if len(volumes) != 1:
+                raise NotImplementedError("Only 1 volume is supported for now")
+            self.volumes = volumes
+            if len(mount_points) != 1:
+                raise NotImplementedError("Only 1 mount_point is supported for now")
+            self.container_definitions[0]["mountPoints"] = mount_points
+        return True
+
+    def set_roles(self, task_role=None, execution_role=None):
+        """
+        Set roles.
+
+        :param task_role:
+        :param execution_role:
+        :return:
+        """
+
+        if task_role:
+            self.task_role_arn = task_role
+
+        if execution_role:
+            self.execution_role_arn = execution_role
+
+        return True
+
+    def set_ports(self, container_port=None, host_port=None):
+        """
+        Set ports.
+
+        :param container_port:
+        :param host_port:
+        :return:
+        """
+
+        if len(self.container_definitions) != 1:
+            raise NotImplementedError("Only 1 container is supported for now")
+
+        if container_port:
+            self.container_definitions[0]["portMappings"] = [{"containerPort": container_port, "protocol": "tcp"}]
+            if host_port:
+                self.container_definitions[0]["portMappings"][0]["hostPort"] = host_port
+
+        return True
+
+
+    def set_environment_variables(self, env_vars):
+        """
+        Set environment variables.
+
+        :param env_vars:
+        :return:
+        """
+
+        if len(self.container_definitions) != 1:
+            raise NotImplementedError("Only 1 container is supported for now")
+
+        self.container_definitions[0]["environment"] = env_vars
+
+        return True

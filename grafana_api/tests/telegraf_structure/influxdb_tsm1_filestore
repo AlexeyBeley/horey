@@ -1,0 +1,5 @@
+name: influxdb_tsm1_filestore
+fieldKey  fieldType
+--------  ---------
+diskBytes float
+numFiles  float

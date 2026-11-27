@@ -1,0 +1,350 @@
+"""
+Compute service API.
+
+"""
+import datetime
+import time
+
+from azure.mgmt.compute import ComputeManagementClient
+from azure.mgmt.compute.models import Disk as DiskRaw
+from azure.mgmt.compute.models import VirtualMachine as VirtualMachineRaw
+from horey.azure_api.azure_clients.azure_client import AzureClient
+from horey.azure_api.azure_service_entities.disk import Disk
+from horey.azure_api.azure_service_entities.ssh_key import SSHKey
+from horey.azure_api.azure_service_entities.virtual_machine import VirtualMachine
+from horey.h_logger import get_logger
+
+logger = get_logger()
+
+
+class ComputeClient(AzureClient):
+    """
+    Main class - implements the compute client API
+    """
+
+    CLIENT_CLASS = ComputeManagementClient
+
+    def update_virtual_machine_information(self, virtual_machine: VirtualMachine):
+        """
+        Update the current information of the VM
+        :param virtual_machine:
+        :return:
+        """
+
+        all_machines = self.get_all_virtual_machines(
+            virtual_machine.resource_group_name
+        )
+        for existing_machine in all_machines:
+            if existing_machine.name == virtual_machine.name:
+                virtual_machine.update_from_raw_response(existing_machine.dict_src)
+                return True
+        return False
+
+    def provision_virtual_machine(self, virtual_machine: VirtualMachine, tags_only=False, asynchronous=False):
+        """
+        Provision VM.
+
+        @param virtual_machine:
+        @param tags_only: only change the tags
+        @return:
+        :param asynchronous:
+        """
+        all_machines = self.get_all_virtual_machines(
+            virtual_machine.resource_group_name
+        )
+
+        if not tags_only:
+            for existing_machine in all_machines:
+                if existing_machine.name == virtual_machine.name:
+                    virtual_machine.update_after_creation(existing_machine)
+                    return virtual_machine
+
+        # creating VM
+        request = virtual_machine.generate_create_request(tags_only=tags_only)
+        vm_raw = VirtualMachineRaw(**request[2])
+
+        try:
+            return self.raw_create_virtual_machines(
+            request[:2] + [vm_raw], asynchronous=asynchronous
+            )
+        except Exception as inst_error:
+            if "did not start in the allotted time" not in repr(inst_error):
+                raise
+            for _ in range(10):
+                self.update_virtual_machine_information(virtual_machine)
+                if virtual_machine.provisioning_state == "Succeeded":
+                    return True
+                time.sleep(60)
+        raise TimeoutError(f"Was not able to start vm: {virtual_machine.name} in {virtual_machine.resource_group_name}")
+
+    def provision_virtual_machine_tags(self, virtual_machine):
+        """
+        Provision VM tags
+
+        @param virtual_machine:
+        @return:
+        """
+
+        return self.provision_virtual_machine(virtual_machine, tags_only=True)
+
+    def get_vm(self, resource_group_name, name):
+        """
+        Get VM object.
+
+        :param resource_group_name:
+        :param name:
+        :return:
+        """
+
+        for vm in self.get_all_virtual_machines(resource_group_name):
+            if vm.name == name:
+                return vm
+
+        return None
+
+    def stop_vm(self, vm: VirtualMachine):
+        """
+        Stop VM.
+
+        :param vm:
+        :return:
+        """
+
+        logger.info(f"Stopping VM {vm.resource_group_name}/{vm.name}")
+
+        start_time = datetime.datetime.now()
+
+        response = self.client.virtual_machines.begin_power_off(vm.resource_group_name, vm.name)
+        response.wait()
+
+        end_time = datetime.datetime.now()
+
+        logger.info(f"Stopped VM {vm.resource_group_name}/{vm.name}, took: {end_time - start_time}")
+
+        return response.result()
+
+    def start_vm(self, vm: VirtualMachine):
+        """
+        Start VM.
+
+        :param vm:
+        :return:
+        """
+
+        response = self.client.virtual_machines.begin_start(vm.resource_group_name, vm.name)
+        response.wait()
+        return response.result()
+
+    def raw_create_virtual_machines(self, lst_args, asynchronous=False):
+        """
+        Create a vm.
+
+        @param lst_args:
+        @return:
+        :param asynchronous:
+        """
+
+        logger.info(f"Virtual machine create/update: '{lst_args[1]}'")
+        response = self.client.virtual_machines.begin_create_or_update(*lst_args)
+        if asynchronous:
+            return response
+
+        response.wait()
+        return response.result()
+
+    def raw_create_ssh_key(self, lst_args):
+        """
+        Standard.
+
+        @param lst_args:
+        @return:
+        """
+        response = self.client.ssh_public_keys.create(*lst_args)
+        return response
+
+    def get_all_disks(self, resource_group):
+        """
+        Standard.
+
+        @return:
+        """
+        return [Disk(obj.as_dict()) for obj in self.client.disks.list_by_resource_group(resource_group.name)]
+
+    def get_disk(self, resource_group_name, disk_name):
+        """
+        Get object.
+
+        :param resource_group_name:
+        :param disk_name:
+        :return:
+        """
+
+        for obj in self.client.disks.list_by_resource_group(resource_group_name):
+            disk = Disk(obj.as_dict())
+            if disk.name == disk_name:
+                return disk
+        return None
+
+    def get_all_ssh_keys(self, resource_group):
+        """
+        Standard.
+
+        @param resource_group:
+        @return:
+        """
+        return [
+            SSHKey(obj.as_dict())
+            for obj in self.client.ssh_public_keys.list_by_resource_group(
+                resource_group.name
+            )
+        ]
+
+    def get_all_virtual_machines(self, resource_group_name):
+        """
+        Standard.
+
+        @param resource_group_name:
+        @return:
+        """
+        return [
+            VirtualMachine(obj.as_dict())
+            for obj in self.client.virtual_machines.list(resource_group_name)
+        ]
+
+    def provision_disk(self, disk: Disk, asynchronous=False):
+        """
+        Create or update
+
+        :param asynchronous:
+        :param disk:
+        :return:
+        """
+
+        request = disk.generate_create_request()
+        disk_raw = DiskRaw(**request[2])
+
+        response = self.raw_create_disk(request[:2] + [disk_raw])
+        if asynchronous:
+            return response
+        response.wait()
+        return disk.update_after_creation(response.result())
+
+    def raw_create_disk(self, lst_args):
+        """
+        Standard.
+
+        @param lst_args:
+        @return:
+        """
+
+        logger.info(f"Begin disk creation: '{lst_args[1]}'")
+        return self.client.disks.begin_create_or_update(*lst_args)
+
+    def dispose_disk(self, obj_disk: Disk, asynchronous=False):
+        """
+        Dispose disk.
+
+        :param obj_disk:
+        :param asynchronous:
+        :return:
+        """
+
+        response = self.raw_delete_disk(obj_disk.resource_group_name, obj_disk.name)
+        if not asynchronous:
+            response.wait()
+        return response
+
+    def raw_delete_disk(self, resource_group_name, disk_name):
+        """
+        Delete disk.
+
+        @param resource_group_name:
+        @param disk_name:
+        @return:
+        """
+        logger.info(f"Begin disk deletion: '{disk_name}'")
+        return self.client.disks.begin_delete(resource_group_name, disk_name)
+
+    def dispose_virtual_machine(self, obj_repr, asynchronous=False):
+        """
+        Delete the vm
+
+        @param obj_repr:
+        @param asynchronous:
+        @return:
+        """
+        logger.info(
+            f"Begin virtual machine deletion: '{obj_repr.resource_group_name} {obj_repr.name}'"
+        )
+        response = self.client.virtual_machines.begin_delete(
+            obj_repr.resource_group_name, obj_repr.name
+        )
+
+        if not asynchronous:
+            response.wait()
+        return response
+
+    def get_available_vm_sizes(self, region):
+        """
+        Get list of vm sizes available in the region
+
+        @return:
+        """
+
+        return list(self.client.virtual_machine_sizes.list(region))
+
+    def get_available_images(self, region):
+        """
+        Get list of vm sizes available in the region
+        https://dev.to/holger/azure-sdk-for-python-retrieve-vm-image-details-30do
+        #ret = list(self.client.virtual_machine_images.list_publishers(location=region))
+        #offers = list(self.client.virtual_machine_images.list_offers(location=region, publisher_name="Canonical"))
+
+        @return:
+        """
+        offer_name = "0001-com-ubuntu-pro-jammy"
+        offer_name = "0001-com-ubuntu-server-jammy"
+        skus = list(self.client.virtual_machine_images.list_skus(location=region,
+                                                                 publisher_name="Canonical",
+                                                                 offer=offer_name))
+        ret = []
+        for sku in skus:
+            # 0001-com-ubuntu-server-jammy
+            #
+            ret += list(self.client.virtual_machine_images.list(location=region,
+                                                                publisher_name="Canonical",
+                                                                offer=offer_name, skus=sku.name))
+        return ret
+
+    def update_disk(self, disk:Disk, asynchronous=False, sleep_time=5, timeout=600):
+        """
+        Resize disk tier with new size, IOPS, throughput, or SKU.
+
+        :param timeout:
+        :param sleep_time:
+        :param asynchronous:
+        :param disk: Disk
+        :return: Updated disk object
+        """
+
+        lst_args = disk.generate_update_request()
+
+        logger.info(f"Begin disk update: '{disk.name}'")
+
+        for _ in range(int(timeout/sleep_time)):
+            try:
+                response = self.client.disks.begin_update(*lst_args)
+                break
+            except Exception as inst_error:
+                logger.info(f"Failed to update disk '{disk.name}': '{repr(inst_error)}'")
+                if "another operation" not in repr(inst_error):
+                    raise
+                logger.info(f"Failed to update disk '{disk.name}': '{repr(inst_error)}'. Retrying...")
+                time.sleep(sleep_time)
+        else:
+            raise TimeoutError(f"Failed to update disk '{disk.name}' in {timeout} seconds")
+
+        if asynchronous:
+            return response
+        response.wait()
+        return disk.update_after_creation(response.result())

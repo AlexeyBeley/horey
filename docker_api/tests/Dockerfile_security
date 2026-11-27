@@ -1,0 +1,15 @@
+FROM ubuntu:bionic
+
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+
+RUN apt update
+RUN apt upgrade -yqq
+
+RUN apt install -yqq curl unzip
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+RUN unzip awscliv2.zip
+RUN ./aws/install
+
+RUN aws iam list-roles
+
+ENTRYPOINT ["/bin/bash"]

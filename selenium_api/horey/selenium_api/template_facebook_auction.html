@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Fetcher</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 2em; background: #f4f4f4; }
+        h1 { color: #333; }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        button:hover { background: #0056b3; }
+        #table-container {
+            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 14px 18px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background-color: #f9f9f9; color: #555; }
+        tbody tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <h1>Data Fetcher</h1>
+    <p>Click a button to load data from the server.</p>
+
+    <!-- The buttons that will trigger the JavaScript functions -->
+    <button id="facebookBtn">Facebook</button>
+    <button id="auctionsBtn">Auctions</button>
+
+    <!-- This container will be filled with the table data -->
+    <div id="table-container">
+        <p style="padding: 15px; color: #777;">Data will be loaded here.</p>
+    </div>
+
+    <script>
+        // Add event listeners for the buttons
+        document.getElementById('facebookBtn').addEventListener('click', () => {
+            fetchData('http://127.0.0.1:8000/facebook');
+        });
+        document.getElementById('auctionsBtn').addEventListener('click', () => {
+            fetchData('http://127.0.0.1:8000/auctions');
+        });
+
+        // Function to fetch data from the API and display it
+        function fetchData(url) {
+            const container = document.getElementById('table-container');
+            container.innerHTML = '<p style="padding: 15px;">Loading...</p>';
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Pass the 'table_data' from the JSON response to buildTable
+                    container.innerHTML = buildTable(data.table_data);
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    container.innerHTML = '<p style="padding: 15px; color: red;">Failed to load data. Is the server running?</p>';
+                });
+        }
+
+        // Helper function to build an HTML table from JSON data
+        function buildTable(data) {
+            if (!data || data.length === 0) {
+                return '<p style="padding: 15px;">No data found.</p>';
+            }
+
+            // Get table headers from the keys of the first object
+            let headers = Object.keys(data[0]);
+            let tableHtml = '<table><thead><tr>';
+
+            headers.forEach(header => {
+                tableHtml += `<th>${header.replace(/_/g, ' ').toUpperCase()}</th>`;
+            });
+            tableHtml += '</tr></thead><tbody>';
+
+            // Create table rows
+            data.forEach(row => {
+                tableHtml += '<tr>';
+                headers.forEach(header => {
+                    tableHtml += `<td>${row[header]}</td>`;
+                });
+                tableHtml += '</tr>';
+            });
+
+            tableHtml += '</tbody></table>';
+            return tableHtml;
+        }
+    </script>
+</body>
+</html>

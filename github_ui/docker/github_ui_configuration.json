@@ -1,0 +1,4 @@
+{
+  "github_api_configuration_file_path": "/opt/horey/config/github_api_configuration.json",
+  "postgres_api_configuration_file_path": "/opt/horey/config/postgres_api_configuration.json"
+}
