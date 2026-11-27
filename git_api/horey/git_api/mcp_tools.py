@@ -4,7 +4,6 @@ Works on the single repository set by the configuration file (git_api_configurat
 remote_address, directory_path (the local clone), main_branch_name and ssh_key_file_path or user and pat.
 """
 
-import functools
 from typing import TYPE_CHECKING, Any
 
 from horey.git_api.git_api import GitAPI
@@ -21,14 +20,14 @@ def register_mcp_tools(registry: "MCPToolsRegistry") -> None:
     :param registry: passed in by horey.mcp
     """
 
-    @functools.cache
-    def git_api() -> GitAPI:
-        return GitAPI(registry.get_configuration(GitAPIConfigurationPolicy))
+    @registry.cached_per_configuration
+    def git_api(configuration_name: str | None) -> GitAPI:
+        return GitAPI(registry.get_configuration(GitAPIConfigurationPolicy, configuration_name))
 
     @registry.tool(read_only=True)
-    def get_repository() -> dict[str, Any]:
+    def get_repository(configuration_name: str | None = None) -> dict[str, Any]:
         """Get the configured repository: remote address, local directory, main branch and the checked out commit."""
-        api = git_api()
+        api = git_api(configuration_name)
         cloned = api.configuration.directory_path.exists()
         return {"remote_address": api.configuration.remote_address,
                 "directory_path": str(api.configuration.directory_path),
@@ -37,12 +36,12 @@ def register_mcp_tools(registry: "MCPToolsRegistry") -> None:
                 "commit_id": api.get_commit_id() if cloned else None}
 
     @registry.tool(destructive=True)
-    def checkout_remote(branch_name: str | None = None) -> dict[str, Any]:
+    def checkout_remote(branch_name: str | None = None, configuration_name: str | None = None) -> dict[str, Any]:
         """
         Clone the repository if needed, fetch and check out a remote branch (default: the main branch)
         or a pull request: "refs/pull/<number>/head". The clone is reset hard: local changes are discarded.
         Returns the checked out commit.
         """
-        api = git_api()
+        api = git_api(configuration_name)
         api.checkout_remote(dst_obj=branch_name)
         return {"checked_out": branch_name or api.configuration.main_branch_name, "commit_id": api.get_commit_id()}

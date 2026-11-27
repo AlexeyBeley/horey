@@ -2,7 +2,6 @@
 MCP tools of horey.slack_api. Loaded by horey.mcp, see mcp/README.md.
 """
 
-import functools
 from typing import TYPE_CHECKING
 
 from horey.slack_api.slack_api import SlackAPI
@@ -20,13 +19,14 @@ def register_mcp_tools(registry: "MCPToolsRegistry") -> None:
     :param registry: passed in by horey.mcp
     """
 
-    @functools.cache
-    def slack_api() -> SlackAPI:
-        return SlackAPI(registry.get_configuration(SlackAPIConfigurationPolicy))
+    @registry.cached_per_configuration
+    def slack_api(configuration_name: str | None) -> SlackAPI:
+        return SlackAPI(registry.get_configuration(SlackAPIConfigurationPolicy, configuration_name))
 
     @registry.tool()
     def send_message(channel: str, header: str, text: str = "", message_type: str = "INFO",
-                     links: dict[str, str] | None = None, username: str = "horey") -> bool:
+                     links: dict[str, str] | None = None, username: str = "horey",
+                     configuration_name: str | None = None) -> bool:
         """
         Send a message to a Slack channel: a header, an optional text (Slack mrkdwn) and optional links {text: url}.
         message_type sets the icon and the color: INFO, STABLE, WARNING, CRITICAL or PARTY.
@@ -50,4 +50,4 @@ def register_mcp_tools(registry: "MCPToolsRegistry") -> None:
 
         message.src_username = username
         message.dst_channel = channel
-        return bool(slack_api().send_message(message))
+        return bool(slack_api(configuration_name).send_message(message))

@@ -67,7 +67,9 @@ class EnvironmentAPI:
 
     def __init__(self, configuration: EnvironmentAPIConfigurationPolicy, aws_api: AWSAPI, git_api=None):
         self.configuration = configuration
-        if AWSAccount.get_aws_account() is None:
+        # An aws_api with its own account does not use the global one: do not set the process wide
+        # account and region, other EnvironmentAPIs (e.g. other regions) may need different ones.
+        if getattr(aws_api, "aws_account", None) is None and AWSAccount.get_aws_account() is None:
             default_account = AWSAccount()
             default_account.name = default_account.id = "environment_api_default"
             default_account.connection_steps = [AWSAccount.ConnectionStep({"role": "current",

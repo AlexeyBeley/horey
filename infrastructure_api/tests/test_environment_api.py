@@ -293,3 +293,39 @@ def test_generate_cleanup_report_us(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     AWSAccount.get_aws_account().regions = {"us-east-1": Region.get_region("us-east-1")}
     assert env.generate_cleanup_report()
+
+
+@pytest.mark.unit
+def test_init_with_own_aws_account_does_not_set_global_account(tmp_path, monkeypatch):
+    monkeypatch.setattr(AWSAccount, "_CURRENT_ACCOUNT", None)
+    monkeypatch.setattr(AWSAccount, "_CURRENT_REGION", None)
+
+    environment_apis = []
+    for region_mark in ["us-west-2", "eu-west-1"]:
+        configuration = EnvironmentAPIConfigurationPolicy()
+        configuration.region = region_mark
+        configuration.data_directory_path = str(tmp_path / region_mark)
+        aws_account = AWSAccount()
+        aws_account.name = aws_account.id = f"account_horey_{region_mark}"
+        aws_account.connection_steps = [AWSAccount.ConnectionStep({"role": "current", "region_mark": region_mark})]
+        environment_apis.append(EnvironmentAPI(configuration, AWSAPI(aws_account=aws_account,
+                                                                     init_configuration=False)))
+
+    assert AWSAccount.get_aws_account() is None
+    assert AWSAccount.get_default_region() is None
+    assert [api.aws_api.ec2_client.aws_account.default_region.region_mark for api in environment_apis] == [
+        "us-west-2", "eu-west-1"]
+
+
+@pytest.mark.unit
+def test_init_without_aws_account_sets_global_account(tmp_path, monkeypatch):
+    monkeypatch.setattr(AWSAccount, "_CURRENT_ACCOUNT", None)
+    monkeypatch.setattr(AWSAccount, "_CURRENT_REGION", None)
+
+    configuration = EnvironmentAPIConfigurationPolicy()
+    configuration.region = "us-west-2"
+    configuration.data_directory_path = str(tmp_path)
+    EnvironmentAPI(configuration, AWSAPI(init_configuration=False))
+
+    assert AWSAccount.get_aws_account().id == "environment_api_default"
+    assert AWSAccount.get_default_region().region_mark == "us-west-2"

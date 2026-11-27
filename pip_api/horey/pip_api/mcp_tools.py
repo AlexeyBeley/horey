@@ -1,10 +1,9 @@
 """
 MCP tools of horey.pip_api. Loaded by horey.mcp, see mcp/README.md.
-The configuration file (pip_api_configuration.py|json) is optional: venv_dir_path selects a venv,
+The configuration files (pip_api_configuration[_<suffix>].py|json) are optional: venv_dir_path selects a venv,
 default - the MCP server's own interpreter.
 """
 
-import functools
 from typing import TYPE_CHECKING, Any
 
 from horey.pip_api.pip_api import PipAPI
@@ -21,21 +20,22 @@ def register_mcp_tools(registry: "MCPToolsRegistry") -> None:
     :param registry: passed in by horey.mcp
     """
 
-    @functools.cache
-    def pip_api() -> PipAPI:
-        if registry.get_configuration_file_path() is None:
+    @registry.cached_per_configuration
+    def pip_api(configuration_name: str | None) -> PipAPI:
+        if configuration_name is None:
             configuration = PipAPIConfigurationPolicy()
         else:
-            configuration = registry.get_configuration(PipAPIConfigurationPolicy)
+            configuration = registry.get_configuration(PipAPIConfigurationPolicy, configuration_name)
         if configuration.multi_package_repositories is None:
             configuration.multi_package_repositories = {}
         return PipAPI(configuration)
 
     @registry.tool(read_only=True)
-    def list_installed_packages(name_contains: str = "") -> list[dict[str, Any]]:
+    def list_installed_packages(name_contains: str = "",
+                                configuration_name: str | None = None) -> list[dict[str, Any]]:
         """
         List the installed Python packages (pip list) and their versions. Optional name substring filter.
         The list is read once per server run.
         """
         return [{"name": package.name, "version": package.version}
-                for package in pip_api().init_packages() if name_contains.lower() in package.name.lower()]
+                for package in pip_api(configuration_name).init_packages() if name_contains.lower() in package.name.lower()]

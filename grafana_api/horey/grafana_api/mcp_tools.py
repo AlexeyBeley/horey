@@ -2,7 +2,6 @@
 MCP tools of horey.grafana_api. Loaded by horey.mcp, see mcp/README.md.
 """
 
-import functools
 from typing import TYPE_CHECKING, Any
 
 from horey.grafana_api.grafana_api import GrafanaAPI
@@ -31,32 +30,32 @@ def register_mcp_tools(registry: "MCPToolsRegistry") -> None:
     :param registry: passed in by horey.mcp
     """
 
-    @functools.cache
-    def grafana_api() -> GrafanaAPI:
-        return GrafanaAPI(registry.get_configuration(GrafanaAPIConfigurationPolicy))
+    @registry.cached_per_configuration
+    def grafana_api(configuration_name: str | None) -> GrafanaAPI:
+        return GrafanaAPI(registry.get_configuration(GrafanaAPIConfigurationPolicy, configuration_name))
 
     @registry.tool(read_only=True)
-    def list_dashboards(title_contains: str = "") -> list[dict[str, Any]]:
+    def list_dashboards(title_contains: str = "", configuration_name: str | None = None) -> list[dict[str, Any]]:
         """List the Grafana dashboards: uid, title, folder uid. Optional title substring filter."""
-        dashboards = [_title_and_uid(dashboard.dict_src) for dashboard in grafana_api().init_dashboards()]
+        dashboards = [_title_and_uid(dashboard.dict_src) for dashboard in grafana_api(configuration_name).init_dashboards()]
         return [dashboard for dashboard in dashboards if title_contains.lower() in (dashboard["title"] or "").lower()]
 
     @registry.tool(read_only=True)
-    def list_folders() -> list[dict[str, Any]]:
+    def list_folders(configuration_name: str | None = None) -> list[dict[str, Any]]:
         """List the Grafana dashboard folders: uid, title, parent folder uid."""
-        return [_title_and_uid(folder.dict_src) for folder in grafana_api().init_folders()]
+        return [_title_and_uid(folder.dict_src) for folder in grafana_api(configuration_name).init_folders()]
 
     @registry.tool(read_only=True)
-    def list_datasources() -> list[dict[str, Any]]:
+    def list_datasources(configuration_name: str | None = None) -> list[dict[str, Any]]:
         """List the Grafana data sources: uid, name, type, url, database, default. Credentials are not returned."""
         fields = ["id", "uid", "name", "type", "url", "database", "isDefault"]
         return [{field: datasource.dict_src.get(field) for field in fields}
-                for datasource in grafana_api().init_datasources()]
+                for datasource in grafana_api(configuration_name).init_datasources()]
 
     @registry.tool(read_only=True)
-    def list_alert_rules() -> dict[str, list[dict[str, Any]]]:
+    def list_alert_rules(configuration_name: str | None = None) -> dict[str, list[dict[str, Any]]]:
         """List the Grafana managed alert rules per folder: group name, rule title, uid, paused."""
-        api = grafana_api()
+        api = grafana_api(configuration_name)
         api.init_rule_namespaces()
         ret = {}
         for namespace, groups in api.rule_namespaces.items():

@@ -2,7 +2,6 @@
 MCP tools of horey.zabbix_api. Loaded by horey.mcp, see mcp/README.md.
 """
 
-import functools
 from typing import TYPE_CHECKING, Any
 
 from horey.zabbix_api.zabbix_api import ZabbixAPI
@@ -21,20 +20,20 @@ def register_mcp_tools(registry: "MCPToolsRegistry") -> None:
     :param registry: passed in by horey.mcp
     """
 
-    @functools.cache
-    def zabbix_api() -> ZabbixAPI:
-        return ZabbixAPI(registry.get_configuration(ZabbixAPIConfigurationPolicy))
+    @registry.cached_per_configuration
+    def zabbix_api(configuration_name: str | None) -> ZabbixAPI:
+        return ZabbixAPI(registry.get_configuration(ZabbixAPIConfigurationPolicy, configuration_name))
 
     @registry.tool(read_only=True)
-    def get_api_version() -> str:
+    def get_api_version(configuration_name: str | None = None) -> str:
         """Get the Zabbix server API version."""
-        return zabbix_api().api_version()
+        return zabbix_api(configuration_name).api_version()
 
     @registry.tool(read_only=True)
-    def list_hosts(name_contains: str = "") -> list[dict[str, Any]]:
+    def list_hosts(name_contains: str = "", configuration_name: str | None = None) -> list[dict[str, Any]]:
         """List the Zabbix hosts: host, name, status (0 - enabled, 1 - disabled), groups, templates, interface IPs."""
         ret = []
-        for host in zabbix_api().init_hosts():
+        for host in zabbix_api(configuration_name).init_hosts():
             if name_contains not in (host.host or ""):
                 continue
             ret.append({"hostid": host.hostid, "host": host.host, "name": host.name, "status": host.status,
@@ -44,18 +43,19 @@ def register_mcp_tools(registry: "MCPToolsRegistry") -> None:
         return ret
 
     @registry.tool(read_only=True)
-    def list_templates() -> list[dict[str, Any]]:
+    def list_templates(configuration_name: str | None = None) -> list[dict[str, Any]]:
         """List the Zabbix templates: templateid, host (technical name), name."""
         return [{"templateid": template.get("templateid"), "host": template.get("host"), "name": template.get("name")}
-                for template in zabbix_api().init_templates()]
+                for template in zabbix_api(configuration_name).init_templates()]
 
     @registry.tool(read_only=True)
-    def list_problems(min_severity: int = 0, limit: int = 100) -> list[dict[str, Any]]:
+    def list_problems(min_severity: int = 0, limit: int = 100,
+                      configuration_name: str | None = None) -> list[dict[str, Any]]:
         """
         List the current (unresolved) Zabbix problems, newest first: name, severity, acknowledged, start time (unix),
         hosts. min_severity: 0 - not classified, 1 - information, 2 - warning, 3 - average, 4 - high, 5 - disaster.
         """
-        api = zabbix_api()
+        api = zabbix_api(configuration_name)
         api.login()
         problems = api.post("problem.get", params={"recent": False, "severities": list(range(min_severity, 6)),
                                                    "sortfield": ["eventid"], "sortorder": "DESC", "limit": limit})

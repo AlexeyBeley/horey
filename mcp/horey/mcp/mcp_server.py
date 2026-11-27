@@ -14,6 +14,13 @@ from horey.mcp.mcp_tools_loader import MCPToolsLoader
 
 logger = get_logger()
 
+INSTRUCTIONS = (
+    "Tools are named <package_name>_<tool>. A package can have several configurations, each one a separate "
+    "environment or server (e.g. development, staging, production). Call <package_name>_list_configurations "
+    "and pass the chosen file name as configuration_name. If the user did not say which environment to use "
+    "and there are several, ask - never assume production."
+)
+
 
 class HoreyMCPServer:
     """
@@ -23,7 +30,8 @@ class HoreyMCPServer:
 
     def __init__(self, configuration: MCPServerConfigurationPolicy | None = None) -> None:
         self.configuration: MCPServerConfigurationPolicy = configuration or MCPServerConfigurationPolicy()
-        self.mcp_server: MCPServer = MCPServer(name=self.configuration.server_name, version=__version__)
+        self.mcp_server: MCPServer = MCPServer(name=self.configuration.server_name, version=__version__,
+                                                instructions=INSTRUCTIONS)
         self.loader: MCPToolsLoader = MCPToolsLoader(self.mcp_server, self.configuration.configurations_dir_path,
                                                      packages=self.configuration.packages)
 

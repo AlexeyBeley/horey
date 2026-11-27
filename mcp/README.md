@@ -6,6 +6,9 @@ or any other MCP client.
 The server has no tools of its own, except `mcp_list_packages`. On start it scans the installed `horey.*`
 packages and loads the tools of every package having a `horey/<package_name>/mcp_tools.py` module.
 
+A package can serve several configurations (environments) at once, e.g. dev, staging and production Jenkins
+servers, or AWS environments in different regions. See [Multiple configurations](#multiple-configurations).
+
 ## Exposing tools from a horey package
 
 Add `horey/<package_name>/mcp_tools.py` to the package, e.g. [jenkins_api](../jenkins_api/horey/jenkins_api/mcp_tools.py):
@@ -15,7 +18,6 @@ Add `horey/<package_name>/mcp_tools.py` to the package, e.g. [jenkins_api](../je
 MCP tools of horey.jenkins_api
 """
 
-import functools
 from typing import TYPE_CHECKING, Any
 
 from horey.jenkins_api.jenkins_api import JenkinsAPI
@@ -30,32 +32,36 @@ def register_mcp_tools(registry: "MCPToolsRegistry") -> None:
     :param registry: passed in by horey.mcp
     """
 
-    @functools.cache
-    def jenkins_api() -> JenkinsAPI:
-        return JenkinsAPI(registry.get_configuration(JenkinsAPIConfigurationPolicy))
+    @registry.cached_per_configuration
+    def jenkins_api(configuration_name: str | None) -> JenkinsAPI:
+        return JenkinsAPI(registry.get_configuration(JenkinsAPIConfigurationPolicy, configuration_name))
 
     @registry.tool(read_only=True)
-    def get_build(job_name: str, build_number: int) -> dict[str, Any]:
+    def get_build(job_name: str, build_number: int, configuration_name: str | None = None) -> dict[str, Any]:
         """Get a Jenkins build: result (None while building), building, duration, url."""
-        info = jenkins_api().server.get_build_info(job_name, build_number)
+        info = jenkins_api(configuration_name).server.get_build_info(job_name, build_number)
         return {"result": info["result"], "building": info["building"]}
 
     @registry.tool()
-    def trigger_job(job_name: str, parameters: dict[str, str] | None = None) -> int:
+    def trigger_job(job_name: str, parameters: dict[str, str] | None = None,
+                    configuration_name: str | None = None) -> int:
         """Trigger a Jenkins job. Returns the queue item id."""
-        return jenkins_api().server.build_job(job_name, parameters or {})
+        return jenkins_api(configuration_name).server.build_job(job_name, parameters or {})
 ```
 
 Rules:
 
 * The tool name is `<package_name>_<function name>`, e.g. `jenkins_api_get_build`.
+* Every tool using the configuration takes `configuration_name: str | None = None` as its last parameter and passes
+  it to the API factory. The registry then adds `<package_name>_list_configurations` and appends a
+  `configuration_name` note to the tool description.
 * The docstring is the tool description and the type hints are the input schema. Claude sees only these.
 * `read_only=True` for tools which do not change anything. `destructive=True` for tools which delete,
   overwrite or run commands.
 * The package does not import `horey.mcp` at run time (only under `TYPE_CHECKING`, for the type hint).
   `mcp_tools.py` is imported only by the MCP server, so it adds no dependencies to the package.
-* Create the API object lazily (`functools.cache`): the configuration is read on the first tool call,
-  a missing configuration fails that call, not the server start.
+* Create the API object lazily (`@registry.cached_per_configuration`, one object per configuration):
+  the configuration is read on the first tool call, a missing configuration fails that call, not the server start.
 * Sync tools run in a worker thread, they do not block the server. Still, return fast:
   trigger and return an id, let Claude poll a status tool. Don't wait for builds inside a tool.
 * Return small results: a few fields, the last N log lines. Not raw API responses.
@@ -67,8 +73,11 @@ Registry helpers:
 
 | Helper | Use |
 |--------|-----|
-| `registry.get_configuration(PolicyClass)` | The package configuration policy, initialized from `<package_name>_configuration.py\|json` |
-| `registry.get_configuration_file_path(file_name=None)` | Path of the package configuration, or of another file (e.g. an SSH key) in the configurations directory |
+| `registry.get_configuration(PolicyClass, configuration_name=None)` | The package configuration policy, initialized from the configuration file. Default: the only one |
+| `@registry.cached_per_configuration` | Decorator for the API factory: one API object per configuration. The factory gets the resolved file name, `None` if the package has no configurations |
+| `registry.list_configurations()` | The package configuration file names |
+| `registry.resolve_configuration_name(configuration_name)` | The name if it exists, the only one if `None`. Raises when it is unknown, or `None` while there are several |
+| `registry.get_configuration_file_path(file_name=None)` | Path of another file (e.g. an SSH key) in the configurations directory, a file name, not a path. Default: the only package configuration |
 | `registry.to_jsonable(obj)` | horey objects to JSON: `dict_src` if the object has it, otherwise the public attributes |
 
 ## Packages exposing tools
@@ -107,6 +116,30 @@ Tools which change data or run commands are marked destructive, e.g. `postgres_a
 
 Package configurations are files in `configurations_dir_path` named `<package_name>_configuration.py`
 or `<package_name>_configuration.json`, e.g. `jenkins_api_configuration.py`.
+
+## Multiple configurations
+
+A package can have several configuration files: `<package_name>_configuration[_<suffix>].py|json`.
+Put everything needed to tell the environments apart into the suffix, Claude chooses by the file name:
+
+```
+/opt/horey/mcp/configurations/
+    jenkins_api_configuration_dev_horey.py
+    jenkins_api_configuration_staging_horey.py
+    jenkins_api_configuration_production_horey.json
+    infrastructure_api_configuration_dev_horey_us_east_1.py
+    infrastructure_api_configuration_production_horey_eu_west_1.py
+```
+
+* `<package_name>_list_configurations` returns the file names. The directory is read on each call,
+  files added later are served without a restart.
+* The tools take `configuration_name`, one of these file names.
+* A single configuration is used when `configuration_name` is not passed, so single setups work as before.
+* With several configurations, a call without `configuration_name` fails with the list of the names.
+  The server never picks one by itself, and its instructions tell Claude to ask the user when the environment
+  is not clear.
+* Each configuration gets its own API object. `infrastructure_api` creates an `AWSAccount` per configuration,
+  with the configuration region, so environments in different regions are served by the same server.
 
 ## Run in docker
 

@@ -233,6 +233,8 @@ class AWSAPI:
         self.eks_clusters = []
 
         self.configuration = configuration
+        # The account the clients were created with. None - the global AWSAccount.get_aws_account().
+        self.aws_account = aws_account
         self.aws_accounts = None
         if init_configuration:
             self.init_configuration()

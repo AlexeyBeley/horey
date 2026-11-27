@@ -3,7 +3,6 @@ MCP tools of horey.kubernetes_api. Loaded by horey.mcp, see mcp/README.md.
 The configuration file (kubernetes_api_configuration.py|json) sets endpoint, token and cadata.
 """
 
-import functools
 from typing import TYPE_CHECKING, Any
 
 from horey.kubernetes_api.kubernetes_api import KubernetesAPI
@@ -25,20 +24,20 @@ def register_mcp_tools(registry: "MCPToolsRegistry") -> None:
     :param registry: passed in by horey.mcp
     """
 
-    @functools.cache
-    def kubernetes_api() -> KubernetesAPI:
-        return KubernetesAPI(registry.get_configuration(KubernetesAPIConfigurationPolicy))
+    @registry.cached_per_configuration
+    def kubernetes_api(configuration_name: str | None) -> KubernetesAPI:
+        return KubernetesAPI(registry.get_configuration(KubernetesAPIConfigurationPolicy, configuration_name))
 
     @registry.tool(read_only=True)
-    def list_namespaces() -> list[str]:
+    def list_namespaces(configuration_name: str | None = None) -> list[str]:
         """List the Kubernetes namespaces."""
-        return [_metadata(namespace.dict_src)["name"] for namespace in kubernetes_api().client.get_namespaces()]
+        return [_metadata(namespace.dict_src)["name"] for namespace in kubernetes_api(configuration_name).client.get_namespaces()]
 
     @registry.tool(read_only=True)
-    def list_pods(namespace: str = "") -> list[dict[str, Any]]:
+    def list_pods(namespace: str = "", configuration_name: str | None = None) -> list[dict[str, Any]]:
         """List the pods (all namespaces or one): name, namespace, phase, node, ready containers, restarts."""
         ret = []
-        for pod in kubernetes_api().client.get_pods():
+        for pod in kubernetes_api(configuration_name).client.get_pods():
             pod_dict = _metadata(pod.dict_src)
             if namespace and pod_dict["namespace"] != namespace:
                 continue
@@ -54,10 +53,10 @@ def register_mcp_tools(registry: "MCPToolsRegistry") -> None:
         return ret
 
     @registry.tool(read_only=True)
-    def list_deployments(namespace: str | None = None) -> list[dict[str, Any]]:
+    def list_deployments(namespace: str | None = None, configuration_name: str | None = None) -> list[dict[str, Any]]:
         """List the deployments: name, namespace, desired/ready/available replicas, images."""
         ret = []
-        for deployment in kubernetes_api().client.get_deployments(namespace=namespace):
+        for deployment in kubernetes_api(configuration_name).client.get_deployments(namespace=namespace):
             spec = deployment.dict_src.get("spec") or {}
             status = deployment.dict_src.get("status") or {}
             containers = ((spec.get("template") or {}).get("spec") or {}).get("containers") or []
@@ -69,10 +68,10 @@ def register_mcp_tools(registry: "MCPToolsRegistry") -> None:
         return ret
 
     @registry.tool(read_only=True)
-    def list_services(namespace: str | None = None) -> list[dict[str, Any]]:
+    def list_services(namespace: str | None = None, configuration_name: str | None = None) -> list[dict[str, Any]]:
         """List the services: name, namespace, type, cluster IP, ports."""
         ret = []
-        for service in kubernetes_api().client.get_services(namespace=namespace):
+        for service in kubernetes_api(configuration_name).client.get_services(namespace=namespace):
             spec = service.dict_src.get("spec") or {}
             service_dict = _metadata(service.dict_src)
             service_dict.update({"type": spec.get("type"), "cluster_ip": spec.get("cluster_ip"),
@@ -82,10 +81,10 @@ def register_mcp_tools(registry: "MCPToolsRegistry") -> None:
         return ret
 
     @registry.tool(read_only=True)
-    def list_ingresses(namespace: str | None = None) -> list[dict[str, Any]]:
+    def list_ingresses(namespace: str | None = None, configuration_name: str | None = None) -> list[dict[str, Any]]:
         """List the ingresses: name, namespace, hosts."""
         ret = []
-        for ingress in kubernetes_api().client.get_ingresses(namespace=namespace):
+        for ingress in kubernetes_api(configuration_name).client.get_ingresses(namespace=namespace):
             spec = ingress.dict_src.get("spec") or {}
             ingress_dict = _metadata(ingress.dict_src)
             ingress_dict["hosts"] = [rule.get("host") for rule in spec.get("rules") or []]

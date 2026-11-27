@@ -6,6 +6,7 @@ import asyncio
 import datetime
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 from mcp.server.mcpserver import MCPServer
@@ -148,6 +149,191 @@ def test_get_configuration_missing(tmp_path: Path) -> None:
     registry = MCPToolsRegistry(MCPServer("horey"), "horey_fake_api", tmp_path)
     with pytest.raises(FileNotFoundError, match="horey_fake_api_configuration"):
         registry.get_configuration(HoreyConfigurationPolicy)
+
+
+MULTI_CONFIGURATION_MCP_TOOLS = '''
+from horey.configuration_policy.configuration_policy import ConfigurationPolicy
+
+
+class HoreyConfigurationPolicy(ConfigurationPolicy):
+    def __init__(self):
+        super().__init__()
+        self._name = None
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+
+
+def register_mcp_tools(registry) -> None:
+    @registry.cached_per_configuration
+    def api(configuration_name):
+        return registry.get_configuration(HoreyConfigurationPolicy, configuration_name)
+
+    @registry.tool(read_only=True)
+    def get_name(configuration_name: str | None = None) -> str:
+        """Get the configured name."""
+        return api(configuration_name).name
+'''
+
+
+@pytest.fixture(name="multi_configuration_package")
+def fixture_multi_configuration_package(fake_package: Path) -> Path:
+    """
+    horey.horey_multi_api with dev and production configurations.
+    """
+
+    package_dir_path = fake_package.parent / "horey" / "horey_multi_api"
+    package_dir_path.mkdir()
+    (package_dir_path / "__init__.py").write_text("")
+    (package_dir_path / "mcp_tools.py").write_text(MULTI_CONFIGURATION_MCP_TOOLS)
+    (fake_package / "horey_multi_api_configuration_dev_horey.json").write_text('{"name": "dev-horey"}')
+    (fake_package / "horey_multi_api_configuration_production_horey.json").write_text('{"name": "production-horey"}')
+    return fake_package
+
+
+def call_tool_text(server: HoreyMCPServer, tool_name: str, arguments: dict[str, Any]) -> str:
+    result = asyncio.run(server.mcp_server.call_tool(tool_name, arguments))
+    assert isinstance(result, CallToolResult)
+    assert not result.is_error
+    content = result.content[0]
+    assert isinstance(content, TextContent)
+    return content.text
+
+
+@pytest.mark.unit
+def test_list_configurations(tmp_path: Path) -> None:
+    for file_name in ["horey_fake_api_configuration.py", "horey_fake_api_configuration_dev_horey.json",
+                      "horey_fake_api_configurationx_horey.json", "horey_fake_api_configuration_dev_horey.txt",
+                      "horey_fake_api_x_configuration.json", "horey_fake_api_horey_configuration.json"]:
+        (tmp_path / file_name).write_text("{}")
+    (tmp_path / "horey_fake_api_configuration_dir_horey.json").mkdir()
+    registry = MCPToolsRegistry(MCPServer("horey"), "horey_fake_api", tmp_path)
+    assert registry.list_configurations() == ["horey_fake_api_configuration.py",
+                                              "horey_fake_api_configuration_dev_horey.json"]
+
+
+@pytest.mark.unit
+def test_list_configurations_no_directory(tmp_path: Path) -> None:
+    assert not MCPToolsRegistry(MCPServer("horey"), "horey_fake_api", tmp_path / "missing").list_configurations()
+    assert not MCPToolsRegistry(MCPServer("horey"), "horey_fake_api", None).list_configurations()
+
+
+@pytest.mark.unit
+def test_resolve_configuration_name(tmp_path: Path) -> None:
+    registry = MCPToolsRegistry(MCPServer("horey"), "horey_fake_api", tmp_path)
+    assert registry.resolve_configuration_name(None) is None
+
+    (tmp_path / "horey_fake_api_configuration_dev_horey.json").write_text("{}")
+    assert registry.resolve_configuration_name(None) == "horey_fake_api_configuration_dev_horey.json"
+
+    (tmp_path / "horey_fake_api_configuration_production_horey.json").write_text("{}")
+    with pytest.raises(ValueError, match="pass configuration_name.*production_horey"):
+        registry.resolve_configuration_name(None)
+    assert (registry.resolve_configuration_name("horey_fake_api_configuration_production_horey.json")
+            == "horey_fake_api_configuration_production_horey.json")
+    with pytest.raises(ValueError, match="Unknown"):
+        registry.resolve_configuration_name("horey_fake_api_configuration_staging_horey.json")
+
+
+@pytest.mark.unit
+def test_get_configuration_by_name(tmp_path: Path) -> None:
+    (tmp_path / "horey_fake_api_configuration_dev_horey.json").write_text('{"name": "dev-horey"}')
+    (tmp_path / "horey_fake_api_configuration_production_horey.json").write_text('{"name": "production-horey"}')
+    registry = MCPToolsRegistry(MCPServer("horey"), "horey_fake_api", tmp_path)
+    assert registry.get_configuration(HoreyConfigurationPolicy,
+                                      "horey_fake_api_configuration_dev_horey.json").name == "dev-horey"
+    with pytest.raises(ValueError, match="pass configuration_name"):
+        registry.get_configuration(HoreyConfigurationPolicy)
+
+
+@pytest.mark.unit
+def test_cached_per_configuration(tmp_path: Path) -> None:
+    (tmp_path / "horey_fake_api_configuration_dev_horey.json").write_text("{}")
+    registry = MCPToolsRegistry(MCPServer("horey"), "horey_fake_api", tmp_path)
+    built: list[str | None] = []
+
+    @registry.cached_per_configuration
+    def api(configuration_name: str | None) -> object:
+        built.append(configuration_name)
+        return object()
+
+    # None resolves to the only configuration: the same object as the explicit name.
+    assert api(None) is api("horey_fake_api_configuration_dev_horey.json")
+    (tmp_path / "horey_fake_api_configuration_production_horey.json").write_text("{}")
+    assert api("horey_fake_api_configuration_production_horey.json") is not api(
+        "horey_fake_api_configuration_dev_horey.json")
+    assert built == ["horey_fake_api_configuration_dev_horey.json",
+                     "horey_fake_api_configuration_production_horey.json"]
+
+
+@pytest.mark.unit
+def test_list_configurations_tool_registered_once(tmp_path: Path) -> None:
+    mcp_server = MCPServer("horey")
+    registry = MCPToolsRegistry(mcp_server, "horey_fake_api", tmp_path)
+
+    @registry.tool(read_only=True)
+    def get_status() -> str:
+        """Get the status."""
+        return "ok"
+
+    assert registry.tool_names == ["horey_fake_api_get_status"]
+
+    @registry.tool(read_only=True)
+    def get_first(configuration_name: str | None = None) -> str | None:
+        """Get the first."""
+        return configuration_name
+
+    @registry.tool(read_only=True)
+    def get_second(configuration_name: str | None = None) -> str | None:
+        """Get the second."""
+        return configuration_name
+
+    assert registry.tool_names == ["horey_fake_api_get_status", "horey_fake_api_list_configurations",
+                                   "horey_fake_api_get_first", "horey_fake_api_get_second"]
+    tools = {tool.name: tool for tool in asyncio.run(mcp_server.list_tools())}
+    assert "horey_fake_api_list_configurations" in (tools["horey_fake_api_get_first"].description or "")
+    assert "list_configurations" not in (tools["horey_fake_api_get_status"].description or "")
+
+
+@pytest.mark.unit
+def test_multi_configuration_tools(multi_configuration_package: Path) -> None:
+    server = make_server(multi_configuration_package, packages="horey_multi_api")
+    loaded = server.load_tools()
+    assert loaded["horey_multi_api"] == ["horey_multi_api_list_configurations", "horey_multi_api_get_name"]
+
+    result = asyncio.run(server.mcp_server.call_tool("horey_multi_api_list_configurations", {}))
+    assert isinstance(result, CallToolResult)
+    assert result.structured_content == {"result": ["horey_multi_api_configuration_dev_horey.json",
+                              "horey_multi_api_configuration_production_horey.json"]}
+
+    assert call_tool_text(server, "horey_multi_api_get_name",
+                          {"configuration_name": "horey_multi_api_configuration_dev_horey.json"}) == "dev-horey"
+    assert call_tool_text(server, "horey_multi_api_get_name",
+                          {"configuration_name": "horey_multi_api_configuration_production_horey.json"}
+                          ) == "production-horey"
+    with pytest.raises(ToolError, match="ValueError: There are 2 horey_multi_api configurations"):
+        asyncio.run(server.mcp_server.call_tool("horey_multi_api_get_name", {}))
+
+
+@pytest.mark.unit
+def test_server_instructions(fake_package: Path) -> None:
+    assert "list_configurations" in (make_server(fake_package).mcp_server.instructions or "")
+
+
+@pytest.mark.unit
+def test_get_configuration_file_path_rejects_paths(tmp_path: Path) -> None:
+    (tmp_path / "ssh_key_horey").write_text("")
+    registry = MCPToolsRegistry(MCPServer("horey"), "horey_fake_api", tmp_path / "configurations")
+    (tmp_path / "configurations").mkdir()
+    for file_name in ["../ssh_key_horey", "/etc/hosts", "..", "."]:
+        with pytest.raises(ValueError, match="File name expected"):
+            registry.get_configuration_file_path(file_name=file_name)
+    assert registry.get_configuration_file_path(file_name="missing_horey") is None
 
 
 class HoreyObject:
