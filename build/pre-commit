@@ -7,6 +7,27 @@
 #
 # To enable this hook, rename this file to "pre-commit".
 
+# Block commits that add credentials, real account IDs, personal data or private denylist values.
+# See build/security/README.md.
+function run_security_scan () {
+  python_bin="./build/_build/_venv/bin/python"
+  if [ ! -x "$python_bin" ]
+  then
+      python_bin="python3"
+  fi
+
+  "$python_bin" ./build/security/sensitive_data_scanner.py --staged
+  ret=$?
+
+  if [ "$ret" != "0" ]
+  then
+      echo "FAILURE: PRE-COMMIT HOOK FAILED!!! (sensitive data scan)"
+      exit $ret
+  fi
+}
+
+run_security_scan
+
 # Run pylint on the changed files
 function run_pylint () {
 return_code=0

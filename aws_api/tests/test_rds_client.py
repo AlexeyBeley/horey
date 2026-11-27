@@ -63,7 +63,7 @@ def test_provision_cluster():
     cluster.port = 3306
 
     cluster.master_username = "admin"
-    cluster.master_user_password = "12345678"
+    # cluster.master_user_password = ""
     cluster.preferred_backup_window = "09:23-09:53"
     cluster.preferred_maintenance_window = "sun:03:30-sun:04:00"
     cluster.storage_encrypted = True

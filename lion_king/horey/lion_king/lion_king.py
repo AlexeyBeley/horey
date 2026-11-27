@@ -669,7 +669,7 @@ class LionKing:
             )
             db_instance.db_name = self.configuration.db_rds_database_name
             db_instance.master_username = "lion"
-            db_instance.master_user_password = "admin123456!"
+            # db_instance.master_user_password = "" 
             self.aws_api.provision_db_instance(db_instance)
         return True
 
