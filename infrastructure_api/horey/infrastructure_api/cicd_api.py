@@ -4,6 +4,7 @@ Standard Load balancing maintainer.
 """
 import json
 import pathlib
+from contextlib import contextmanager
 import shutil
 from pathlib import Path
 import time
@@ -835,6 +836,42 @@ class CICDAPI:
         ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]}, alive=True, stopped=True)
         return self.init_deployment_target(ec2_instance, target_ssh_key_secret_name=target_ssh_key_secret_name,
                                            bastions=bastions)
+
+    @contextmanager
+    def deployment_target_preserving_status(self, name=None, target_ssh_key_secret_name=None, bastions=None):
+        """
+        Generate target (see generate_deployment_target) and restore the state on exit, even on failure:
+        stop the instance if it was stopped (init_deployment_target starts it) and delete the SSH key files
+        (target and bastions) which did not exist in the deployment directory.
+
+        :param name:
+        :param target_ssh_key_secret_name:
+        :param bastions:
+        :return:
+        """
+
+        if name is None:
+            raise ValueError("name is None")
+        bastions = bastions or []
+
+        ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]}, alive=True, stopped=True)
+        was_stopped = ec2_instance.get_status() == ec2_instance.State.STOPPED
+        key_names = [target_ssh_key_secret_name or ec2_instance.key_name] + [bastion.key_name for bastion in bastions]
+        new_key_file_paths = {self.configuration.deployment_directory / key_name for key_name in key_names
+                              if key_name and not (self.configuration.deployment_directory / key_name).exists()}
+
+        try:
+            yield self.init_deployment_target(ec2_instance, target_ssh_key_secret_name=target_ssh_key_secret_name,
+                                              bastions=bastions)
+        finally:
+            try:
+                if was_stopped:
+                    logger.info(f"Stopping instance '{name}': it was stopped before the deployment")
+                    self.environment_api.aws_api.ec2_client.stop_instance(ec2_instance)
+            finally:
+                for key_file_path in new_key_file_paths:
+                    logger.info(f"Deleting SSH key file '{key_file_path}': it did not exist before the deployment")
+                    key_file_path.unlink(missing_ok=True)
 
     def generate_deployment_targets(self, name=None, target_ssh_key_secret_name: str = None, bastions=None) -> List[
         DeploymentTarget]:
